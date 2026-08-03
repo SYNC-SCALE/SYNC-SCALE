@@ -1,0 +1,3488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SYNC/SCALE — Player</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0c10;color:#dfe6f0;
+    font:13px/1.5 "Segoe UI",system-ui,sans-serif;overflow:hidden}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{background:#000;display:block}
+  #ui{position:fixed;top:0;left:0;right:0;padding:8px 12px;display:flex;gap:14px;
+    align-items:center;flex-wrap:wrap;background:rgba(8,10,14,.82);
+    border-bottom:1px solid #1e2734;z-index:10}
+  #ui label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  button{background:#1b2635;color:#dfe6f0;border:1px solid #2f4058;
+    border-radius:5px;padding:5px 12px;cursor:pointer;font:inherit}
+  button:hover{background:#24334a}
+  button.primary{background:#2b5cff;border-color:#4a78ff}
+  #drop{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:20;
+    border:2px dashed #2f4058;border-radius:10px;padding:26px 42px;color:#7d8ba3;
+    background:rgba(8,10,14,.7);pointer-events:none;display:none}
+  #drop.on{display:block;border-color:#2b5cff;color:#dfe6f0}
+  #cfg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:35;
+    background:#0d1119;border:1px solid #2f4058;border-radius:10px;padding:16px 20px;
+    display:none;flex-direction:column;gap:6px;min-width:520px}
+  #cfg.on{display:flex}
+  #cfg .row{display:flex;gap:10px;align-items:center}
+  #cfg .row>span:first-child{width:170px;color:#9fb0c8}
+  #cfg b{min-width:64px;display:inline-block}
+  #cfg textarea{height:120px;background:#070a0f;color:#cfe0ff;border:1px solid #22304a;
+    border-radius:5px;font:12px ui-monospace,monospace;padding:8px;margin-top:6px}
+  .keybtn{background:#1b2635;border:1px solid #2f4058;border-radius:4px;color:#dfe6f0;
+    padding:4px 10px;margin-right:4px;cursor:pointer;font:inherit;min-width:44px}
+  .keybtn.wait{background:#2b5cff;border-color:#4a78ff}
+  /* 上部バー: HPゲージ / スコア / コンボ */
+  #topbar{position:fixed;top:0;left:0;right:0;z-index:11;pointer-events:none;
+    font:13px/1.35 ui-monospace,Consolas,monospace;color:#eef3fa}
+  #hpwrap{height:8px;background:rgba(255,255,255,.10);display:none;position:relative}
+  #hpfill{height:100%;width:100%;background:linear-gradient(90deg,#37c98a,#7fe38a);transition:width .12s linear}
+  #hppct{position:absolute;top:10px;right:14px;font-size:12px;color:#c7ecd6;display:none}
+  #topcenter{text-align:center;padding-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.75)}
+  #tScore{font-size:28px;letter-spacing:2px}
+  #tCombo{font-size:34px;font-weight:800;line-height:1.05;color:#eef3fa;margin-top:2px}
+  #tCombo .clabel{font-size:12px;font-weight:600;color:#8fa0b6;letter-spacing:2px;margin-right:6px;vertical-align:2px}
+  /* 右下スキルボックス(横長半透明を縦積み) */
+  #hud{position:fixed;right:12px;bottom:12px;z-index:10;display:flex;flex-direction:column;
+    gap:6px;align-items:stretch;pointer-events:none;
+    font:12px/1.5 ui-monospace,Consolas,monospace}
+  .skbox{background:rgba(8,11,16,.55);border:1px solid rgba(120,140,170,.22);
+    padding:7px 12px;min-width:196px;text-align:right;color:#dfe6f0}
+  #hud .sc{font-size:22px;letter-spacing:1px}
+  /* 失敗時の暗転演出(遷移前) */
+  #failfade{position:fixed;inset:0;z-index:20;background:#000;opacity:0;display:none;
+    pointer-events:none;transition:opacity .7s ease-in;
+    align-items:center;justify-content:center}
+  #failfade .ftxt{color:#ff5a5a;font:700 44px/1.2 ui-monospace,Consolas,monospace;
+    letter-spacing:6px;opacity:.92}
+  #overlay{position:fixed;left:12px;bottom:12px;z-index:10;background:rgba(8,10,14,.86);
+    border:1px solid #1e2734;border-radius:6px;padding:10px 12px;
+    font:12px/1.55 ui-monospace,Consolas,monospace;white-space:pre;pointer-events:none}
+  .ok{color:#54e08a}.bad{color:#ff6b6b}.warn{color:#ffc857}.dim{color:#7d8ba3}
+  #report{position:fixed;inset:6% 12%;z-index:30;background:#0d1119;border:1px solid #2f4058;
+    border-radius:8px;padding:14px;display:none;flex-direction:column;gap:10px}
+  #report textarea{flex:1;background:#070a0f;color:#cfe0ff;border:1px solid #22304a;
+    border-radius:5px;font:12px/1.5 ui-monospace,Consolas,monospace;padding:10px;resize:none}
+  #splash{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;gap:16px;
+    align-items:center;justify-content:center;background:#0a0c10;text-align:center}
+  #keyCheck{display:flex;gap:10px}
+  #keyCheck .kc{width:54px;height:54px;display:flex;align-items:center;justify-content:center;
+    font:700 20px ui-monospace,Consolas,monospace;color:#7d8ba3;background:#0e1219;border:2px solid #253048;
+    transition:background .1s,color .1s,border-color .1s}
+  #keyCheck .kc.on{color:#08110b;background:#37c98a;border-color:#37c98a}
+</style>
+<style>
+  *{border-radius:0 !important}  /* シャープな四角に統一 */
+  #results,#pausemenu{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(4,6,10,.82)}
+  #pausemenu{z-index:41;background:rgba(4,6,10,.78)}
+  #resCard,#pauseCard{background:#0d1119;border:1px solid #2f4058;border-radius:12px;padding:22px 34px;text-align:center;box-shadow:0 12px 44px rgba(0,0,0,.6)}
+  #resCard{min-width:330px}
+  #resRank{font-size:66px;font-weight:800;line-height:.9;color:#8fd0ff;min-width:120px;text-align:center}
+  #resTable{margin:6px auto 0;font:13px/1.7 ui-monospace,Consolas,monospace;border-collapse:collapse}
+  #results button,#pausemenu button{background:#1b2635;color:#dfe6f0;border:1px solid #2f4058;border-radius:6px;cursor:pointer;font:inherit;padding:9px 22px}
+  #results button.primary,#pausemenu button.primary{background:#2b5cff;border-color:#4a78ff}
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<div id="ui">
+  <strong>Phase 8 · 素材</strong>
+  <label>シナリオ
+    <select id="scen">
+      <option value="A">A 一定速度</option>
+      <option value="B">B ランプ(加減速)</option>
+      <option value="C">C 不連続ジャンプ</option>
+      <option value="D">D 速度ゼロ(停止)</option>
+      <option value="E">E 負速度(逆走)</option>
+      <option value="F">F レイヤーフォールバック</option>
+      <option value="G">G 全部混合</option>
+      <option value="H">H 判定検証</option>
+      <option value="I" selected>I オフセット</option>
+      <option value="J">J グリッチ</option>
+      <option value="K">K 逆走+奥オフセット</option>
+      <option value="L">L トレース</option>
+      <option value="M">M 8レイヤー総合</option>
+    </select>
+  </label>
+  <label>レーン形状
+    <input id="shape" type="range" min="0" max="9" step="1" value="5">
+    <span id="shapeV" class="dim">5</span>
+  </label>
+  <label>ハイスピード
+    <input id="hs" type="range" min="1" max="11" step="0.1" value="6">
+    <span id="hsV" class="dim">6.0</span>
+  </label>
+  <label>レーン幅
+    <input id="lw" type="range" min="10" max="100" step="5" value="60">
+    <span id="lwV" class="dim">60%</span>
+  </label>
+  <label><input id="snd" type="checkbox" checked> 打音</label>
+  <label><input id="fx" type="checkbox" checked> ヒット演出</label>
+  <label><input id="hitsnd" type="checkbox" checked> ヒット音</label>
+  <label>フィルタ
+    <select id="filt">
+      <option value="off">無し(鋭い/ちらつく)</option>
+      <option value="mip">ミップマップ</option>
+      <option value="aniso" selected>異方性(推奨)</option>
+    </select>
+  </label>
+  <label>モード
+    <select id="mode"><option value="manual">手動 (SDFJKL)</option>
+      <option value="auto">オートプレイ</option></select>
+  </label>
+  <button id="selftest">自動検証を実行</button>
+  <label><input id="latcomp" type="checkbox" checked> 出力遅延補正</label>
+  <span id="loaded" class="dim">譜面: 内蔵</span>
+  <button id="cfgbtn">設定</button>
+  <label><input id="grid" type="checkbox" checked> 拍線</label>
+  <label><input id="fade" type="checkbox"> 奥端フェード</label>
+  <button id="restart">最初から</button>
+  <button id="mkreport" class="primary">レポート出力</button>
+</div>
+
+<div id="overlay">起動待ち</div>
+<div id="drop">音源(.wav) と 譜面(.json) をドロップ</div>
+
+<div id="cfg">
+  <h3 style="margin:0 0 4px">プレイヤー設定</h3>
+  <div class="row"><span>判定タイミングオフセット</span>
+    <input id="joff" type="range" min="-100" max="100" step="1" value="0">
+    <b id="joffV">0 ms</b>
+    <button id="autocal">自動較正</button>
+  </div>
+  <div class="dim" id="calinfo" style="margin:-4px 0 6px">計測: —</div>
+  <div class="dim" style="margin:0 0 8px">
+    判定にのみ作用します。値を大きくすると「早く押した」と扱われます。<br>
+    遅れ気味なら正の値、早すぎるなら負の値にしてください。
+  </div>
+
+  <div class="row"><span>判定ライン位置</span>
+    <input id="jline" type="range" min="0" max="5" step="1" value="0">
+    <b id="jlineV">0%</b>
+  </div>
+  <div class="dim" style="margin:0 0 8px">
+    奥へ動かしても可視時間は1秒のままです。レーンは奥端を保ったまま圧縮されます。
+  </div>
+
+  <div class="row"><span>キー割り当て</span>
+    <span id="keys"></span>
+    <button id="keyreset">既定に戻す</button>
+  </div>
+  <div class="dim" id="keyinfo" style="margin:0 0 8px">
+    ボタンを押してから、割り当てたいキーを押してください。
+  </div>
+
+  <h3 style="margin:8px 0 2px">音量</h3>
+  <div class="row"><span>マスター</span>
+    <input class="vol" data-k="master" type="range" min="0" max="100" value="80"><b class="volV">80</b>
+    <span style="width:60px">楽曲</span>
+    <input class="vol" data-k="music" type="range" min="0" max="100" value="80"><b class="volV">80</b>
+  </div>
+  <div class="row"><span>クリック</span>
+    <input class="vol" data-k="click" type="range" min="0" max="100" value="70"><b class="volV">70</b>
+    <span style="width:60px">ワイプ</span>
+    <input class="vol" data-k="wipe" type="range" min="0" max="100" value="70"><b class="volV">70</b>
+  </div>
+  <div class="row"><span>ホールド</span>
+    <input class="vol" data-k="hold" type="range" min="0" max="100" value="70"><b class="volV">70</b>
+    <span style="width:60px">空打ち</span>
+    <input class="vol" data-k="empty" type="range" min="0" max="100" value="35"><b class="volV">35</b>
+  </div>
+
+  <h3 style="margin:8px 0 2px">背景</h3>
+  <div class="row"><span>表示</span>
+    <select id="bgmode">
+      <option value="chart" selected>譜面指定を使う</option>
+      <option value="off">暗転</option>
+    </select>
+    <span style="width:60px">暗さ</span>
+    <input id="bgdim" type="range" min="0" max="90" value="55"><b id="bgdimV">55%</b>
+  </div>
+  <div class="dim" id="assetinfo" style="margin:2px 0 6px">スキン: 内蔵(手続き生成)</div>
+
+  <div class="row">
+    <button id="cfgexp">設定を書き出す</button>
+    <span class="dim">読み込みは settings.json をドロップ</span>
+    <button id="cfgclose" style="margin-left:auto">閉じる</button>
+  </div>
+  <textarea id="cfgtext" readonly style="display:none"></textarea>
+</div>
+<div id="failfade"><div class="ftxt">FAILED</div></div>
+<div id="topbar">
+  <div id="hpwrap"><div id="hpfill"></div></div><span id="hppct"></span>
+  <div id="topcenter"><div id="tScore">0</div><div id="tCombo">combo 0</div></div>
+</div>
+<div id="hud"></div>
+
+<div id="report">
+  <div>下のテキストを全選択してコピーし、そのまま貼り付けてください。</div>
+  <textarea id="reportText" readonly></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button id="copyBtn">コピー</button><button id="closeBtn">閉じる</button>
+  </div>
+</div>
+
+<div id="splash">
+  <h2 id="spTitle" style="margin:0">楽曲の準備</h2>
+  <div class="dim" id="spMsg">「準備」を押すと音声を初期化します。</div>
+  <div id="keyCheck" style="display:none"></div>
+  <button id="startBtn" class="primary" style="padding:10px 26px;font-size:15px">準備</button>
+</div>
+
+<div id="results"><div id="resCard">
+  <div class="dim" style="letter-spacing:3px">RESULT</div>
+  <div id="resSong" style="font-size:15px;margin:2px 0 10px"></div>
+  <div style="display:flex;align-items:center;gap:18px;justify-content:center">
+    <div id="resRank">A</div>
+    <div style="text-align:left"><div class="dim" style="font-size:11px">SCORE</div>
+      <div id="resScore" style="font-size:34px;letter-spacing:1px;line-height:1">0</div></div>
+  </div>
+  <div id="resFC" style="height:18px;margin:6px 0;font-weight:600;letter-spacing:2px"></div>
+  <table id="resTable"></table>
+  <div id="resStats" class="dim" style="font-size:12px;margin-top:8px"></div>
+  <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+    <button id="resRetry" class="primary">もう一度</button><button id="resClose">閉じる</button>
+  </div>
+</div></div>
+
+<div id="pausemenu"><div id="pauseCard">
+  <div style="font-size:20px;letter-spacing:4px;margin-bottom:14px">PAUSE</div>
+  <div style="display:flex;flex-direction:column;gap:8px;min-width:200px">
+    <button id="pResume" class="primary">再開</button>
+    <button id="pRetry">リトライ</button>
+    <button id="pSelect">選曲画面に戻る</button>
+  </div>
+  <div class="dim" style="font-size:11px;margin-top:10px">Escでも再開できます</div>
+</div></div>
+
+<script>
+"use strict";
+
+// ============================================================
+// ===== [MODULE] rational =====
+function bgcd(a,b){a=a<0n?-a:a;b=b<0n?-b:b;while(b){const t=a%b;a=b;b=t;}return a;}
+class Frac{
+  constructor(n,d=1n){n=BigInt(n);d=BigInt(d);
+    if(d===0n)throw new Error('Frac: zero denominator');
+    if(d<0n){n=-n;d=-d;}
+    const g=bgcd(n,d)||1n;this.n=n/g;this.d=d/g;}
+  add(o){return new Frac(this.n*o.d+o.n*this.d,this.d*o.d);}
+  sub(o){return new Frac(this.n*o.d-o.n*this.d,this.d*o.d);}
+  mul(o){return new Frac(this.n*o.n,this.d*o.d);}
+  cmp(o){const l=this.n*o.d,r=o.n*this.d;return l<r?-1:l>r?1:0;}
+  toNumber(){return Number(this.n)/Number(this.d);}
+}
+const F0=new Frac(0n);
+// ===== [/MODULE] rational =====
+
+// ===== [MODULE] timing =====
+class Timing{
+  constructor(timeSignatures,bpmChanges,audioOffsetMs=0){
+    if(!timeSignatures.length||timeSignatures[0].m!==0)
+      throw new Error('timing: timeSignatures must start at measure 0');
+    this.sigs=timeSignatures.slice().sort((a,b)=>a.m-b.m);
+    this.audioOffsetMs=audioOffsetMs;
+    this.sigQ=this.sigs.map(s=>new Frac(BigInt(4*s.beats),BigInt(s.beatUnit)));
+    if(!bpmChanges.length)throw new Error('timing: bpmChanges is empty');
+    this.bpms=bpmChanges.map(c=>({q:this.qPos(c.time),bpm:c.bpm})).sort((a,b)=>a.q.cmp(b.q));
+    if(this.bpms[0].q.cmp(F0)!==0)throw new Error('timing: first bpmChange must be at song start');
+    this.bpmSec=[0];
+    for(let i=1;i<this.bpms.length;i++){
+      const dq=this.bpms[i].q.sub(this.bpms[i-1].q).toNumber();
+      this.bpmSec.push(this.bpmSec[i-1]+dq*60/this.bpms[i-1].bpm);}
+  }
+  sigIndexAt(measure){let idx=0;
+    for(let i=0;i<this.sigs.length;i++)if(this.sigs[i].m<=measure)idx=i;return idx;}
+  measureStartQ(M){let q=F0;
+    for(let i=0;i<this.sigs.length;i++){
+      const start=this.sigs[i].m;
+      const end=(i+1<this.sigs.length)?this.sigs[i+1].m:Infinity;
+      const spanEnd=Math.min(end,M);
+      if(spanEnd>start)q=q.add(this.sigQ[i].mul(new Frac(BigInt(spanEnd-start))));
+      if(end>=M)break;}
+    return q;}
+  qPos(t){
+    if(t.d===0)throw new Error('qPos: zero denominator');
+    if(!(t.n>=0&&t.n<t.d))throw new Error('qPos: require 0<=n<d');
+    const i=this.sigIndexAt(t.m);
+    return this.measureStartQ(t.m).add(this.sigQ[i].mul(new Frac(BigInt(t.n),BigInt(t.d))));}
+  secondsAtQ(q){let i=0;
+    for(let k=0;k<this.bpms.length;k++)if(this.bpms[k].q.cmp(q)<=0)i=k;
+    const dq=q.sub(this.bpms[i].q).toNumber();
+    return this.bpmSec[i]+dq*60/this.bpms[i].bpm;}
+  toSeconds(t){return this.secondsAtQ(this.qPos(t));}
+}
+// ===== [/MODULE] timing =====
+
+// ===== [MODULE] speedmap =====
+const NEG=-Infinity,POS=Infinity;
+function piece(t0,t1,v0,v1){return{t0,t1,v0,v1};}
+function valueInPiece(p,t){
+  if(p.t1===p.t0||!isFinite(p.t1-p.t0))return p.v0;
+  const u=(t-p.t0)/(p.t1-p.t0);return p.v0+(p.v1-p.v0)*u;}
+function slicePieces(pieces,a,b){const out=[];
+  for(const p of pieces){const s=Math.max(p.t0,a),e=Math.min(p.t1,b);
+    if(!(s<e))continue;out.push(piece(s,e,valueInPiece(p,s),valueInPiece(p,e)));}
+  return out;}
+function ownPiecesFromSegments(segments){const out=[];
+  for(const seg of segments){const ks=seg.keys;
+    for(let i=0;i+1<ks.length;i++)out.push(piece(ks[i].t,ks[i+1].t,ks[i].v,ks[i+1].v));}
+  out.sort((a,b)=>a.t0-b.t0);return out;}
+function fillGaps(own,fb){const out=[];let cursor=NEG;
+  for(const p of own){if(cursor<p.t0)out.push(...slicePieces(fb,cursor,p.t0));
+    out.push(p);cursor=p.t1;}
+  if(cursor<POS)out.push(...slicePieces(fb,cursor,POS));return out;}
+const CONST_ONE=[piece(NEG,POS,1,1)];
+class DistanceTable{
+  constructor(pieces){
+    this.pieces=pieces;
+    const fin=pieces.filter(p=>isFinite(p.t0)&&isFinite(p.t1));
+    this.fin=fin;this.cum=new Array(fin.length+1).fill(0);
+    for(let i=0;i<fin.length;i++){const p=fin[i];
+      this.cum[i+1]=this.cum[i]+(p.v0+p.v1)/2*(p.t1-p.t0);}
+    this.headV=pieces.length?pieces[0].v0:1;
+    this.tailV=pieces.length?pieces[pieces.length-1].v1:1;
+    this.tHead=fin.length?fin[0].t0:0;
+    this.tTail=fin.length?fin[fin.length-1].t1:0;
+    this.rawAtZero=this.rawDistance(0);}
+  valueAt(t){
+    if(t<this.tHead)return this.headV;
+    if(t>=this.tTail)return this.tailV;
+    let lo=0,hi=this.fin.length-1,idx=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1;
+      if(this.fin[mid].t0<=t){idx=mid;lo=mid+1;}else hi=mid-1;}
+    if(idx<0)return this.headV;
+    const p=this.fin[idx];
+    return (t<p.t1)?valueInPiece(p,t):this.tailV;}
+  rawDistance(t){
+    if(!this.fin.length)return this.headV*t;
+    if(t<=this.tHead)return this.headV*(t-this.tHead);
+    if(t>=this.tTail)return this.cum[this.fin.length]+this.tailV*(t-this.tTail);
+    let lo=0,hi=this.fin.length-1,idx=0;
+    while(lo<=hi){const mid=(lo+hi)>>1;
+      if(this.fin[mid].t0<=t){idx=mid;lo=mid+1;}else hi=mid-1;}
+    const p=this.fin[idx],dt=t-p.t0,span=p.t1-p.t0;
+    const vEnd=p.v0+(p.v1-p.v0)*(dt/span);
+    return this.cum[idx]+(p.v0+vEnd)/2*dt;}
+  distanceAt(t){return this.rawDistance(t)-this.rawAtZero;}
+}
+function buildDistanceTables(layersSec){
+  const l0=layersSec.find(l=>l.id===0);
+  if(!l0)throw new Error('speedmap: layer 0 not found');
+  const l0Pieces=fillGaps(ownPiecesFromSegments(l0.speedSegments||[]),CONST_ONE);
+  const tables={};
+  for(const l of layersSec)
+    tables[l.id]=new DistanceTable(l.id===0?l0Pieces:
+      fillGaps(ownPiecesFromSegments(l.speedSegments||[]),l0Pieces));
+  return tables;}
+
+// ---- 判定位置オフセット(仕様 4.4) ----
+// 速度と同じセグメント構造だが、未設定区間は 0 とする。
+// レイヤー0へのフォールバックは行わない(「ずらさない」が自然な既定値のため)。
+const CONST_ZERO=[piece(NEG,POS,0,0)];
+function buildOffsetPieces(offsetSegments){
+  return fillGaps(ownPiecesFromSegments(offsetSegments||[]),CONST_ZERO);}
+function offsetAt(pieces,t){
+  for(const p of pieces)if(t>=p.t0&&t<p.t1)return valueInPiece(p,t);
+  return 0;}
+// ===== [/MODULE] speedmap =====
+
+// ===== [MODULE] position =====
+function laneDistance(table,now,hitTime,mul){
+  return (table.distanceAt(hitTime)-table.distanceAt(now))*mul;}
+function positionOf(table,now,hitTime,mul,offsetPct=0){
+  return laneDistance(table,now,hitTime,mul)+offsetPct/100;}
+// オフセットは現在時刻の値を全要素へ一律に適用する(剛体スライド)。
+// ヒット時刻ではなく現在時刻を参照するのが要点(仕様 4.4.5)。
+function zWithOffset(table,now,t,mul,offPct){
+  return laneDistance(table,now,t,mul)+offPct/100;}
+function hispeedMultiplier(v){return v>=6?v-5:1/(7-v);}
+// ===== [/MODULE] position =====
+
+// ===== [MODULE] validate =====
+function validateSegments(segments,label){
+  const errs=[];
+  const sorted=segments.map((s,i)=>({s,i})).sort((a,b)=>a.s.keys[0].t-b.s.keys[0].t);
+  let prevEnd=-Infinity,prevIdx=-1;
+  for(const{s,i}of sorted){
+    if(s.keys.length<2){errs.push(`${label}[${i}]: キーが2個未満`);continue;}
+    for(let k=0;k+1<s.keys.length;k++)
+      if(!(s.keys[k].t<s.keys[k+1].t))
+        errs.push(`${label}[${i}]: キー時刻が昇順でない`);
+    const st=s.keys[0].t,en=s.keys[s.keys.length-1].t;
+    if(st<prevEnd)errs.push(`${label}[${i}] が [${prevIdx}] と時間的に重複`);
+    prevEnd=en;prevIdx=i;
+  }
+  return errs;
+}
+// ===== [/MODULE] validate =====
+
+// ===== [MODULE] laneshape =====
+function tiltFromRatio(r){return Math.atan(1/r-1);}
+function ratioForStep(s){return 1.0-s*(0.8/9);}
+// ===== [/MODULE] laneshape =====
+
+
+// ============================================================
+// ===== [MODULE] clock =====
+// 音声クロックが唯一の長期基準。ただし AudioContext.currentTime は
+// 約10ms刻みでしか更新されないため、そのまま同期すると曲時刻が飛ぶ。
+// Phase1 の実測では 3ブラウザ共通で -10ms〜+5ms の飛びが出た一方、
+// 平均は 0.01ms 未満だった(= レートは正確、ジッタだけが問題)。
+// そこで performance.now() を主軸にし、音声クロックへは
+// 毎秒 0.5ms を上限として緩やかに追従させる。
+const Clock={
+  ctx:null,
+  oSmooth:0,      // (audioTime - perfSec) の平滑化推定
+  startRef:0,     // 曲時刻0に対応する audio 時刻
+  offsetSec:0,
+  running:false,
+  t:0,            // 直近の曲時刻(tick でのみ更新)
+  driftSamples:[],  // oRaw - oSmooth  (ms)
+  jumpSamples:[],   // Δsong - Δperf   (ms)
+  lastPerf:0,lastSong:0,
+  rn:0,rx:0,ry:0,rxx:0,rxy:0,rt0:0,
+  rspan(){return this.rn?this.lastPerf-this.rt0:0;},
+  calib:{mean:0,n:0,spread:0},
+  MAX_RATE:0.0005,  // 0.5ms/s
+
+  init(){
+    this.ctx=new (window.AudioContext||window.webkitAudioContext)();
+    return this.ctx.resume();
+  },
+
+  // 開始前に一定時間サンプリングし、量子化誤差を平均で打ち消す
+  calibrate(ms=600){
+    return new Promise(res=>{
+      const acc=[],t0=performance.now();
+      const step=()=>{
+        acc.push(this.ctx.currentTime-performance.now()/1000);
+        if(performance.now()-t0<ms)requestAnimationFrame(step);
+        else{
+          let s=0,mn=1e9,mx=-1e9;
+          for(const v of acc){s+=v;if(v<mn)mn=v;if(v>mx)mx=v;}
+          this.calib={mean:s/acc.length,n:acc.length,spread:(mx-mn)*1000};
+          res(this.calib);
+        }
+      };
+      requestAnimationFrame(step);
+    });
+  },
+
+  start(offsetSec=0){
+    this.stopBuffer();
+    this.oSmooth=this.calib.mean;
+    this.offsetSec=offsetSec;
+    this.startRef=performance.now()/1000+this.oSmooth;
+    this.lastPerf=performance.now()/1000;
+    this.lastSong=0;this.t=0;
+    this.running=true;
+    this.driftSamples.length=0;this.jumpSamples.length=0;
+    this.rn=0;this.rx=0;this.ry=0;this.rxx=0;this.rxy=0;this.rt0=0;
+  },
+
+  // 音声クロックのレート偏差 (ppm)。正なら音声側が速い。
+  driftPpm(){
+    // 音声クロックは約10ms刻みでしか更新されない。
+    // 観測窓が短いと、その量子化幅がそのまま傾きとして現れ、
+    // 実際の10倍以上の値を示すことがある(4秒窓で -486ppm を観測)。
+    // 20秒あれば量子化幅は 0.5ppm 相当まで薄まる。
+    if(this.rn<120)return null;
+    if(this.rspan()<20)return null;
+    const d=this.rn*this.rxx-this.rx*this.rx;
+    if(Math.abs(d)<1e-12)return null;
+    return ((this.rn*this.rxy-this.rx*this.ry)/d)*1e6;
+  },
+
+  // 1フレームに1回だけ呼ぶこと(内部状態を進めるため)
+  tick(){
+    if(!this.running)return 0;
+    const p=performance.now()/1000;
+    const oRaw=this.ctx.currentTime-p;
+    const dt=Math.max(0,p-this.lastPerf);
+    const lim=this.MAX_RATE*dt;
+    const diff=oRaw-this.oSmooth;
+    this.oSmooth+=Math.max(-lim,Math.min(lim,diff));
+    const song=(p+this.oSmooth)-this.startRef-this.offsetSec;
+    this.driftSamples.push(diff*1000);
+    if(this.driftSamples.length>900)this.driftSamples.shift();
+    // 音声クロックと performance.now() のレート差を実測する。
+    // 補正上限(MAX_RATE)がこれを下回ると誤差が累積するため、値を把握しておく。
+    if(this.rn===0)this.rt0=p;
+    this.rn++;this.rx+=p;this.ry+=oRaw;this.rxx+=p*p;this.rxy+=p*oRaw;
+    if(dt>0){
+      this.jumpSamples.push(((song-this.lastSong)-dt)*1000);
+      if(this.jumpSamples.length>900)this.jumpSamples.shift();
+    }
+    this.lastPerf=p;this.lastSong=song;this.t=song;
+    return song;
+  },
+
+  // performance.now() のタイムスタンプ(入力イベント等)を曲時刻へ
+  fromPerf(pms){return (pms/1000+this.oSmooth)-this.startRef-this.offsetSec;},
+
+  // 実音源を指定した曲時刻から再生する。
+  // 音源と ctx.currentTime は同じデバイスクロックで進むため、
+  // 両者の間にドリフトは原理的に生じない。
+  // ドリフトが起きうるのは「曲時刻(performance.now 基準)」との間である。
+  // したがって sync 誤差 = 曲時刻 − 音源再生位置 で直接測れる。
+  playBuffer(buf, atSongTime, leadIn){
+    this.stopBuffer();
+    const src=this.ctx.createBufferSource();
+    src.buffer=buf;
+    const g=this.ctx.createGain();
+    g.gain.value=(typeof VOL!=='undefined')?(Math.pow(VOL.master/100,2)*Math.pow(VOL.music/100,2)):0.8;
+    this.musicGain=g;
+    src.connect(g); g.connect(this.ctx.destination);
+    const lead=0.12;
+    const when=this.ctx.currentTime+lead+(leadIn||0);
+    const bufOff=Math.max(0,atSongTime);
+    src.start(when,bufOff);
+    this.src=src; this.srcWhen=when; this.srcOff=bufOff;
+    // 曲時刻 0 に対応する ctx 時刻。ここを基準に曲時刻を作り直す
+    this.startRef = when - bufOff;
+    this.lastPerf = performance.now()/1000;
+    this.lastSong = this.audioPos();
+    return when;
+  },
+  stopBuffer(){ if(this.src){ try{this.src.stop();}catch(e){} this.src=null; } },
+  // 音源の再生位置(秒)。出力遅延は含めない
+  audioPos(){
+    if(!this.src)return null;
+    return this.ctx.currentTime - this.startRef - this.offsetSec;
+  },
+  // 出力遅延。実際に耳へ届くまでの遅れ
+  outLatency(){
+    const c=this.ctx;
+    return (c.outputLatency!==undefined?c.outputLatency:(c.baseLatency||0));
+  },
+
+  blip(t,freq=1400){
+    const when=this.startRef+this.offsetSec+t;
+    if(when<=this.ctx.currentTime+0.005)return;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.frequency.value=freq;o.type='square';
+    g.gain.setValueAtTime(0.0001,when);
+    g.gain.exponentialRampToValueAtTime(0.16,when+0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001,when+0.045);
+    o.connect(g);g.connect(this.ctx.destination);
+    o.start(when);o.stop(when+0.06);
+  }
+};
+// ===== [/MODULE] clock =====
+
+// ===== [MODULE] gfx (WebGL) =====
+// Canvas 2D はアフィン変換までしか扱えず、本仕様が要求する射影変換
+// (台形へのテクスチャ貼り)ができない。素材を用いるため WebGL へ移行する。
+//
+// 透視補正の要点:
+//   投影は screenX = numX/w, screenY = numY/w, w = 1 + z*tanθ という形をとる。
+//   gl_Position の w 成分に同じ w を入れると、varying が
+//   パースペクティブ補正付きで補間される(= テクスチャが正しく歪む)。
+//   w=1 を渡せば純粋なスクリーン空間の描画になる(線やマーカー用)。
+
+const VS = `
+attribute vec2 aPos;      // ピクセル座標
+attribute float aW;        // 射影の分母
+attribute vec2 aUV;
+attribute vec4 aCol;
+uniform vec2 uRes;
+varying vec2 vUV;
+varying vec4 vCol;
+void main(){
+  vec2 ndc = vec2(aPos.x / uRes.x * 2.0 - 1.0, 1.0 - aPos.y / uRes.y * 2.0);
+  gl_Position = vec4(ndc * aW, 0.0, aW);
+  vUV = aUV;
+  vCol = aCol;
+}`;
+
+const FS = `
+precision mediump float;
+uniform sampler2D uTex;
+uniform float uUseTex;
+varying vec2 vUV;
+varying vec4 vCol;
+void main(){
+  vec4 c = vCol;
+  if(uUseTex > 0.5) c *= texture2D(uTex, vUV);
+  if(c.a <= 0.001) discard;
+  gl_FragColor = vec4(c.rgb * c.a, c.a);   // 事前乗算アルファ
+}`;
+
+const ATLAS_SIZE = 512;
+const PAD = 8;              // ミップマップ縮小時の滲み防止
+const SPR = {};             // name -> {u0,v0,u1,v1}
+
+function hex2rgb(h){
+  if(h[0] === '#') h = h.slice(1);
+  if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n = parseInt(h,16);
+  return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+}
+
+const Gfx = {
+  gl:null, prog:null, tex:null, texBG:null, curTex:null, W:0, H:0, dpr:1,
+  buf:null, arr:null, n:0, cap:0, useTex:0, ready:false,
+  mipmap:true, drawCalls:0, quads:0,
+
+  init(canvas){
+    const gl = canvas.getContext('webgl', {alpha:false, antialias:true,
+                                           premultipliedAlpha:true});
+    if(!gl) return false;
+    this.gl = gl;
+    const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
+      return s;};
+    const p = gl.createProgram();
+    gl.attachShader(p, mk(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, mk(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+    this.prog = p; gl.useProgram(p);
+    this.loc = {
+      aPos:gl.getAttribLocation(p,'aPos'), aW:gl.getAttribLocation(p,'aW'),
+      aUV:gl.getAttribLocation(p,'aUV'),   aCol:gl.getAttribLocation(p,'aCol'),
+      uRes:gl.getUniformLocation(p,'uRes'), uTex:gl.getUniformLocation(p,'uTex'),
+      uUseTex:gl.getUniformLocation(p,'uUseTex'),
+    };
+    this.cap = 4096;                       // quad 数
+    this.arr = new Float32Array(this.cap * 6 * 9);   // 2頂点三角形×2, 9float/頂点
+    this.buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
+    gl.bufferData(gl.ARRAY_BUFFER, this.arr.byteLength, gl.DYNAMIC_DRAW);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // 事前乗算
+    gl.disable(gl.DEPTH_TEST);
+    this.buildAtlas();
+    this.ready = true;
+    return true;
+  },
+
+  // 素材を1枚のアトラスへまとめる。ドローコール削減のため。
+  // 実素材が用意されるまでは手続き的に生成する。
+  buildAtlas(){
+    const c = document.createElement('canvas');
+    c.width = c.height = ATLAS_SIZE;
+    const x = c.getContext('2d');
+    x.clearRect(0,0,ATLAS_SIZE,ATLAS_SIZE);
+    const put=(name,px,py,pw,ph,draw)=>{
+      x.save(); x.translate(px,py); draw(pw,ph); x.restore();
+      // 半テクセル内側を指す。境界そのものを指すと、縮小時に
+      // 隣接するパディング(透明)を拾って縁が暗くなる
+      SPR[name] = {u0:(px+0.5)/ATLAS_SIZE, v0:(py+0.5)/ATLAS_SIZE,
+                   u1:(px+pw-0.5)/ATLAS_SIZE, v1:(py+ph-0.5)/ATLAS_SIZE};
+    };
+    const round=(w,h,r)=>{x.beginPath();
+      x.moveTo(r,0);x.lineTo(w-r,0);x.quadraticCurveTo(w,0,w,r);
+      x.lineTo(w,h-r);x.quadraticCurveTo(w,h,w-r,h);
+      x.lineTo(r,h);x.quadraticCurveTo(0,h,0,h-r);
+      x.lineTo(0,r);x.quadraticCurveTo(0,0,r,0);x.closePath();};
+
+    // クリック: 明るい芯 + 縁
+    put('click', PAD, PAD, 240, 72, (w,h)=>{
+      const g=x.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'rgba(255,255,255,0.95)');
+      g.addColorStop(0.45,'rgba(255,255,255,0.75)');
+      g.addColorStop(1,'rgba(255,255,255,0.35)');
+      round(w,h,14); x.fillStyle=g; x.fill();
+      x.lineWidth=5; x.strokeStyle='rgba(255,255,255,1)'; x.stroke();
+    });
+    // ワイプ: 小さく、中空で区別する(第14.2.2節 種別の識別性)
+    put('wipe', PAD, 96+PAD, 240, 40, (w,h)=>{
+      round(w,h,12); x.fillStyle='rgba(255,255,255,0.62)'; x.fill();
+      x.lineWidth=7; x.strokeStyle='rgba(255,255,255,1)'; x.stroke();
+    });
+    // ホールド帯: 縦方向にタイルできる濃淡
+    put('hold', PAD, 152+PAD, 240, 64, (w,h)=>{
+      const g=x.createLinearGradient(0,0,w,0);
+      g.addColorStop(0,'rgba(255,255,255,0.25)');
+      g.addColorStop(0.5,'rgba(255,255,255,0.85)');
+      g.addColorStop(1,'rgba(255,255,255,0.25)');
+      x.fillStyle=g; x.fillRect(0,0,w,h);
+    });
+    // 発光(加算合成用の放射状グラデーション)
+    put('glow', 272+PAD, PAD, 192, 192, (w,h)=>{
+      const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);
+      g.addColorStop(0,'rgba(255,255,255,1)');
+      g.addColorStop(0.35,'rgba(255,255,255,0.45)');
+      g.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=g; x.fillRect(0,0,w,h);
+    });
+    // 単色塗り用の白ピクセル
+    put('white', 272+PAD, 208+PAD, 32, 32, (w,h)=>{
+      x.fillStyle='#fff'; x.fillRect(0,0,w,h);
+    });
+    // マーカー(◆)
+    put('diamond', 272+PAD, 256+PAD, 96, 96, (w,h)=>{
+      x.beginPath(); x.moveTo(w/2,4); x.lineTo(w-4,h/2);
+      x.lineTo(w/2,h-4); x.lineTo(4,h/2); x.closePath();
+      x.fillStyle='#fff'; x.fill();
+    });
+
+    // ホールド帯は縦に分割した多数の四角形で描くため、
+    // v 方向に幅を持たせると分割ごとに上下端の滲みが出て縞になる。
+    // 縦方向は一様なので、単一の走査線(v 固定)をサンプルすれば縞は生じない。
+    {const h=SPR.hold, m=(h.v0+h.v1)/2; h.v0=m; h.v1=m;}
+
+    const gl = this.gl;
+    this.tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);
+    this.aniso = gl.getExtension('EXT_texture_filter_anisotropic')
+              || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
+              || gl.getExtension('MOZ_EXT_texture_filter_anisotropic');
+    this.maxAniso = this.aniso
+      ? gl.getParameter(this.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0;
+    if(!this.aniso && this.filterMode==='aniso') this.filterMode='off';
+    this.applyFilter();
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.atlasCanvas = c;
+  },
+
+  // フィルタリング方式。
+  //   'off'   : ミップマップ無し。輪郭は鋭いが奥がちらつく
+  //   'mip'   : ミップマップのみ。ちらつきは消えるが奥がぼやける
+  //   'aniso' : ミップマップ + 異方性フィルタリング(既定)
+  //
+  // レーンは視線に対して大きく傾いており、テクスチャの縮小率が
+  // 縦横で極端に異なる。等方的なミップマップは短い側に合わせて
+  // ぼかすため、輪郭が不必要に失われる。
+  // 異方性フィルタリングはこの状況のための機能であり、
+  // 鋭さを保ったままちらつきを抑えられる。
+  filterMode:'aniso', maxAniso:0,
+  applyFilter(){
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.tex);
+    const m = this.filterMode;
+    if(m === 'off'){
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }else{
+      if(!this._mipBuilt){ gl.generateMipmap(gl.TEXTURE_2D); this._mipBuilt=true; }
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    }
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    if(this.aniso){
+      const v = (m === 'aniso') ? this.maxAniso : 1;
+      gl.texParameterf(gl.TEXTURE_2D, this.aniso.TEXTURE_MAX_ANISOTROPY_EXT, v);
+    }
+  },
+  setFilter(mode){ if(this.filterMode!==mode){ this.filterMode=mode; this.applyFilter(); } },
+
+  resize(w,h,dpr){
+    this.W=w; this.H=h; this.dpr=dpr;
+    const gl=this.gl;
+    gl.viewport(0,0,Math.floor(w*dpr),Math.floor(h*dpr));
+  },
+
+  begin(){
+    const gl=this.gl;
+    gl.clearColor(0.02,0.027,0.043,1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.n=0; this.drawCalls=0; this.quads=0; this.useTex=0; this.curTex=this.tex;
+  },
+
+  // テクスチャが変わる時はバッチを吐き出す。
+  // アトラスにまとめてあるためノーツ描画では切り替わらない(第14.3.2節)。
+  _mode(useTex,tex){
+    const t=tex||this.tex;
+    if(this.useTex!==useTex||this.curTex!==t){ this.flush(); this.useTex=useTex; this.curTex=t; }
+  },
+
+  // 頂点1つ分を積む
+  _v(px,py,w,u,v,r,g,b,a){
+    const A=this.arr; let o=this.n*9;
+    A[o]=px; A[o+1]=py; A[o+2]=w; A[o+3]=u; A[o+4]=v;
+    A[o+5]=r; A[o+6]=g; A[o+7]=b; A[o+8]=a;
+    this.n++;
+  },
+
+  // 任意四辺形。p は {x,y,w} の配列(左下→右下→右上→左上)
+  quadPts(p, spr, col, alpha){
+    if(this.n+6 > this.cap*6) this.flush();
+    this._mode(spr?1:0);
+    const s = spr ? (SPR[spr]||SPR.white) : SPR.white;
+    const [r,g,b] = col;
+    const uv = [[s.u0,s.v1],[s.u1,s.v1],[s.u1,s.v0],[s.u0,s.v0]];
+    const idx = [0,1,2, 0,2,3];
+    for(const i of idx)
+      this._v(p[i].x, p[i].y, p[i].w, uv[i][0], uv[i][1], r,g,b, alpha);
+    this.quads++;
+  },
+
+  // 頂点ごとに不透明度を指定できる版。帯状の描画で段差を出さないために使う。
+  quadPtsA(p, spr, col, alphas){
+    if(this.n+6 > this.cap*6) this.flush();
+    this._mode(spr?1:0);
+    const s = spr ? (SPR[spr]||SPR.white) : SPR.white;
+    const [r,g,b] = col;
+    const uv = [[s.u0,s.v1],[s.u1,s.v1],[s.u1,s.v0],[s.u0,s.v0]];
+    for(const i of [0,1,2, 0,2,3])
+      this._v(p[i].x, p[i].y, p[i].w, uv[i][0], uv[i][1], r,g,b, alphas[i]);
+    this.quads++;
+  },
+
+  // 任意のテクスチャで画面矩形を描く(背景)
+  rectTex(tex,x0,y0,x1,y1,alpha){
+    if(!tex)return;
+    if(this.n+6 > this.cap*6) this.flush();
+    this._mode(1,tex);
+    const uv=[[0,1],[1,1],[1,0],[0,0]];
+    const p=[[x0,y1],[x1,y1],[x1,y0],[x0,y0]];
+    for(const i of [0,1,2, 0,2,3])
+      this._v(p[i][0],p[i][1],1,uv[i][0],uv[i][1],1,1,1,alpha);
+    this.quads++;
+  },
+
+  // 外部画像をアトラスとして差し替える
+  setAtlas(img,sprites){
+    const gl=this.gl;
+    const t=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    this.tex=t; this.curTex=t; this._mipBuilt=false;
+    this.applyFilter();
+    // 半テクセル内側を指す(第14.3.3節)
+    for(const k in sprites){
+      const r=sprites[k];
+      SPR[k]={u0:(r.x+0.5)/img.width, v0:(r.y+0.5)/img.height,
+              u1:(r.x+r.w-0.5)/img.width, v1:(r.y+r.h-0.5)/img.height};
+    }
+    if(SPR.hold){const h=SPR.hold,m=(h.v0+h.v1)/2;h.v0=m;h.v1=m;}
+    if(!SPR.white)SPR.white={u0:0.5/img.width,v0:0.5/img.height,
+                             u1:1.5/img.width,v1:1.5/img.height};
+    this.atlasSize=[img.width,img.height];
+  },
+  setBackground(img){
+    const gl=this.gl;
+    if(this.texBG){gl.deleteTexture(this.texBG);this.texBG=null;}
+    if(!img)return;
+    const t=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    this.texBG=t;
+  },
+
+  flush(){
+    if(this.n===0) return;
+    const gl=this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.arr.subarray(0, this.n*9));
+    const S=9*4, L=this.loc;
+    gl.enableVertexAttribArray(L.aPos); gl.vertexAttribPointer(L.aPos,2,gl.FLOAT,false,S,0);
+    gl.enableVertexAttribArray(L.aW);   gl.vertexAttribPointer(L.aW,1,gl.FLOAT,false,S,8);
+    gl.enableVertexAttribArray(L.aUV);  gl.vertexAttribPointer(L.aUV,2,gl.FLOAT,false,S,12);
+    gl.enableVertexAttribArray(L.aCol); gl.vertexAttribPointer(L.aCol,4,gl.FLOAT,false,S,20);
+    gl.uniform2f(L.uRes, this.W, this.H);
+    gl.uniform1f(L.uUseTex, this.useTex);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.curTex||this.tex);
+    gl.uniform1i(L.uTex, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, this.n);
+    this.drawCalls++;
+    this.n=0;
+  },
+};
+// ===== [/MODULE] gfx =====
+
+// ===== [MODULE] projection =====
+// レーン空間 (u ∈ [-1,1], z ∈ [0,1]) → 画面座標。
+// 導出(仕様 3.2〜3.4, k=1, 判定ライン=画面下端, step0 で画面を丁度満たす):
+//   screenYnorm(z) = H(2z-1)/(1+z·tanθ)      … H は画面半分の高さ
+//   widthScale(z)  = 1/(1+z·tanθ)
+// z=1 で widthScale = 1/(1+tanθ) = r となり、台形比の定義と一致する。
+const Proj={
+  W:0,H:0,tan:0,halfW:0,
+  set(pxW,pxH,step,laneWidthPct,judgeLine){
+    this.zj=judgeLine||0;
+    this.W=pxW;this.H=pxH;
+    this.tan=Math.tan(tiltFromRatio(ratioForStep(step)));
+    this.halfW=pxW*laneWidthPct/100/2;
+    // 縦の引き伸ばし: 傾きが強いほど遠端(z=1)は画面中央へ収束するため、
+    // 判定ライン(z=0)を固定したまま遠端が画面上端に届くよう y を線形拡大する。
+    // これにより台形比(横の遠近)は保ったまま、譜面の縦幅が傾きに依らず一定になる。
+    // 透視補正(aW=denom)が参照する下地ホモグラフィは _yraw のまま変えない。
+    this.yNear=this._yraw(0);
+    this.yFar=this._yraw(1);
+    const sp=this.yNear-this.yFar;
+    this.yScale=(Math.abs(sp)>1e-6)?(this.yNear/sp):1;
+  },
+  // 判定ライン位置。
+  //
+  // 単純に基準面をずらす(Z = z + zj)方式は使えない。
+  // 傾きが小さいと投影がほぼ平行になるため、レーン全体がそのまま上へ移動し、
+  // 奥端が画面外へ押し出されて可視時間が確保できなくなる。
+  // レイヤーオフセットで奥へ送った要素も同様に画面外へ出てしまう。
+  //
+  // そこで、レーンを元の範囲 [0,1] から [zj,1] へ**圧縮**する。
+  //   Z(z) = zj + z*(1 - zj)
+  // これにより奥端(z=1)は常に元の位置に留まり、手前端(z=0)だけが奥へ動く。
+  // 傾き0では縦方向の一様な圧縮となり、傾きが大きいほど遠近によって
+  // 奥側が既に詰まっているため見た目の変化は手前に集中する。
+  //
+  // 距離空間 z には手を触れないため、可視時間は常に1秒のまま保たれる。
+  zj:0,
+  Z(z){return this.zj+z*(1-this.zj);},
+  denom(z){return 1+this.Z(z)*this.tan;},
+  w(z){return 1+this.Z(z)*this.tan;},
+  // ニアクリップ: 分母がゼロに近づく側を打ち切る
+  visible(z){return this.denom(z)>0.02;},
+  _yraw(z){const Z=this.Z(z);return this.H/2-(this.H/2)*((2*Z-1)/this.denom(z));},
+  y(z){return this.yNear+(this._yraw(z)-this.yNear)*this.yScale;},
+  x(z,u){return this.W/2+u*this.halfW/this.denom(z);},
+};
+// 4隅対応から一般ホモグラフィ行列を解く(閉形式との独立クロスチェック用)
+function solveHomography(src,dst){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){
+    const[x,y]=src[i],[X,Y]=dst[i];
+    A.push([x,y,1,0,0,0,-x*X,-y*X]);b.push(X);
+    A.push([0,0,0,x,y,1,-x*Y,-y*Y]);b.push(Y);
+  }
+  const n=8;
+  for(let c=0;c<n;c++){
+    let piv=c;for(let r=c+1;r<n;r++)if(Math.abs(A[r][c])>Math.abs(A[piv][c]))piv=r;
+    [A[c],A[piv]]=[A[piv],A[c]];[b[c],b[piv]]=[b[piv],b[c]];
+    const d=A[c][c];
+    for(let k=c;k<n;k++)A[c][k]/=d;b[c]/=d;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=A[r][c];if(!f)continue;
+      for(let k=c;k<n;k++)A[r][k]-=f*A[c][k];b[r]-=f*b[c];}
+  }
+  return[b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],1];
+}
+function applyH(h,x,y){
+  const w=h[6]*x+h[7]*y+h[8];
+  return[(h[0]*x+h[1]*y+h[2])/w,(h[3]*x+h[4]*y+h[5])/w];
+}
+// ===== [/MODULE] projection =====
+
+
+// ===== [MODULE] judge =====
+// 判定エンジン。DOM 非依存・決定的。
+//
+// 中核となる分離(Phase3 設計書 2.1):
+//   クリック  = 押下イベントを消費する(イベント駆動)
+//   ワイプ    = キーの状態を見る(状態駆動)
+//   ホールド  = キーの状態を見る(状態駆動)
+// 1回の押下がクリックを消費すると同時に、同一レーンのワイプ・ホールドへは
+// 「キーが下がった」という状態変化として働く。これにより重ね置き(引き打ち・
+// 擬似始点判定)が特別扱いなしで成立する。
+
+const W_GOLD = 0.025, W_WHITE = 0.050, W_GREAT = 0.100, W_MISS = 0.150;
+const WIPE_REAR = 0.100;
+const HOLD_GRACE = 0.300;
+const LANES_N = 6;
+
+// 判定窓は境界値を含む (|err| <= W)。窓が閉じるのは now > t + W の時点。
+const COEF = { gold: 1.01, white: 1.00, great: 0.50, miss: 0 };
+
+const EPS = 1e-9;          // 浮動小数の丸めで境界が揺れるのを防ぐ
+function gradeOf(errSec) {
+  const a = Math.abs(errSec);
+  if (a <= W_GOLD + EPS) return 'gold';
+  if (a <= W_WHITE + EPS) return 'white';
+  if (a <= W_GREAT + EPS) return 'great';
+  if (a <= W_MISS + EPS) return 'miss';
+  return null;            // 空打ち。ノーツを消費しない
+}
+
+// ---- 表示/非表示 ----
+function visibilityAt(entries, t) {
+  let v = true;
+  for (const e of entries) { if (e.t <= t) v = e.visible; else break; }
+  return v;
+}
+function isFullyHidden(entries, t0, t1) {
+  if (visibilityAt(entries, t0) !== false) return false;
+  for (const e of entries) if (e.t > t0 && e.t < t1 && e.visible === true) return false;
+  return true;
+}
+function resolveGhosts(notes, visByLayer) {
+  const ghosts = [];
+  for (const n of notes) {
+    if (n.type === 'trace') continue;
+    const vis = visByLayer[n.layer] || [];
+    const hidden = (n.type === 'hold')
+      ? isFullyHidden(vis, n.t, n.tEnd)
+      : visibilityAt(vis, n.t) === false;
+    if (hidden) ghosts.push(n.id);
+  }
+  return ghosts;
+}
+
+class Judge {
+  constructor(notes, visByLayer) {
+    this.vis = visByLayer || {};
+    this.ghostIds = new Set(resolveGhosts(notes, this.vis));
+    this.notes = notes.filter(n => n.type !== 'trace' && !this.ghostIds.has(n.id));
+    this.total = this.notes.length;
+
+    this.clicks = []; this.wipes = []; this.holds = [];
+    for (let l = 0; l < LANES_N; l++) { this.clicks.push([]); this.wipes.push([]); this.holds.push([]); }
+
+    for (const n of this.notes) {
+      const st = { note: n, done: false, grade: null, errMs: 0 };
+      if (n.type === 'click') this.clicks[n.lane].push(st);
+      else if (n.type === 'wipe') { st.w0 = n.t; st.w1 = n.t + WIPE_REAR; this.wipes[n.lane].push(st); }
+      else if (n.type === 'hold') {
+        // 猶予 = min(150ms, ホールド長)。短いホールドが無入力で成功するのを防ぐ。
+        st.grace = Math.min(HOLD_GRACE, n.tEnd - n.t);
+        st.relFrom = null; st.started = false;
+        this.holds[n.lane].push(st);
+      }
+    }
+    this.byId = new Map();
+    for (const arr of [this.clicks, this.wipes, this.holds])
+      for (const lane of arr) for (const st of lane) this.byId.set(st.note.id, st);
+    const byT = (a, b) => a.note.t - b.note.t || a.note.id - b.note.id;
+    for (let l = 0; l < LANES_N; l++) {
+      this.clicks[l].sort(byT); this.wipes[l].sort(byT); this.holds[l].sort(byT);
+    }
+
+    this.keyDown = new Array(LANES_N).fill(false);
+    this.lastDown = new Array(LANES_N).fill(null);
+    this.cursor = -Infinity;
+    this.paused = false;
+    this.wipePriority = true;   // 第5章の設計判断。false で従来挙動に戻せる
+
+    this.counts = { gold: 0, white: 0, great: 0, miss: 0 };
+    this.emptyLog = [];
+    this.sumCoef = 0; this.combo = 0; this.maxCombo = 0; this.empty = 0;
+    this.errsMs = [];
+    this.log = [];
+    this.last = null;
+    this.hp = 1000;      // HPゲージ(プレイ修飾子。既定OFFなら未使用)
+    this.failed = false;
+  }
+
+  score() { return this.total ? 1000000 * this.sumCoef / this.total : 0; }
+
+  // [a,b] のうち「表示されている」時間の総量
+  visElapsed(layer, a, b) {
+    if (b <= a) return 0;
+    const e = this.vis[layer] || [];
+    let total = 0, cur = a, state = visibilityAt(e, a);
+    for (const ent of e) {
+      if (ent.t <= a) continue;
+      if (ent.t >= b) break;
+      if (state) total += ent.t - cur;
+      cur = ent.t; state = ent.visible;
+    }
+    if (state) total += b - cur;
+    return total;
+  }
+
+  // from から「表示されている時間」が need に達する時刻。到達しなければ Infinity。
+  // フレームレートに依存しない解決時刻を得るために必要。
+  visReach(layer, from, need) {
+    const e = this.vis[layer] || [];
+    let cur = from, state = visibilityAt(e, from), rem = need;
+    for (const ent of e) {
+      if (ent.t <= from) continue;
+      const span = ent.t - cur;
+      if (state) { if (rem <= span) return cur + rem; rem -= span; }
+      cur = ent.t; state = ent.visible;
+    }
+    return state ? cur + rem : Infinity;
+  }
+
+  _resolve(pending, st, grade, at, errSec) {
+    pending.push({ st, grade, at, err: errSec || 0, id: st.note.id });
+  }
+  _apply(r) {
+    const st = r.st;
+    if (st.done) return;
+    st.done = true; st.grade = r.grade; st.errMs = r.err * 1000;
+    this.counts[r.grade]++;
+    this.sumCoef += COEF[r.grade];
+    if (r.grade === 'miss') this.combo = 0;
+    else { this.combo++; if (this.combo > this.maxCombo) this.maxCombo = this.combo; }
+    // HPゲージ(プレイ修飾子)。PMOD.gauge が 1〜5 のとき有効。
+    if (typeof PMOD !== 'undefined' && PMOD.gauge > 0) {
+      this.hp = Math.max(0, Math.min(1000, this.hp + gaugeDelta(PMOD.gauge, r.grade)));
+      if (PMOD.failAtZero && this.hp <= 0) this.failed = true;
+    }
+    if (r.grade !== 'miss' || st.note.type === 'click') this.errsMs.push(r.err * 1000);
+    this.last = { type: st.note.type, lane: st.note.lane, grade: r.grade, errMs: r.err * 1000, at: r.at };
+    this.log.push({ id: st.note.id, type: st.note.type, lane: st.note.lane,
+                    layer: st.note.layer, grade: r.grade, errMs: +(r.err * 1000).toFixed(4) });
+  }
+
+  // 失敗時: 未判定のノーツをすべて MISS として確定させる。
+  failAll(at) {
+    const t = (typeof at === 'number') ? at : this.cursor;
+    for (let l = 0; l < LANES_N; l++) {
+      for (const arr of [this.clicks[l], this.wipes[l], this.holds[l]]) {
+        for (const st of arr) if (!st.done)
+          this._apply({ st, grade: 'miss', at: t, err: 0, id: st.note.id });
+      }
+    }
+  }
+
+  // 時刻 t まで進め、窓が閉じたノーツを確定させる。
+  // 解決は「確定時刻」の昇順で適用するため、フレームレートに依存しない。
+  advanceTo(t) {
+    if (t <= this.cursor) { this.cursor = Math.max(this.cursor, t); return; }
+    const from = this.cursor;
+    const pending = [];
+
+    for (let l = 0; l < LANES_N; l++) {
+      // --- クリック: 窓を過ぎたら即ミス確定(最古優先の連鎖を防ぐため必須) ---
+      for (const st of this.clicks[l]) {
+        if (st.done) continue;
+        const close = st.note.t + W_MISS + EPS;
+        if (t > close) this._resolve(pending, st, 'miss', close, W_MISS);
+        else if (st.note.t - W_MISS > t) break;
+      }
+      // --- ワイプ: 到達前から押しっぱなしなら w0 で成立、w1 を過ぎたらミス ---
+      for (const st of this.wipes[l]) {
+        if (st.done) continue;
+        if (t >= st.w0 && this.keyDown[l] && this.lastDown[l] !== null && this.lastDown[l] <= st.w0) {
+          this._resolve(pending, st, 'gold', st.w0, 0);
+        } else if (t > st.w1 + EPS) {
+          this._resolve(pending, st, 'miss', st.w1, WIPE_REAR);
+        } else if (st.w0 > t) break;
+      }
+      // --- ホールド: 連続離鍵が猶予に達したらミス、終端まで残れば成功 ---
+      for (const st of this.holds[l]) {
+        if (st.done) continue;
+        const n = st.note;
+        if (n.t > t) break;
+        if (!st.started) { st.started = true; st.relFrom = this.keyDown[l] ? null : n.t; }
+        if (st.relFrom !== null) {
+          const tm = this.visReach(n.layer, st.relFrom, st.grace);
+          if (tm <= Math.min(t, n.tEnd)) { this._resolve(pending, st, 'miss', tm, 0); continue; }
+        }
+        if (t >= n.tEnd) this._resolve(pending, st, 'gold', n.tEnd, 0);
+      }
+    }
+    pending.sort((a, b) => a.at - b.at || a.id - b.id);
+    for (const r of pending) this._apply(r);
+    this.cursor = t;
+  }
+
+  // 入力イベント。t は曲時刻(秒)。
+  input(lane, down, t) {
+    if (this.paused) return;
+    if (lane < 0 || lane >= LANES_N) return;
+    if (this.keyDown[lane] === down) return;     // 状態が変わらない入力は無視
+    this.advanceTo(t);
+
+    if (down) {
+      // ホールド: この押下より前の離鍵区間を評価してからリセット
+      for (const st of this.holds[lane]) {
+        if (st.done || !st.started) continue;
+        const n = st.note;
+        if (t < n.t || t > n.tEnd) continue;
+        if (st.relFrom !== null) {
+          const tm = this.visReach(n.layer, st.relFrom, st.grace);
+          if (tm <= t) { this._apply({ st, grade: 'miss', at: tm, err: 0, id: n.id }); continue; }
+        }
+        st.relFrom = null;
+      }
+      this.keyDown[lane] = true; this.lastDown[lane] = t;
+
+      // ワイプ: 窓内の押下で成立
+      let servedWipe = false, wipeErr = Infinity;
+      for (const st of this.wipes[lane]) {
+        if (st.done) continue;
+        if (t >= st.w0 - EPS && t <= st.w1 + EPS) {
+          const e = Math.abs(t - st.w0);
+          this._apply({ st, grade: 'gold', at: t, err: t - st.w0, id: st.note.id });
+          servedWipe = true; if (e < wipeErr) wipeErr = e;
+        } else if (st.w0 > t) break;
+      }
+      // ホールド区間中かどうか(押下の意味づけに使う)
+      let inHold = false;
+      for (const st of this.holds[lane]) {
+        if (st.note.t <= t && t <= st.note.tEnd) { inHold = true; break; }
+        if (st.note.t > t) break;
+      }
+
+      // クリック: 窓内の未判定ノーツのうち最も古いものへ割り当てる(案B)
+      let target = null;
+      for (const st of this.clicks[lane]) {
+        if (st.done) continue;
+        if (Math.abs(t - st.note.t) <= W_MISS + EPS) { target = st; break; }
+        if (st.note.t - W_MISS > t) break;
+      }
+      // ワイプ優先規則:
+      // 押下が同時にワイプを成立させた場合、そのワイプより時間的に遠いクリックは
+      // 消費しない。ワイプは必ず押下を要するため、これが無いと
+      // 「ワイプの直後にクリック」という配置で、正しく2回押してもクリックが
+      // ミスになる(押下1回目がクリックの窓に入って消費されてしまう)。
+      // 同時刻に重ねた場合は誤差が等しいので、従来どおり両方成立する。
+      if (target && this.wipePriority && servedWipe
+          && Math.abs(t - target.note.t) > wipeErr + EPS) {
+        target = null;
+      }
+      if (target) {
+        const err = t - target.note.t;
+        const g = gradeOf(err);
+        this._apply({ st: target, grade: g || 'miss', at: t, err, id: target.note.id });
+      } else if (!servedWipe && !inHold) {
+        this.emptyLog.push({ lane, t });
+        this.empty++;         // どのノーツにも寄与しなかった押下のみを空打ちとする
+      }
+    } else {
+      this.keyDown[lane] = false; this.lastDown[lane] = null;
+      for (const st of this.holds[lane]) {
+        if (st.done || !st.started) continue;
+        const n = st.note;
+        if (t < n.t || t > n.tEnd) continue;
+        if (st.relFrom === null) st.relFrom = Math.max(t, n.t);
+      }
+    }
+  }
+
+  // ホールドが生存中(未判定)で、かつキーが押されている状態か
+  activeHolds(t) {
+    const out = [];
+    for (let l = 0; l < LANES_N; l++) {
+      if (!this.keyDown[l]) continue;
+      for (const st of this.holds[l]) {
+        if (st.done) continue;
+        if (st.note.t <= t && t <= st.note.tEnd) out.push(st.note);
+        if (st.note.t > t) break;
+      }
+    }
+    return out;
+  }
+
+  releaseAll(t) { for (let l = 0; l < LANES_N; l++) if (this.keyDown[l]) this.input(l, false, t); }
+}
+
+// ---- 譜面バリデーション ----
+// 同一レーンで、クリックと他ノーツの押下位置が「近いが一致しない」場合、
+// 1回の押下が両方の窓に入り、意図しない消費が起きる。
+function validateChart(notes) {
+  const errors = [], warnings = [];
+  const byLane = [];
+  for (let l = 0; l < LANES_N; l++) byLane.push([]);
+  // 不正な lane を持つノーツはここでは扱わない。
+  // 範囲検査は読み込み側の責務であり、ここで落ちてはならない。
+  for (const n of notes)
+    if (n.type !== 'trace' && n.lane >= 0 && n.lane < LANES_N) byLane[n.lane].push(n);
+  for (let l = 0; l < LANES_N; l++) {
+    const ns = byLane[l].slice().sort((a, b) => a.t - b.t);
+    for (let i = 0; i < ns.length; i++) {
+      for (let k = i + 1; k < ns.length; k++) {
+        const a = ns[i], b = ns[k];
+        if (b.t - a.t > W_MISS + EPS) break;
+        if (a.type === b.type && Math.abs(a.t - b.t) < EPS)
+          errors.push(`レーン${l}: 同一時刻に ${a.type} が重複 (id ${a.id}, ${b.id})`);
+        const aP = a.type === 'click' ? a.t : (a.type === 'wipe' ? a.t : a.t);
+        const bP = b.t;
+        if (a.type !== b.type && Math.abs(bP - aP) > EPS)
+          warnings.push(`レーン${l}: ${a.type}(id${a.id}) と ${b.type}(id${b.id}) が ` +
+                        `${((bP - aP) * 1000).toFixed(1)}ms 差で近接。1回の押下が両方の窓に入る`);
+      }
+    }
+  }
+  return { errors, warnings };
+}
+
+// ---- オートプレイの入力生成 ----
+// クリックがホールドに重なる箇所では「離鍵5ms → 押下」を生成し、
+// 引き打ちと猶予ロジックを同時に検証する。
+function buildAutoplay(notes, opts) {
+  const o = Object.assign({ gap: 0.005, tap: 0.020, offset: 0, exclude: null }, opts || {});
+  const out = [];
+  for (let lane = 0; lane < LANES_N; lane++) {
+    const ln = notes.filter(n => n.lane === lane && n.type !== 'trace'
+      && !(o.exclude && o.exclude.has(n.id)));
+    // クリック/ワイプの押下時刻。ホールド開始はこれを再利用できるなら再利用する。
+    const presses = ln.filter(n => n.type !== 'hold').map(n => n.t).sort((a, b) => a - b);
+    const marks = [];
+    for (const n of ln) {
+      if (n.type === 'hold') {
+        const grace = Math.min(HOLD_GRACE, n.tEnd - n.t);
+        const reuse = presses.find(p => p >= n.t && p <= n.t + grace * 0.9);
+        marks.push({ t: reuse !== undefined ? reuse : n.t, a: 0 });
+        marks.push({ t: n.tEnd, a: 1 });
+      } else {
+        marks.push({ t: n.t - o.gap, a: 2 });
+        marks.push({ t: n.t, a: 3 });
+        marks.push({ t: n.t + o.tap, a: 4 });
+      }
+    }
+    marks.sort((x, y) => x.t - y.t || x.a - y.a);
+    let down = false, inHold = 0;
+    const ev = [];
+    for (const m of marks) {
+      if (m.a === 0) { inHold++; if (!down) { ev.push({ lane, down: true, t: m.t }); down = true; } }
+      else if (m.a === 1) { inHold--; if (down && inHold <= 0) { ev.push({ lane, down: false, t: m.t }); down = false; } }
+      else if (m.a === 2) { if (down) { ev.push({ lane, down: false, t: m.t }); down = false; } }
+      else if (m.a === 3) { if (!down) { ev.push({ lane, down: true, t: m.t }); down = true; } }
+      else if (m.a === 4) { if (down && inHold <= 0) { ev.push({ lane, down: false, t: m.t }); down = false; } }
+    }
+    for (const e of ev) out.push({ lane: e.lane, down: e.down, t: e.t + o.offset });
+  }
+  out.sort((a, b) => a.t - b.t || a.lane - b.lane || (a.down ? 1 : 0) - (b.down ? 1 : 0));
+  return out;
+}
+
+// ---- オフライン実行(描画なし) ----
+// events を fps 刻みの update と混ぜて時系列に処理する。
+function runOffline(notes, visByLayer, events, fps, endT) {
+  const j = new Judge(notes, visByLayer);
+  const dt = 1 / fps;
+  let ei = 0;
+  const end = endT + 0.5;
+  for (let t = 0; t <= end; t += dt) {
+    while (ei < events.length && events[ei].t <= t) {
+      const e = events[ei++];
+      j.input(e.lane, e.down, e.t);
+    }
+    j.advanceTo(t);
+  }
+  while (ei < events.length) { const e = events[ei++]; j.input(e.lane, e.down, e.t); }
+  j.advanceTo(end);
+  return j;
+}
+// ===== [/MODULE] judge =====
+
+// ===== [MODULE] chart (Phase3 検証シナリオ) =====
+const timing=new Timing(
+  [{m:0,beats:4,beatUnit:4}],
+  [{time:{m:0,n:0,d:1},bpm:174}]);
+
+const MEAS=timing.toSeconds({m:1,n:0,d:1});   // 1小節の秒数
+const mt=(m)=>m*MEAS;                          // 小節番号 → 秒
+// キー列から1セグメントを作る: seg(m0,v0, m1,v1, ...)
+function seg(){const k=[];
+  for(let i=0;i<arguments.length;i+=2)k.push({t:mt(arguments[i]),v:arguments[i+1]});
+  return{keys:k};}
+
+// 各シナリオ: 16小節。layer1 を使う場合はレーン3〜5が layer1 に所属する。
+const SCENARIOS={
+  A:{name:'一定速度',useL1:false,l0:[],l1:[],
+     note:'基準。速度倍率は常に 1.0。'},
+
+  B:{name:'ランプ(加減速)',useL1:false,
+     l0:[seg(4,1, 6,3, 8,1, 10,0.3, 12,1)],l1:[],
+     note:'1セグメント内に中点キーを置き、直線補間で加減速する。'},
+
+  C:{name:'不連続ジャンプ',useL1:false,
+     l0:[seg(4,0.5, 5,0.5),seg(6,2.5, 7,2.5),seg(8,0.4, 9,0.4),seg(10,3, 11,3)],
+     l1:[],
+     note:'セグメント外はレイヤー0の既定値 1.0 へ不連続に戻る(仕様4.2.4)。'},
+
+  D:{name:'速度ゼロ(停止)',useL1:false,
+     l0:[seg(4,0, 5.5,0),seg(8,0, 9,0),seg(12,0, 13.5,0)],l1:[],
+     note:'描画は静止するが譜面は進行する。打音は定刻通り鳴る。'},
+
+  E:{name:'負速度(逆走)',useL1:false,
+     l0:[seg(4,-1.5, 5,-1.5),seg(8,-1.5, 9,-1.5),seg(12,-2.5, 13,-2.5)],l1:[],
+     note:'ノーツが一度奥へ退がってから戻る。着地時刻は変わらない。'},
+
+  F:{name:'レイヤーフォールバック',useL1:true,
+     l0:[seg(4,1, 8,2.5, 12,1)],
+     l1:[seg(6,0.3, 7,0.3),seg(9,2, 10,2)],
+     note:'レーン0-2=L0 / レーン3-5=L1。L1の未設定区間はL0に追従する。'},
+
+  H:{name:'判定検証(速度一定)',useL1:true,judge:true,l0:[],l1:[],
+     note:'クリック・ワイプ・ホールド・非表示区間を含む。速度は一定。'},
+
+  I:{name:'オフセット(剛体スライド)',useL1:false,fx:'offset',l0:[],l1:[],
+     note:'レイヤー1〜3が判定ラインから前後にずれる。判定タイミングは不変。'},
+
+  J:{name:'グリッチ(離散オフセット)',useL1:false,fx:'glitch',l0:[],l1:[],
+     note:'オフセットを離散的に飛ばす。ホールド中に判定位置が移動する。'},
+
+  K:{name:'逆走 + 奥オフセット',useL1:false,fx:'reverse',l0:[],l1:[],
+     note:'オフセットを奥へ、速度を負にして手前から奥へ流す。'},
+
+  L:{name:'トレース + 擬似判定ライン',useL1:false,fx:'trace',l0:[],l1:[],
+     note:'速度ゼロのトレースが擬似判定ラインになる。斜め線は片側から縮む。'},
+
+  M:{name:'8レイヤー総合',useL1:false,fx:'all',l0:[],l1:[],
+     note:'レイヤー0〜7を同時に使用。速度・オフセット・表示を個別制御。'},
+
+  G:{name:'全部混合',useL1:true,
+     l0:[seg(2,1, 3,2.5, 4,1),seg(5,0.4, 6,0.4),seg(7,0, 8,0),
+         seg(9,-1.5, 10,-1.5),seg(11,1, 13,3, 15,1)],
+     l1:[seg(3,0.5, 4,0.5),seg(7.5,2, 8.5,2),seg(12,0, 12.8,0)],
+     note:'ランプ・ジャンプ・ゼロ・負値・フォールバックを1周に詰めたもの。'},
+};
+
+// 判定検証用の譜面(シナリオH)。全ノーツ種別と非表示区間を含む。
+function buildJudgeChart(){
+  const ns=[];let id=1;
+  const T=(m,n,d)=>timing.toSeconds({m,n,d});
+  const C=(m,n,d,lane,layer)=>ns.push({id:id++,type:'click',lane,layer:layer||0,t:T(m,n,d)});
+  const W=(m,n,d,lane,layer)=>ns.push({id:id++,type:'wipe',lane,layer:layer||0,t:T(m,n,d)});
+  const HD=(m,n,d,m2,n2,d2,lane,layer)=>ns.push({id:id++,type:'hold',lane,layer:layer||0,
+      t:T(m,n,d),tEnd:T(m2,n2,d2)});
+
+  for(let m=0;m<4;m++)for(let i=0;i<8;i++)C(m,i,8,(m*8+i)%6);       // 8分の階段
+  for(let m=4;m<6;m++)for(let i=0;i<16;i++)C(m,i,16,(i%2)?5:0);      // 16分連打
+  HD(6,0,1, 8,0,1, 0);                                               // 長いホールド
+  C(7,0,1,0);                                                        // その上のクリック(引き打ち)
+  for(let m=6;m<8;m++)for(let i=0;i<8;i++)if(i%2===0)C(m,i,8,1+((m*8+i)%4));
+  for(let i=0;i<16;i++)W(8,i,16,2);                                  // ワイプの高速フレーズ
+  for(let i=0;i<16;i++)W(9,i,16,3);
+  HD(10,0,1, 12,0,1, 5);                                             // ホールド + 別レーンのワイプ
+  for(let m=10;m<12;m++)for(let i=0;i<8;i++)W(m,i,8,1);
+  for(let m=10;m<12;m++)for(let i=0;i<4;i++)C(m,i,4,3);
+  // 非表示区間(レイヤー1)を跨ぐ領域
+  for(let i=0;i<8;i++)C(12,i,8,i%3,1);
+  for(let i=0;i<8;i++)C(13,i,8,3+(i%3),1);
+  HD(12,0,1, 14,0,1, 5, 1);
+  for(let m=14;m<16;m++)for(let i=0;i<8;i++){
+    if(i%4===0)W(m,i,8,(i/4)%6); else C(m,i,8,(m*8+i)%6);
+  }
+  ns.sort((a,b)=>a.t-b.t||a.id-b.id);
+  return ns;
+}
+const JUDGE_VIS={1:[{t:timing.toSeconds({m:12,n:1,d:2}),visible:false},
+                    {t:timing.toSeconds({m:13,n:1,d:4}),visible:true}]};
+
+// ---- Phase4: 演出シナリオ ----
+// oseg(m0,v0, m1,v1, ...) : オフセットのセグメント(値は %)
+function oseg(){const k=[];
+  for(let i=0;i<arguments.length;i+=2)k.push({t:mt(arguments[i]),v:arguments[i+1]});
+  return{keys:k};}
+function vis(){const o=[];
+  for(let i=0;i<arguments.length;i+=2)o.push({t:mt(arguments[i]),visible:arguments[i+1]});
+  return o;}
+
+function buildFxChart(kind){
+  const ns=[];let id=1;
+  const T=(m,n,d)=>timing.toSeconds({m,n,d});
+  const C=(m,n,d,lane,layer)=>ns.push({id:id++,type:'click',lane,layer:layer||0,t:T(m,n,d)});
+  const HD=(m,n,d,m2,n2,d2,lane,layer)=>ns.push({id:id++,type:'hold',lane,layer:layer||0,
+      t:T(m,n,d),tEnd:T(m2,n2,d2)});
+  // トレース: 頂点は {m,n,d,x}。x は 0〜24(25分割、4刻みがレーン境界)
+  const TR=(layer,verts)=>ns.push({id:id++,type:'trace',layer:layer||0,
+      vertices:verts.map(v=>({t:T(v[0],v[1],v[2]),x:v[3]}))});
+
+  const L={speed:{},off:{},vis:{}};
+  const NL=8;
+
+  if(kind==='offset'){
+    for(let m=0;m<16;m++)for(let i=0;i<8;i++){
+      const lane=(m*8+i)%6;
+      C(m,i,8,lane,1+(m%3));                 // レイヤー1〜3を巡回
+    }
+    L.off[1]=[oseg(2,0, 4,60, 6,0)];
+    L.off[2]=[oseg(6,0, 8,-40, 10,0)];
+    L.off[3]=[oseg(10,0, 12,100, 14,-100, 16,0)];
+  }
+  else if(kind==='glitch'){
+    HD(2,0,1, 6,0,1, 0, 1);
+    HD(8,0,1, 12,0,1, 5, 2);
+    for(let m=0;m<16;m++)for(let i=0;i<4;i++)C(m,i,4,1+(i%4),1+(m%2));
+    // 離散ジャンプ: 短いセグメントを連ねる
+    const g=[];
+    for(let k=0;k<24;k++){
+      const a=3+k*0.12, amp=(k%2?1:-1)*(20+(k%5)*12);
+      g.push(oseg(a,amp, a+0.11,amp));
+    }
+    L.off[1]=g;
+    const g2=[];
+    for(let k=0;k<20;k++){const a=8.5+k*0.15,amp=(k%3-1)*45;g2.push(oseg(a,amp,a+0.14,amp));}
+    L.off[2]=g2;
+  }
+  else if(kind==='reverse'){
+    for(let m=0;m<16;m++)for(let i=0;i<8;i++)C(m,i,8,(m*8+i)%6,1);
+    L.speed[1]=[seg(3,-1.2, 7,-1.2),seg(9,-2, 13,-2)];
+    L.off[1]=[oseg(2.5,0, 3,90, 7,90, 7.5,0),oseg(8.5,0, 9,95, 13,95, 13.5,0)];
+  }
+  else if(kind==='trace'){
+    for(let m=0;m<16;m++)for(let i=0;i<4;i++)C(m,i,4,(m*4+i)%6,0);
+    // 通常の流れるトレース(斜めの折線)
+    TR(1,[[2,0,1,0],[2,1,2,12],[3,0,1,24],[3,1,2,12],[4,0,1,0]]);
+    TR(1,[[5,0,1,24],[5,1,2,4],[6,0,1,20],[6,1,2,0]]);
+    // レイヤー1を奥へ送る。トレースが判定ラインではなく奥で消費される。
+    // マーカーもその位置へ追従しなければならない。
+    L.off[1]=[oseg(2,0, 3,55, 5,55, 6,0)];
+    HD(2,0,1, 5,0,1, 0, 1);        // オフセット下のホールド(剛体スライドの確認)
+    // 速度ゼロ → 擬似判定ライン
+    // 【重要】時間クリップにより、トレースは時刻の経過とともに消費される。
+    // 「同一時刻に2頂点」を置くと時間方向の広がりがゼロになり、
+    // その瞬間に消費し尽くされて一切描画されない。
+    // 持続する擬似判定ラインを作るには、区間全体にわたって x を往復させ、
+    // 残存部分が常に全幅を覆うようにする必要がある(ジグザグ)。
+    L.speed[2]=[seg(8,0, 11,0)];
+    {
+      const zig=[];
+      const STEPS=24;
+      for(let k=0;k<=STEPS;k++){
+        const m=8+3*k/STEPS;
+        zig.push([Math.floor(m),Math.round((m%1)*48),48,(k%2)?24:0]);
+      }
+      TR(2,zig);
+    }
+    L.vis[2]=vis(8,true, 11,false);
+    // 速度ゼロ + 斜め線 → 片側から縮む
+    L.speed[3]=[seg(12,0, 15,0)];
+    TR(3,[[12,0,1,0],[15,0,1,24]]);
+    L.vis[3]=vis(12,true, 15,false);
+  }
+  else if(kind==='all'){
+    for(let m=0;m<16;m++)for(let i=0;i<8;i++){
+      const layer=(m*8+i)%NL;
+      C(m,i,8,(m*8+i)%6,layer);
+    }
+    for(let k=1;k<NL;k++){
+      L.speed[k]=[seg(2+k*1.5, 0.5+k*0.35, 3+k*1.5, 0.5+k*0.35)];
+      L.off[k]=[oseg(6+k*1.1, 0, 7+k*1.1, (k%2?1:-1)*(15+k*8), 8+k*1.1, 0)];
+      if(k%3===0)L.vis[k]=vis(4+k, false, 5+k, true);
+    }
+    TR(7,[[13,0,1,0],[14,0,1,24],[15,0,1,0]]);
+  }
+  ns.sort((a,b)=>a.t!==undefined&&b.t!==undefined?(a.t-b.t||a.id-b.id):0);
+  return {notes:ns,L};
+}
+
+// 16小節ぶんのノーツ(8分主体、1小節に1回だけ16分を混ぜる)
+function buildNotes(useL1){
+  const notes=[];let id=1;
+  for(let m=0;m<16;m++){
+    if(m%4===3){
+      for(let i=0;i<16;i++){
+        const lane=(i%2)?5:0;
+        notes.push({id:id++,type:'click',lane,layer:(useL1&&lane>=3)?1:0,t:timing.toSeconds({m,n:i,d:16})});
+      }
+    }else{
+      for(let i=0;i<8;i++){
+        const lane=(m*8+i)%6;
+        notes.push({id:id++,type:'click',lane,layer:(useL1&&lane>=3)?1:0,t:timing.toSeconds({m,n:i,d:8})});
+      }
+    }
+  }
+  notes.sort((a,b)=>a.t-b.t);
+  return notes;
+}
+
+let SC=null,chartNotes=[],chartEnd=0,tables=null,table0=null,table1=null;
+let chartVis={},chartCheck={errors:[],warnings:[]},judge=null;
+let offPieces={},traceNotes=[];
+const NLAYERS=8;
+// 読み込んだ譜面を現在の譜面として適用する
+function applyRealChart(){
+  if(!RD)return;
+  SC={name:(RD.meta.title||'読み込み譜面'),useL1:false,fx:null,l0:[],l1:[],
+      note:'ファイルから読み込んだ譜面'};
+  chartNotes=RD.notes;
+  traceNotes=chartNotes.filter(n=>n.type==='trace');
+  chartVis=RD.L.vis||{};
+  chartCheck=validateChart(chartNotes.filter(n=>n.type!=='trace'));
+  const specs=[];
+  for(let i=0;i<NLAYERS;i++)specs.push({id:i,speedSegments:RD.L.speed[i]||[]});
+  tables=buildDistanceTables(specs);
+  table0=tables[0];table1=tables[1];
+  offPieces={};
+  for(let i=0;i<NLAYERS;i++)offPieces[i]=buildOffsetPieces(RD.L.off[i]||[]);
+  Check.chartErrors=[];
+  judge=new Judge(chartNotes.filter(n=>n.type!=='trace'),chartVis);
+  activeTiming=RD.timing;
+  let last=0;
+  for(const n of chartNotes){
+    const e=(n.type==='trace')?n.vertices[n.vertices.length-1].t:(n.tEnd!==undefined?n.tEnd:n.t);
+    if(e>last)last=e;
+  }
+  chartEnd=Math.max(last+2, audioBuf?audioBuf.duration:last+2);
+  beatTimes=buildBeatTimes(activeTiming,chartEnd);
+}
+
+function loadScenario(key){
+  if(key==='REAL'){ applyRealChart(); return; }
+  SC=SCENARIOS[key];
+  let Lspec=null;
+  if(SC.judge){chartNotes=buildJudgeChart();chartVis=JUDGE_VIS;}
+  else if(SC.fx){const r=buildFxChart(SC.fx);chartNotes=r.notes;Lspec=r.L;chartVis=r.L.vis||{};}
+  else{chartNotes=buildNotes(SC.useL1);chartVis={};}
+  traceNotes=chartNotes.filter(n=>n.type==='trace');
+  chartCheck=validateChart(chartNotes.filter(n=>n.type!=='trace'));
+  chartEnd=mt(16)+1.5;
+  const specs=[];
+  for(let i=0;i<NLAYERS;i++){
+    let sp=[];
+    if(i===0)sp=SC.l0||[];
+    else if(i===1&&!Lspec)sp=SC.l1||[];
+    if(Lspec&&Lspec.speed[i])sp=Lspec.speed[i];
+    specs.push({id:i,speedSegments:sp});
+  }
+  tables=buildDistanceTables(specs);
+  table0=tables[0];table1=tables[1];
+  offPieces={};
+  for(let i=0;i<NLAYERS;i++)
+    offPieces[i]=buildOffsetPieces(Lspec&&Lspec.off[i]?Lspec.off[i]:[]);
+  // ロード時バリデーション
+  const errs=[...chartCheck.errors];
+  for(let i=0;i<NLAYERS;i++){
+    if(Lspec&&Lspec.speed[i])errs.push(...validateSegments(Lspec.speed[i],'L'+i+'.speed'));
+    if(Lspec&&Lspec.off[i])errs.push(...validateSegments(Lspec.off[i],'L'+i+'.offset'));
+  }
+  if(!Lspec){errs.push(...validateSegments(SC.l0,'L0.speed'),...validateSegments(SC.l1,'L1.speed'));}
+  // オフセットの値域検査(仕様 4.4.2)
+  if(Lspec)for(let i=0;i<NLAYERS;i++)for(const sg of (Lspec.off[i]||[]))
+    for(const k of sg.keys)if(k.v<-100||k.v>100)
+      errs.push('L'+i+'.offset: 値域外 '+k.v+'% (-100..100)');
+  Check.chartErrors=errs;
+  judge=new Judge(chartNotes.filter(n=>n.type!=='trace'),chartVis);
+  activeTiming=timing;
+  beatTimes=buildBeatTimes(activeTiming,chartEnd);
+}
+function tableOf(layer){return tables[layer]||table0;}
+function offOf(layer,now){return offsetAt(offPieces[layer]||[],now);}
+// ===== [/MODULE] chart =====
+
+
+// ===== [MODULE] selfcheck =====
+const Check={
+  frames:0,elapsed:0,fpsAcc:[],
+  arithViolations:0,arithMaxErr:0,arithSamples:0,
+  projMaxErr:0,projSamples:0,
+  staticFails:[],chartErrors:[],
+  landingSamples:0,landingMaxMs:0,landingOverFrame:0,landingTangent:0,landingFrozen:0,
+  numSamples:0,numMaxErr:0,numViolations:0,numCursor:0,
+  evaluated:0,drawn:0,
+  prevNow:0,
+
+  // (1) ヒット時刻での位置が厳密に0であること
+  arithmetic(note,mul){
+    // オフセットを与えても、ヒット時刻での位置は「オフセット値そのもの」になる。
+    // すなわちオフセットは判定タイミングに一切影響しない(仕様 4.4.4)。
+    const off=offOf(note.layer,note.t);
+    const p=positionOf(tableOf(note.layer),note.t,note.t,mul,off)-off/100;
+    this.arithSamples++;
+    const e=Math.abs(p);
+    if(e>this.arithMaxErr)this.arithMaxErr=e;
+    if(e>1e-9)this.arithViolations++;
+  },
+
+  // (2) 閉形式の累積距離 vs 数値積分(独立実装の突き合わせ)
+  //     速度曲線が正しく積分されているかを実行時に検証する。
+  numeric(now){
+    if(!chartNotes.length)return;
+    this.numCursor=(this.numCursor+1)%chartNotes.length;
+    const n=chartNotes[this.numCursor];
+    const a=now,b=n.t;
+    if(!(isFinite(a)&&isFinite(b)))return;
+    if(Math.abs(b-a)<1e-4||Math.abs(b-a)>1.5)return;   // 可視範囲相当に限定
+    const tb=tableOf(n.layer);
+    const N=8000,h=(b-a)/N;                             // 刻み <= 0.19ms
+    let acc=0;
+    for(let i=0;i<N;i++)acc+=tb.valueAt(a+(i+0.5)*h)*h;
+    const closed=tb.distanceAt(b)-tb.distanceAt(a);
+    const e=Math.abs(acc-closed);
+    this.numSamples++;
+    if(e>this.numMaxErr)this.numMaxErr=e;
+    if(e>1e-3)this.numViolations++;
+  },
+
+  // (3) 閉形式の投影 vs 4隅から解いた一般ホモグラフィ
+  projection(){
+    const src=[[-1,0],[1,0],[-1,1],[1,1]];
+    const dst=src.map(([u,z])=>[Proj.x(z,u),Proj._yraw(z)]);
+    const h=solveHomography(src,dst);
+    let worst=0;
+    for(let i=0;i<=20;i++)for(let j=-2;j<=2;j++){
+      const z=i/20,u=j/2;
+      const p=applyH(h,u,z);
+      worst=Math.max(worst,Math.abs(p[0]-Proj.x(z,u)),Math.abs(p[1]-Proj._yraw(z)));
+    }
+    this.projSamples++;
+    if(worst>this.projMaxErr)this.projMaxErr=worst;
+  },
+
+  nearClipHits:0,offMin:0,offMax:0,
+  // オフセット負値 × ニアクリップの相互作用を監視(仕様 14.1 の未確定事項)
+  clipWatch(now,mul){
+    for(let i=0;i<NLAYERS;i++){
+      const o=offOf(i,now);
+      if(o<this.offMin)this.offMin=o;
+      if(o>this.offMax)this.offMax=o;
+    }
+    for(const n of chartNotes){
+      if(n.type==='trace')continue;
+      const z=zWithOffset(tableOf(n.layer),now,n.t,mul,offOf(n.layer,now));
+      if(z>-0.05&&z<1.02&&!Proj.visible(z))this.nearClipHits++;
+    }
+  },
+
+  statics(){
+    this.staticFails.length=0;
+    // 判定ライン(z=0)は、基準面をずらした位置に来る
+    const zj=Proj.zj, dn=1+zj*Proj.tan;
+    const want=Proj.H/2-(Proj.H/2)*((2*zj-1)/dn);
+    const yJ=Proj.y(0);
+    if(Math.abs(yJ-want)>1e-9)
+      this.staticFails.push(`判定ラインY: ${yJ.toFixed(4)} != ${want.toFixed(4)}`);
+    // 判定ラインを奥へ動かすと手前端も奥へ寄るため、見かけの台形比は変わる。
+    // 期待値は分母の比 denom(0)/denom(1) で求まる。
+    const wantR=(1+Proj.zj*Proj.tan)/(1+Proj.tan);
+    const wRatio=(Proj.x(1,1)-Proj.x(1,-1))/(Proj.x(0,1)-Proj.x(0,-1));
+    if(Math.abs(wRatio-wantR)>1e-9)
+      this.staticFails.push(`台形比: ${wRatio.toFixed(6)} != ${wantR.toFixed(6)}`);
+    if(Proj.tan>0){
+      if(Proj.visible(-1/Proj.tan-0.01))this.staticFails.push('ニアクリップ未作動');
+      if(!Proj.visible(0))this.staticFails.push('判定ライン位置が不可視判定');
+    }
+  },
+
+  // (4) 曲時刻がヒット時刻を跨いだフレームで、z の零交差を実測する。
+  //     速度が変化していると線形補間の前提が崩れるため、
+  //     ここで初めてこの測定が意味を持つ(Phase1 は速度一定で常に0.000だった)。
+  landing(note,prevNow,now,mul){
+    if(!(prevNow<note.t&&note.t<=now))return;
+    const tb=tableOf(note.layer);
+    const zPrev=laneDistance(tb,prevNow,note.t,mul);
+    const zNow =laneDistance(tb,now,    note.t,mul);
+    this.landingSamples++;
+    if(Math.abs(zPrev)<1e-12&&Math.abs(zNow)<1e-12){this.landingFrozen++;return;}
+    // 速度が符号反転する境界では、z が 0 に接して同じ側へ戻ることがある。
+    // 2サンプルでは符号変化として検出できないが、異常ではない(接触交差)。
+    if(zPrev===zNow||((zPrev>0)===(zNow>0)&&zPrev!==0&&zNow!==0)){this.landingTangent++;return;}
+    const f=zPrev/(zPrev-zNow);
+    const tCross=prevNow+(now-prevNow)*f;
+    const errMs=Math.abs(tCross-note.t)*1000;
+    if(errMs>this.landingMaxMs)this.landingMaxMs=errMs;
+    if(errMs>1000/60)this.landingOverFrame++;
+  },
+
+  reset(){
+    this.frames=0;this.elapsed=0;this.fpsAcc.length=0;
+    this.arithViolations=0;this.arithMaxErr=0;this.arithSamples=0;
+    this.projMaxErr=0;this.projSamples=0;
+    this.landingSamples=0;this.landingMaxMs=0;this.landingOverFrame=0;this.landingTangent=0;this.landingFrozen=0;
+    this.numSamples=0;this.numMaxErr=0;this.numViolations=0;this.numCursor=0;
+    this.evaluated=0;this.drawn=0;this.prevNow=0;
+    this.nearClipHits=0;this.offMin=0;this.offMax=0;
+  },
+};
+// ===== [/MODULE] selfcheck =====
+
+
+// ===== [MODULE] render =====
+const cv=document.getElementById('cv');
+let CW=0,CH=0,DPR=1,GLOK=false;
+GLOK=Gfx.init(cv);
+if(!GLOK)document.getElementById('overlay').textContent='WebGL を初期化できません';
+// レーン空間 (z,u) → 頂点。w は射影の分母で、これにより
+// varying がパースペクティブ補正される(= テクスチャが正しく歪む)。
+function P(z,u){return {x:Proj.x(z,u), y:Proj.y(z), w:Proj.w(z)};}
+// スクリーン空間の点(線・マーカー用。歪ませないので w=1)
+function S(x,y){return {x,y,w:1};}
+function quadPtsZU(z0,z1,u0,u1,spr,col,alpha){
+  if(!Proj.visible(z0)||!Proj.visible(z1))return;
+  Gfx.quadPts([P(z0,u0),P(z0,u1),P(z1,u1),P(z1,u0)],spr,col,alpha);
+}
+// 折れ線を「1本の連続した帯」として描く。
+// 区間ごとに独立した四角形を並べると、接合部に隙間ができ、
+// さらに区間ごとに不透明度が一定になるため段差(ブロック状)に見える。
+// 各頂点で法線を平均し、頂点ごとに不透明度を与えることで連続させる。
+function strokeStrip(pts,width,col,alphas){
+  const N=pts.length;
+  if(N<2)return;
+  const nx=new Array(N),ny=new Array(N);
+  for(let i=0;i<N;i++){
+    const a=pts[Math.max(0,i-1)],b=pts[Math.min(N-1,i+1)];
+    let dx=b.x-a.x,dy=b.y-a.y;
+    const L=Math.hypot(dx,dy);
+    if(L<1e-6){dx=1;dy=0;}else{dx/=L;dy/=L;}
+    nx[i]=-dy*width/2; ny[i]=dx*width/2;
+  }
+  for(let i=0;i+1<N;i++){
+    const a=pts[i],b=pts[i+1];
+    Gfx.quadPtsA(
+      [S(a.x+nx[i],a.y+ny[i]), S(b.x+nx[i+1],b.y+ny[i+1]),
+       S(b.x-nx[i+1],b.y-ny[i+1]), S(a.x-nx[i],a.y-ny[i])],
+      null, col,
+      [alphas[i],alphas[i+1],alphas[i+1],alphas[i]]);
+  }
+}
+// スクリーン空間の太線
+function strokeScreen(pts,width,col,alpha){
+  for(let i=0;i+1<pts.length;i++){
+    const a=pts[i],b=pts[i+1];
+    const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);
+    if(L<1e-6)continue;
+    const nx=-dy/L*width/2, ny=dx/L*width/2;
+    Gfx.quadPts([S(a.x+nx,a.y+ny),S(b.x+nx,b.y+ny),
+                 S(b.x-nx,b.y-ny),S(a.x-nx,a.y-ny)],null,col,alpha);
+  }
+}
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  const availW=window.innerWidth,availH=window.innerHeight;
+  let w=availW,h=w*9/16;
+  if(h>availH){h=availH;w=h*16/9;}
+  CW=Math.floor(w);CH=Math.floor(h);
+  cv.style.width=CW+'px';cv.style.height=CH+'px';
+  cv.width=Math.floor(CW*DPR);cv.height=Math.floor(CH*DPR);
+  if(GLOK)Gfx.resize(CW,CH,DPR);
+}
+window.addEventListener('resize',resize);
+
+const LANES=6;
+// プロトタイプの色は暫定。譜面データは色情報を一切持たない(第14章 スキンの領分)。
+// 種別の識別はスプライトの形状で行い、色は単一とする。
+// 色はスキンが決める(仕様 第14.2.2節)。譜面データは色を持たない。
+// スキンが色を指定しない場合、テクスチャの色をそのまま出す(#ffffff で乗算)。
+// 内蔵スキンは白一色のスプライトなので、既定色を与えて種別を区別している。
+const DEFAULT_COLORS={
+  note:'#ffffff', trace:'#ffffff',
+  gold:'#ffe082', white:'#ffffff', great:'#7fe38a', miss:'#ff5a5a',
+};
+let COLORS=Object.assign({},DEFAULT_COLORS);
+function noteColor(){return COLORS.note;}
+function traceColor(){return COLORS.trace;}
+const NOTE_THICK=0.014;   // レーン空間でのノーツ厚み
+const TRACE_ALPHA=0.5;    // トレースの透明度(固定50%)
+const FLASH_SEC=0.16;     // ヒット演出の残光時間
+const FADE_FROM=0.90;     // 描画範囲の奥側10%でフェード
+
+const COLCACHE={};
+function C(h){return COLCACHE[h]||(COLCACHE[h]=hex2rgb(h));}
+function quad(z0,z1,u0,u1,fill,alpha,spr){
+  quadPtsZU(z0,z1,u0,u1,spr||null,C(fill),alpha);
+}
+function laneU(lane){ // レーン index → [-1,1] の左右端
+  const w=2/LANES;return[-1+lane*w,-1+(lane+1)*w];
+}
+// 描画範囲の奥端での減衰。
+// 全ノーツ種別がこの関数を通るため、ここで切り替えれば表現が統一される。
+// 無効にすると、クリック・ワイプ・ホールドもトレースと同じ「減衰なしの線」になる。
+let FADE_ON=false;
+function fadeAlpha(z){
+  if(!FADE_ON)return 1;
+  if(z<=FADE_FROM)return 1;
+  return Math.max(0,1-(z-FADE_FROM)/(1-FADE_FROM));
+}
+
+function drawLane(){
+  quad(0,1,-1,1,'#0f1420',LANE_OPACITY);
+  for(let i=0;i<=LANES;i++){
+    const u=-1+i*2/LANES;
+    if(!Proj.visible(0)||!Proj.visible(1))continue;
+    const edge=(i===0||i===LANES);
+    strokeScreen([S(Proj.x(0,u),Proj.y(0)),S(Proj.x(1,u),Proj.y(1))],
+                 edge?2:1, C(edge?'#3c5170':'#1e2a3d'), LANE_OPACITY);
+  }
+}
+// 拍線は「メインレイヤー(レイヤー0)に属する要素」として扱う。
+//   ・譜面の BPM と BPM 変化点、拍子に追従する
+//   ・レイヤー0の速度倍率に従う(倍率が変われば間隔も動きも変わる)
+//   ・レイヤー0の判定位置オフセットにも追従する
+// 譜面ロード時に一度だけ拍位置を作る。BPM 変化があっても正しく並ぶ。
+let beatTimes=[];
+function buildBeatTimes(tm,endSec){
+  const out=[];
+  for(let m=0;m<4096;m++){
+    const i=tm.sigIndexAt(m), bps=tm.sigs[i].beats;
+    let t0=null;
+    for(let b=0;b<bps;b++){
+      const t=tm.toSeconds({m,n:b,d:bps});
+      if(b===0)t0=t;
+      out.push({t,bar:b===0});
+    }
+    if(t0!==null&&t0>endSec+8)break;
+  }
+  out.sort((a,b)=>a.t-b.t);
+  return out;
+}
+function drawBeatLines(now,mul){
+  if(!grid.checked||!beatTimes.length)return;
+  const off=offOf(0,now);
+  // 速度に負値・ゼロを許すため z は単調でない。時間窓で区切って全て評価する。
+  let lo=0,hi=beatTimes.length-1,st=0;
+  const from=now-4;
+  while(lo<=hi){const mid=(lo+hi)>>1;
+    if(beatTimes[mid].t<from){st=mid+1;lo=mid+1;}else hi=mid-1;}
+  const until=now+40;
+  for(let i=st;i<beatTimes.length;i++){
+    const bt=beatTimes[i];
+    if(bt.t>until)break;
+    const z=zWithOffset(table0,now,bt.t,mul,off);
+    if(z<0||z>1)continue;
+    const a=fadeAlpha(z)*(bt.bar?0.55:0.22);
+    if(!Proj.visible(z))continue;
+    strokeScreen([S(Proj.x(z,-1),Proj.y(z)),S(Proj.x(z,1),Proj.y(z))],
+                 1, C('#8fb4ff'), a);
+  }
+}
+// 判定段階の色。スキンで上書きできる
+const GRADE_COLOR=new Proxy({},{get:(t,k)=>COLORS[k]||'#ffffff'});
+function layerVisible(layer,now){return visibilityAt(chartVis[layer]||[],now);}
+
+// ホールドは時間方向に分割して描く。速度が変化すると帯が曲がるため、
+// 端点だけでは形状が合わない。
+// ホールドの帯を描く。
+// 【時間で切り、位置では切らない】のが要点(仕様 5.6)。
+//   ・描画対象の時間範囲は [max(開始, 現在時刻), 終了] とする。
+//     位置で下限クランプすると、レイヤーオフセットを与えても
+//     帯の手前端が既定の判定ライン(z=0)に貼り付いてしまう
+//   ・サンプルは固定個数ではなく時間解像度で決める。
+//     固定個数だと長いホールドで粗くなり、可視域が数ブロックに割れて明滅する
+const HOLD_SAMPLE_SEC=0.02;    // 20ms 刻み
+const HOLD_SAMPLE_MAX=400;
+// 描画対象の時間範囲と両端のz。位置クランプを行わないことの検証用に切り出す。
+function holdSpan(n,tb,now,mul,off){
+  off=off||0;
+  if(now>n.tEnd)return null;
+  const tA=Math.max(n.t,now), tB=n.tEnd;
+  if(tB<=tA)return null;
+  return {tA,tB,
+          zA:zWithOffset(tb,now,tA,mul,off),
+          zB:zWithOffset(tb,now,tB,mul,off),
+          samples:Math.max(8,Math.min(HOLD_SAMPLE_MAX,Math.ceil((tB-tA)/HOLD_SAMPLE_SEC)))};
+}
+function drawHold(n,tb,now,mul,dim,off){
+  off=off||0;
+  const sp=holdSpan(n,tb,now,mul,off);
+  if(!sp)return;
+  const tA=sp.tA,tB=sp.tB;
+  const N=sp.samples;
+  const[u0,u1]=laneU(n.lane);
+  const pad=(u1-u0)*0.18;
+  const LO=-0.05, HI=1.02;
+  let pz=zWithOffset(tb,now,tA,mul,off);
+  for(let i=1;i<=N;i++){
+    const t=tA+(tB-tA)*i/N;
+    const z=zWithOffset(tb,now,t,mul,off);
+    let a=pz,b=z;
+    pz=z;
+    if((a<LO&&b<LO)||(a>HI&&b>HI))continue;      // 両端とも範囲外
+    // 範囲へ線形にクリップする(クランプではなく切断)
+    if(a!==b){
+      let lo=Math.min(a,b),hi=Math.max(a,b);
+      const f=(v)=>(v-a)/(b-a);
+      if(lo<LO){const u=f(LO);if(u>0&&u<1){if(a<LO)a=LO;else b=LO;}}
+      if(hi>HI){const u=f(HI);if(u>0&&u<1){if(a>HI)a=HI;else b=HI;}}
+    }
+    a=Math.max(LO,Math.min(HI,a));b=Math.max(LO,Math.min(HI,b));
+    if(Math.abs(a-b)<1e-7)continue;
+    const lo=Math.min(a,b),hi=Math.max(a,b);
+    if(!Proj.visible(lo)||!Proj.visible(hi))continue;
+    const al=Math.min(fadeAlpha(Math.max(0,lo)),fadeAlpha(Math.max(0,hi)))*(dim?0.3:0.75);
+    quad(lo,hi,u0+pad,u1-pad,noteColor(),al,'hold');
+  }
+}
+
+// ---- 統一ヒットエフェクト ----
+// クリック・ワイプ・ホールドで同一の見た目を用いる。
+//   hit   : 図形輪郭の拡大 + フェード + ぼかし発光
+//   empty : ぼかし発光のみ(輪郭なし)。空打ちを弱いフィードバックで示す
+// ホールドは hit を一定間隔で連続発生させて表現する。
+// 間隔を空けても輪郭の寿命が重なるため、連続した帯として見える。
+const HOLD_FX_INTERVAL=0.11;   // ホールド中のエフェクト発生間隔
+const FX_GROW=0.075;           // 輪郭が広がる距離(レーン空間)
+const fxs=[];
+function pushFx(lane,grade,t,kind,layer){
+  fxs.push({lane,grade,t,kind:kind||'hit',layer:layer||0,
+            z:offOf(layer||0,t)/100});   // 発生時のオフセット位置に固定する
+}
+// ぼかし発光は Canvas の shadowBlur ではなく、
+// 放射状グラデーションのスプライトを加算合成して表現する。
+function drawFx(now){
+  for(let i=fxs.length-1;i>=0;i--){
+    const f=fxs[i];
+    const age=(now-f.t)/FLASH_SEC;
+    if(age<0||age>1){fxs.splice(i,1);continue;}
+    const col=C(GRADE_COLOR[f.grade]||'#ffffff');
+    const[u0,u1]=laneU(f.lane);
+    const e=1-(1-age)*(1-age);
+    const a=(1-age)*(1-age);
+    const zc=f.z;
+    if(!Proj.visible(zc))continue;
+    const y0=Proj.y(zc), xL=Proj.x(zc,u0), xR=Proj.x(zc,u1);
+    const gh=(xR-xL)*0.45*(1+e*0.6);
+    // 共通: 判定位置のぼかし発光
+    Gfx.quadPts([S(xL-gh*0.3,y0+gh),S(xR+gh*0.3,y0+gh),
+                 S(xR+gh*0.3,y0-gh),S(xL-gh*0.3,y0-gh)],
+                'glow',col,a*(f.kind==='empty'?0.35:0.6));
+    if(f.kind==='empty')continue;
+    // 図形輪郭の拡大
+    const zTop=Math.min(1.02,zc+FX_GROW*e);
+    const spread=(u1-u0)*0.10*e;
+    const a0=u0-spread,a1=u1+spread;
+    if(!Proj.visible(zTop))continue;
+    const pts=[S(Proj.x(zc,a0),Proj.y(zc)),S(Proj.x(zc,a1),Proj.y(zc)),
+               S(Proj.x(zTop,a1),Proj.y(zTop)),S(Proj.x(zTop,a0),Proj.y(zTop))];
+    strokeScreen([pts[0],pts[1],pts[2],pts[3],pts[0]],2.4,col,a*0.95);
+  }
+}
+// トレース描画。x は 0〜24(25分割)、u = -1 + x/12。
+// 時間ベースのクリップ: 現在時刻より過去の部分は描かない(仕様 5.5.2)。
+// 速度ゼロだと全頂点が同じ z に張り付き、片側から縮む挙動になる。
+function traceU(x){return -1+x/12;}
+function drawTrace(n,now,mul){
+  const tb=tableOf(n.layer), off=offOf(n.layer,now);
+  const vs=n.vertices;
+  if(now>vs[vs.length-1].t)return;
+  const pts=[];
+  for(let i=0;i+1<vs.length;i++){
+    let a=vs[i],b=vs[i+1];
+    if(b.t<now)continue;
+    if(a.t<now){                       // 時間クリップ: 現在時刻で切断
+      const f=(now-a.t)/(b.t-a.t);
+      a={t:now,x:a.x+(b.x-a.x)*f};
+    }
+    // 速度が一定なら時刻→位置は線形で、細分は不要。
+    // 速度が変化する区間だけ細かくする。
+    const tb2=tb;
+    const zMid=zWithOffset(tb2,now,(a.t+b.t)/2,mul,off);
+    const zA=zWithOffset(tb2,now,a.t,mul,off), zB=zWithOffset(tb2,now,b.t,mul,off);
+    const bend=Math.abs(zMid-(zA+zB)/2);
+    const SEG=bend<1e-6?1:Math.min(24,Math.max(4,Math.ceil(bend*400)));
+    for(let k=0;k<=SEG;k++){
+      const t=a.t+(b.t-a.t)*k/SEG;
+      const x=a.x+(b.x-a.x)*k/SEG;
+      const z=zWithOffset(tb,now,t,mul,off);
+      if(k===0&&pts.length&&Math.abs(pts[pts.length-1].z-z)<1e-9)continue;
+      pts.push({z,u:traceU(x)});
+    }
+  }
+  if(pts.length<2)return;
+  const col=C(traceColor());
+
+  // 描画範囲の境界で「正確に切る」。
+  // 端点の片方でも範囲内なら、その線分は境界まで描かれる。
+  // 「片方が入っていれば線分を丸ごと描く」方式は採らない。
+  // 範囲外へ大きくはみ出し、消失点を越えた点を描いて破綻しうるため。
+  // ホモグラフィは直線を直線へ写すので、レーン空間 (z,u) での補間で厳密に一致する。
+  const ZLO=-0.05, ZHI=1.02;
+  let run=[],alp=[],lastZ=null,lastU=null;
+  const flush=()=>{ if(run.length>=2)strokeStrip(run,2.6,col,alp); run=[];alp=[]; };
+  // トレースは距離による濃淡を持たない、単純な線とする。
+  // 不透明度を一定にすることで、折返し点で内側の四角形が重なっても
+  // 二重に合成されず、継ぎ目の濃さに段差が出ない。
+  const push=(z,u)=>{
+    run.push(S(Proj.x(z,u),Proj.y(z)));
+    alp.push(TRACE_ALPHA);   // トレースは透明度50%固定
+    lastZ=z; lastU=u;
+  };
+  for(let i=0;i+1<pts.length;i++){
+    const a=pts[i], b=pts[i+1];
+    const dz=b.z-a.z;
+    let t0=0,t1=1,skip=false;
+    if(Math.abs(dz)<1e-12){
+      if(a.z<ZLO||a.z>ZHI)skip=true;
+    }else{
+      const tl=(ZLO-a.z)/dz, th=(ZHI-a.z)/dz;
+      const lo=Math.min(tl,th), hi=Math.max(tl,th);
+      t0=Math.max(t0,lo); t1=Math.min(t1,hi);
+      if(t0>=t1)skip=true;
+    }
+    if(skip){ flush(); lastZ=null; continue; }
+    const zA=a.z+dz*t0, uA=a.u+(b.u-a.u)*t0;
+    const zB=a.z+dz*t1, uB=a.u+(b.u-a.u)*t1;
+    if(!Proj.visible(zA)||!Proj.visible(zB)){ flush(); lastZ=null; continue; }
+    // 直前の区間の終端と繋がっていなければ、いったん切って描き直す
+    if(lastZ===null||Math.abs(lastZ-zA)>1e-9||Math.abs(lastU-uA)>1e-9){
+      flush(); push(zA,uA);
+    }
+    push(zB,uB);
+  }
+  flush();
+}
+
+function drawJudgeLine(){
+  strokeScreen([S(Proj.x(0,-1),Proj.y(0)),S(Proj.x(0,1),Proj.y(0))],
+               3, C('#ffffff'), 1);
+}
+
+// トレースが「消費されている位置」へ ◆ を置く。
+//
+// 判定ライン(z=0)固定ではなく、そのレイヤーのオフセット位置に置く。
+// トレースが消える点は laneDistance = 0 の点であり、
+// オフセットを与えるとその点は z = offset/100 へ移動するため。
+// 判定ラインを基準にすると、オフセットで奥へ送った時にマーカーが付かない。
+//
+// 速度が正なら laneDistance = 0 ⟺ t = now で一意。
+// 速度ゼロでは区間全体が 0 になり定まらないので、
+// 現在時刻を含む区間の先端(縮んでいく点)のみを採用する。
+// 負速度では複数回 0 を横切りうるため、交差を全て拾う。
+const DIAMOND=7;   // px。判定ライン(lineWidth 3)に埋もれない大きさ
+function traceMarks(n,now,mul){
+  const tb=tableOf(n.layer), off=offOf(n.layer,now);
+  const vs=n.vertices, out=[];
+  if(now>vs[vs.length-1].t||now<vs[0].t)return out;
+  const zMark=off/100;
+  const dAt=(t)=>laneDistance(tb,now,t,mul);      // オフセットを含まない距離
+  for(let i=0;i+1<vs.length;i++){
+    const a=vs[i],b=vs[i+1];
+    if(b.t<now)continue;
+    const ta=Math.max(a.t,now);
+    const da=dAt(ta),db=dAt(b.t);
+    const xa=(a.t<now)?a.x+(b.x-a.x)*((now-a.t)/(b.t-a.t)):a.x;
+    if(Math.abs(da)<1e-9&&Math.abs(db)<1e-9){
+      if(a.t<=now&&now<=b.t)out.push({z:zMark,u:traceU(xa)});
+    }else if((da>0)!==(db>0)||da===0){
+      const f=da/(da-db);
+      out.push({z:zMark,u:traceU(xa+(b.x-xa)*f)});
+    }
+  }
+  return out;
+}
+function drawTraceMarks(now,mul){
+  for(const n of traceNotes){
+    if(!layerVisible(n.layer,now))continue;
+    const col=traceColor();
+    for(const m of traceMarks(n,now,mul)){
+      if(!Proj.visible(m.z))continue;
+      const X=Proj.x(m.z,m.u),Y=Proj.y(m.z),c=C(col);
+      const G=DIAMOND*2.6;
+      Gfx.quadPts([S(X-G,Y+G),S(X+G,Y+G),S(X+G,Y-G),S(X-G,Y-G)],'glow',c,0.5);
+      const D=DIAMOND*1.5;
+      Gfx.quadPts([S(X-D,Y+D),S(X+D,Y+D),S(X+D,Y-D),S(X-D,Y-D)],'diamond',c,TRACE_ALPHA);
+    }
+  }
+}
+// ===== [/MODULE] render =====
+
+
+// ===== [MODULE] chartfile =====
+// 譜面フォーマット仕様 v0.4 に従って JSON を読み込む。
+// 時刻は有理数 {m,n,d} で保存されており、ロード時に一度だけ秒へ変換する。
+
+function loadChartJSON(obj){
+  const err=[], warn=[];
+  const need=(c,m)=>{if(!c)err.push(m);};
+  need(obj && typeof obj==='object','JSON がオブジェクトではない');
+  if(err.length)return{errors:err,warnings:warn};
+  need(obj.formatVersion===1,'formatVersion が 1 ではない');
+  need(obj.timing && obj.timing.bpmChanges && obj.timing.bpmChanges.length,
+       'timing.bpmChanges が無い');
+  need(obj.timing && obj.timing.timeSignatures && obj.timing.timeSignatures.length,
+       'timing.timeSignatures が無い');
+  need(Array.isArray(obj.notes),'notes が配列でない');
+  if(err.length)return{errors:err,warnings:warn};
+
+  let tm;
+  try{
+    tm=new Timing(obj.timing.timeSignatures,obj.timing.bpmChanges,
+                  obj.timing.audioOffsetMs||0);
+  }catch(e){ return {errors:['timing の構築に失敗: '+e.message],warnings:warn}; }
+
+  const sec=(t)=>{
+    if(!t||typeof t.m!=='number'||typeof t.n!=='number'||typeof t.d!=='number')
+      throw new Error('時刻の形式が不正');
+    if(!(t.d>=1))throw new Error('d は1以上である必要がある');
+    if(!(t.n>=0&&t.n<t.d))throw new Error(`0<=n<d を満たさない (${t.n}/${t.d})`);
+    return tm.toSeconds(t);
+  };
+
+  const notes=[]; const seen=new Set();
+  try{
+    for(const n of obj.notes){
+      if(seen.has(n.id))err.push(`id ${n.id} が重複`);
+      seen.add(n.id);
+      if(!(n.layer>=0&&n.layer<8))err.push(`id ${n.id}: layer が 0〜7 の範囲外`);
+      const o={id:n.id,type:n.type,layer:n.layer};
+      if(n.type==='trace'){
+        if(!Array.isArray(n.vertices)||n.vertices.length<2){
+          err.push(`id ${n.id}: trace の頂点が2個未満`); continue;
+        }
+        o.vertices=n.vertices.map(v=>{
+          if(!(v.x>=0&&v.x<=24))err.push(`id ${n.id}: x が 0〜24 の範囲外`);
+          return {t:sec(v.time),x:v.x};
+        });
+        for(let i=1;i<o.vertices.length;i++)
+          if(o.vertices[i].t<o.vertices[i-1].t)err.push(`id ${n.id}: 頂点が時刻昇順でない`);
+      }else{
+        if(!(n.lane>=0&&n.lane<6))err.push(`id ${n.id}: lane が 0〜5 の範囲外`);
+        o.lane=n.lane; o.t=sec(n.time);
+        if(n.type==='hold'){
+          o.tEnd=sec(n.endTime);
+          if(!(o.tEnd>o.t))err.push(`id ${n.id}: endTime <= time`);
+        }else if(n.type!=='click'&&n.type!=='wipe'){
+          err.push(`id ${n.id}: 未知の type "${n.type}"`);
+        }
+      }
+      notes.push(o);
+    }
+  }catch(e){ err.push('ノーツの解釈に失敗: '+e.message); }
+
+  // レイヤー(速度・表示・オフセット)
+  const L={speed:{},vis:{},off:{}};
+  for(const ly of (obj.layers||[])){
+    const id=ly.id;
+    const conv=(segs)=>(segs||[]).map(sg=>({keys:sg.keys.map(k=>({t:sec(k.time),v:k.value}))}));
+    try{
+      if(ly.speedSegments&&ly.speedSegments.length)L.speed[id]=conv(ly.speedSegments);
+      if(ly.offsetSegments&&ly.offsetSegments.length)L.off[id]=conv(ly.offsetSegments);
+      if(ly.visibility&&ly.visibility.length)
+        L.vis[id]=ly.visibility.map(e=>({t:sec(e.time),visible:!!e.visible}));
+    }catch(e){ err.push(`layer ${id}: `+e.message); }
+    for(const [k,nm] of [['speed','speed'],['off','offset']]){
+      for(const e2 of validateSegments(L[k][id]||[],`L${id}.${nm}`))err.push(e2);
+    }
+    for(const sg of (L.off[id]||[]))for(const k of sg.keys)
+      if(k.v<-100||k.v>100)err.push(`L${id}.offset: 値域外 ${k.v}%`);
+  }
+
+  notes.sort((a,b)=>((a.t!==undefined?a.t:a.vertices[0].t)-(b.t!==undefined?b.t:b.vertices[0].t))||a.id-b.id);
+  const vc=validateChart(notes.filter(n=>n.type!=='trace'&&typeof n.t==='number'));
+  err.push(...vc.errors); warn.push(...vc.warnings);
+
+  return {errors:err,warnings:warn,timing:tm,notes,L,meta:obj.meta||{},
+          audioOffsetMs:(obj.timing.audioOffsetMs||0),
+          declared:obj.derived||null};
+}
+// ===== [/MODULE] chartfile =====
+
+// ===== [MODULE] input =====
+// 判定にはイベントのタイムスタンプを使う(フレーム処理時刻を使わない)。
+// KeyboardEvent.timeStamp は performance.now() と同じ基準。
+// キー割り当ては 1レーン1キー(仕様 3.8.3)。
+// 物理キー位置(event.code)で識別する。event.key はレイアウト依存のため使わない。
+let KEYS=['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'];
+let KEYMAP={};
+function rebuildKeymap(){
+  KEYMAP={};
+  KEYS.forEach((c,i)=>{ if(c)KEYMAP[c]=i; });
+}
+rebuildKeymap();
+// 割り当ての検査(仕様 3.8.4)
+function validateKeys(keys){
+  const e=[];
+  const seen={};
+  keys.forEach((c,i)=>{
+    if(!c){e.push(`レーン${i}: キーが未割り当て`);return;}
+    if(seen[c]!==undefined)e.push(`${c} がレーン${seen[c]}と${i}に重複`);
+    seen[c]=i;
+  });
+  return e;
+}
+const KEY_LABEL=(c)=>c?c.replace(/^Key|^Digit|^Numpad/,''):'—';
+const inputLat=[];
+function bindInput(){
+  window.addEventListener('keydown',e=>{
+    if(e.repeat)return;                       // OSのキーリピートは破棄
+    // 割り当て待ち中は、そのキーをレーンへ登録する
+    if(capturingLane>=0){
+      e.preventDefault();
+      if(e.code==='Escape'){capturingLane=-1;syncSettingsUI();return;}
+      const dup=KEYS.findIndex((c,i)=>c===e.code&&i!==capturingLane);
+      if(dup>=0)KEYS[dup]=null;               // 重複は相手側を解除する
+      KEYS[capturingLane]=e.code;
+      capturingLane=-1; rebuildKeymap(); syncSettingsUI();
+      return;
+    }
+    if(e.code==='Escape'){ e.preventDefault();
+      if(TEST){ TEST=false; postExit(); return; }   // テストはEscで即離脱
+      if(!resultsShown&&started)togglePause(); return; }
+    const lane=KEYMAP[e.code]; if(lane===undefined)return;
+    e.preventDefault();
+    if(!started||mode.value!=='manual'||!judge||judge.paused)return;
+    const ts=(typeof e.timeStamp==='number'&&e.timeStamp>0)?e.timeStamp:performance.now();
+    inputLat.push(performance.now()-ts);
+    judge.input(lane,true,judgeTimeFromPerf(ts));
+    keyVisual[lane]=performance.now();
+  });
+  window.addEventListener('keyup',e=>{
+    const lane=KEYMAP[e.code]; if(lane===undefined)return;
+    if(!started||mode.value!=='manual'||!judge||judge.paused)return;
+    const ts=(typeof e.timeStamp==='number'&&e.timeStamp>0)?e.timeStamp:performance.now();
+    judge.input(lane,false,judgeTimeFromPerf(ts));
+  });
+  // Q5 案B: フォーカス喪失でポーズ(離鍵イベントの取りこぼしを避ける)
+  window.addEventListener('blur',()=>{if(judge)judge.paused=true;});
+  window.addEventListener('focus',()=>{if(judge)judge.paused=false;});
+}
+const keyVisual=[0,0,0,0,0,0];
+// 判定タイミングオフセット(ミリ秒)。
+// 【重要】判定にのみ作用させ、描画位置には適用しない(仕様 3.7)。
+// 両方に効かせると、見た目と判定が二重にずれる。
+let JUDGE_OFFSET_MS=0;
+// 出力遅延補正込みの曲時刻を判定用の時刻へ変換する
+let latCompSec=0;
+function judgeTimeFromPerf(pms){
+  return Clock.fromPerf(pms)-latCompSec-JUDGE_OFFSET_MS/1000;
+}
+// ===== [/MODULE] input =====
+
+// ===== [MODULE] assets =====
+// スキン(画像)・ヒット音・背景の外部読み込み(仕様 第14章)。
+// マニフェスト(JSON)がファイル名で素材を参照し、
+// 同時にドロップされたファイルと突き合わせる。
+// 【要件】素材が欠落してもクラッシュせず、既定へ退避して警告を出すこと(第14.7節)。
+const SPRITE_KEYS=['click','wipe','hold','glow','diamond','white'];
+// スキンの配置は**テンプレートで固定**する(仕様 第14.3.5節)。
+// マニフェストで座標を指定する必要はなく、指定があればそちらを優先する。
+// 基準は 1024x1024。正方形であれば 512 / 2048 でも同じ比率で解釈する。
+const ATLAS_BASE=1024;
+const DEFAULT_SPRITES={
+  click:  {x: 16, y: 16, w:480, h:144},
+  wipe:   {x: 16, y:208, w:480, h: 80},
+  hold:   {x: 16, y:320, w:480, h:128},
+  glow:   {x:560, y: 16, w:384, h:384},
+  diamond:{x:560, y:432, w:192, h:192},
+  white:  {x:560, y:656, w: 64, h: 64},
+};
+function standardSprites(imgW,imgH){
+  const k=imgW/ATLAS_BASE, out={};
+  for(const n in DEFAULT_SPRITES){
+    const r=DEFAULT_SPRITES[n];
+    out[n]={x:r.x*k, y:r.y*k, w:r.w*k, h:r.h*k};
+  }
+  return out;
+}
+const SOUND_KEYS=['click','wipe','hold','empty'];
+const Assets={
+  pending:{},          // ファイル名 → File
+  manifest:null,
+  skinName:'内蔵(手続き生成)', layoutNote:'', colorNote:'',
+  sounds:{},           // 種別 → AudioBuffer
+  bgImage:null,
+  warnings:[],
+  put(f){ this.pending[f.name.toLowerCase()]=f; },
+  find(name){ return name?this.pending[String(name).toLowerCase()]:null; },
+
+  async apply(){
+    this.warnings.length=0;
+    const m=this.manifest;
+    if(!m)return;
+    this.skinName=m.name||'(名前なし)';
+    // 色の扱い。
+    //   colors 未指定           → テクスチャの色をそのまま出す(白で乗算)
+    //   colors:"default"       → 内蔵スキン相当の着色を行う
+    //   colors:{note:"#..."}   → 指定された色で着色する
+    const hex=/^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+    if(m.colors===undefined){
+      COLORS={note:'#ffffff',trace:'#ffffff',
+              gold:'#ffffff',white:'#ffffff',great:'#ffffff',miss:'#ffffff'};
+      this.colorNote='テクスチャの色をそのまま使用';
+    }else if(m.colors==='default'){
+      COLORS=Object.assign({},DEFAULT_COLORS);
+      this.colorNote='既定色で着色';
+    }else if(typeof m.colors==='object'){
+      COLORS=Object.assign({note:'#ffffff',trace:'#ffffff',
+        gold:'#ffffff',white:'#ffffff',great:'#ffffff',miss:'#ffffff'},{});
+      let bad=[];
+      for(const k in DEFAULT_COLORS){
+        const v=m.colors[k];
+        if(v===undefined)continue;
+        if(hex.test(v))COLORS[k]=v; else bad.push(k);
+      }
+      if(bad.length)this.warnings.push('色の指定が不正: '+bad.join(', ')+'(白を使用)');
+      this.colorNote='スキン指定色';
+    }
+    // --- アトラス ---
+    if(m.atlas){
+      const f=this.find(m.atlas);
+      if(!f)this.warnings.push(`アトラス画像 ${m.atlas} が見つかりません(既定を使用)`);
+      else{
+        try{
+          const img=await loadImageFile(f);
+          if(img.width!==img.height)
+            this.warnings.push(`アトラスが正方形ではありません(${img.width}x${img.height})`);
+          // 標準配置を基準にし、マニフェストに座標があればそれで上書きする
+          const sp=standardSprites(img.width,img.height);
+          let custom=0;
+          for(const k of SPRITE_KEYS){
+            const r=m.sprites&&m.sprites[k];
+            if(r&&r.w>0&&r.h>0){sp[k]=r;custom++;}
+          }
+          this.layoutNote=custom?`座標指定 ${custom} 件で上書き`:'標準配置';
+          Gfx.setAtlas(img,sp);
+        }catch(e){ this.warnings.push('アトラスの読み込みに失敗: '+e.message); }
+      }
+    }
+    // --- ヒット音 ---
+    for(const k of SOUND_KEYS){
+      const nm=m.sounds&&m.sounds[k];
+      if(!nm)continue;
+      const f=this.find(nm);
+      if(!f){ this.warnings.push(`ヒット音 ${nm} が見つかりません(合成音を使用)`); continue; }
+      try{ this.sounds[k]=await Clock.ctx.decodeAudioData(await f.arrayBuffer()); }
+      catch(e){ this.warnings.push(`ヒット音 ${nm} のデコードに失敗`); }
+    }
+    // --- 背景 ---
+    if(m.background){
+      const f=this.find(m.background);
+      if(!f)this.warnings.push(`背景 ${m.background} が見つかりません`);
+      else{
+        try{ this.bgImage=await loadImageFile(f); Gfx.setBackground(this.bgImage); }
+        catch(e){ this.warnings.push('背景の読み込みに失敗'); }
+      }
+    }
+  },
+};
+function loadImageFile(f){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(f);
+    const im=new Image();
+    im.onload=()=>{URL.revokeObjectURL(url);res(im);};
+    im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('画像として読めません'));};
+    im.src=url;
+  });
+}
+
+// --- 音量(仕様 第14.6節) ---
+// 知覚は対数的なため、スライダー値をそのまま振幅に使わず二乗カーブを用いる。
+const VOL={master:80,music:80,click:70,wipe:70,hold:70,empty:35};
+const amp=(v)=>Math.pow(Math.max(0,Math.min(100,v))/100,2);
+function playHit(type){
+  if(!Clock.ctx)return;
+  const g=amp(VOL.master)*amp(VOL[type]!==undefined?VOL[type]:70);
+  if(g<=0.0001)return;
+  const t=Clock.ctx.currentTime;
+  const gain=Clock.ctx.createGain();
+  gain.gain.value=g; gain.connect(Clock.ctx.destination);
+  const buf=Assets.sounds[type];
+  if(buf){
+    const s=Clock.ctx.createBufferSource();
+    s.buffer=buf; s.connect(gain); s.start(t);
+  }else{
+    // 素材が無い場合は合成音へ退避する
+    const o=Clock.ctx.createOscillator();
+    const f={click:1500,wipe:2100,hold:900,empty:520}[type]||1400;
+    o.type='square'; o.frequency.value=f;
+    const e=Clock.ctx.createGain();
+    e.gain.setValueAtTime(0.0001,t);
+    e.gain.exponentialRampToValueAtTime(0.5,t+0.002);
+    e.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+    o.connect(e); e.connect(gain); o.start(t); o.stop(t+0.07);
+  }
+}
+// ===== [/MODULE] assets =====
+
+// ===== [MODULE] settings =====
+let JUDGE_LINE=0;      // 判定ライン位置(レーン長比)
+let LANE_OPACITY=0.9;  // レーンの不透明度(0〜1)。低いほど背景が透ける
+let capturingLane=-1;  // キー割り当ての入力待ち中のレーン
+
+function currentSettings(){
+  return {
+    kind:'rhythm-prototype-settings', version:1,
+    judgeOffsetMs:JUDGE_OFFSET_MS,
+    keys:KEYS.slice(),
+    judgeLine:Math.round(JUDGE_LINE*100),
+    shapeStep:+shape.value, laneWidth:+lw.value, hispeed:+hs.value,
+    filter:filt.value, farFade:fade.checked, latencyComp:latcomp.checked,
+    volumes:Object.assign({},VOL),
+    background:{mode:bgmode.value, dim:+bgdim.value},
+  };
+}
+function applySettings(o){
+  const err=[];
+  if(!o||o.kind!=='rhythm-prototype-settings')return ['設定ファイルではありません'];
+  if(typeof o.judgeOffsetMs==='number')
+    JUDGE_OFFSET_MS=Math.max(-100,Math.min(100,Math.round(o.judgeOffsetMs)));
+  if(Array.isArray(o.keys)&&o.keys.length===6){
+    const e=validateKeys(o.keys);
+    if(e.length)err.push(...e); else {KEYS=o.keys.slice();rebuildKeymap();}
+  }
+  if(typeof o.judgeLine==='number')
+    JUDGE_LINE=Math.max(0,Math.min(60,o.judgeLine))/100;
+  if(typeof o.shapeStep==='number')shape.value=Math.max(0,Math.min(9,o.shapeStep));
+  if(typeof o.laneWidth==='number')lw.value=Math.max(10,Math.min(100,o.laneWidth));
+  if(typeof o.hispeed==='number')hs.value=Math.max(1,Math.min(11,o.hispeed));
+  if(typeof o.filter==='string')filt.value=o.filter;
+  if(typeof o.farFade==='boolean')fade.checked=o.farFade;
+  if(typeof o.latencyComp==='boolean')latcomp.checked=o.latencyComp;
+  if(typeof o.laneOpacity==='number')LANE_OPACITY=Math.max(0,Math.min(100,o.laneOpacity))/100;
+  if(o.volumes)for(const k in VOL)
+    if(typeof o.volumes[k]==='number')VOL[k]=Math.max(0,Math.min(100,o.volumes[k]));
+  if(o.background){
+    if(typeof o.background.mode==='string')bgmode.value=o.background.mode;
+    if(typeof o.background.dim==='number')bgdim.value=Math.max(0,Math.min(90,o.background.dim));
+  }
+  syncSettingsUI();
+  return err;
+}
+function syncSettingsUI(){
+  document.querySelectorAll('.vol').forEach(el=>{
+    el.value=VOL[el.dataset.k];
+    el.nextElementSibling.textContent=el.value;
+  });
+  bgdimV.textContent=bgdim.value+'%';
+  {
+    const w=Assets.warnings;
+    document.getElementById('assetinfo').innerHTML=
+      'スキン: '+Assets.skinName+(Assets.layoutNote?(' / '+Assets.layoutNote):'')
+      +(Assets.colorNote?(' / '+Assets.colorNote):'')+
+      (w.length?('<br><span class="warn">'+w.join('<br>')+'</span>'):'');
+  }
+  joff.value=JUDGE_OFFSET_MS;
+  joffV.textContent=(JUDGE_OFFSET_MS>=0?'+':'')+JUDGE_OFFSET_MS+' ms';
+  jline.value=Math.round(JUDGE_LINE*100);
+  jlineV.textContent=Math.round(JUDGE_LINE*100)+'%';
+  syncLabels();
+  const box=document.getElementById('keys');
+  box.innerHTML='';
+  KEYS.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.className='keybtn'+(capturingLane===i?' wait':'');
+    b.textContent=(capturingLane===i)?'…':KEY_LABEL(c);
+    b.onclick=()=>{capturingLane=(capturingLane===i?-1:i);syncSettingsUI();};
+    box.appendChild(b);
+  });
+  const e=validateKeys(KEYS);
+  document.getElementById('keyinfo').innerHTML=
+    e.length?('<span class="bad">'+e.join(' / ')+'</span>')
+            :'ボタンを押してから、割り当てたいキーを押してください。';
+}
+
+// 判定誤差の中央値からオフセットを推奨する。
+// 平均ではなく中央値を使うのは、ミスや空打ちによる外れ値の影響を避けるため。
+function calibrationStats(){
+  if(!judge)return null;
+  const v=judge.log.filter(r=>r.type==='click'&&r.grade!=='miss').map(r=>r.errMs);
+  if(v.length<8)return {n:v.length};
+  const a=v.slice().sort((x,y)=>x-y);
+  const med=a[Math.floor(a.length/2)];
+  const q1=a[Math.floor(a.length*0.25)], q3=a[Math.floor(a.length*0.75)];
+  return {n:v.length,median:med,q1,q3,suggest:Math.round(JUDGE_OFFSET_MS+med)};
+}
+function updateCalInfo(){
+  const c=calibrationStats();
+  const el=document.getElementById('calinfo');
+  if(!c){el.textContent='計測: —';return;}
+  if(c.median===undefined){el.textContent=`計測: ${c.n} 打(8打以上で較正できます)`;return;}
+  el.textContent=`計測: ${c.n} 打  中央値 ${c.median>=0?'+':''}${c.median.toFixed(1)}ms  `+
+                 `四分位 ${c.q1.toFixed(1)}〜${c.q3.toFixed(1)}ms  → 推奨 ${c.suggest>=0?'+':''}${c.suggest}ms`;
+}
+// ===== [/MODULE] settings =====
+
+// ===== [MODULE] filedrop =====
+// ローカルファイルとして開く前提のため fetch は使えない。
+// ドラッグ&ドロップでファイルを受け取る。
+function setupDrop(){
+  const dz=document.getElementById('drop');
+  let depth=0;
+  const show=(on)=>{dz.className=on?'on':'';};
+  window.addEventListener('dragover',e=>{e.preventDefault();});
+  window.addEventListener('dragenter',e=>{e.preventDefault();depth++;show(true);});
+  window.addEventListener('dragleave',e=>{e.preventDefault();if(--depth<=0){depth=0;show(false);}});
+  window.addEventListener('drop',async e=>{
+    e.preventDefault();depth=0;show(false);
+    // マニフェストを先に読むと、同時に落ちた音声の役割を判別できる
+    const fs=[...e.dataTransfer.files];
+    fs.sort((a,b)=>(a.name.toLowerCase().endsWith('.json')?0:1)-(b.name.toLowerCase().endsWith('.json')?0:1));
+    for(const f of fs)await takeFile(f);
+    await afterLoad();
+  });
+}
+async function takeFile(f){
+  const nm=f.name.toLowerCase();
+  if(nm.endsWith('.json')){
+    let obj=null;
+    try{ obj=JSON.parse(await f.text()); }catch(err){ chartName='JSON 解析失敗'; return; }
+    if(obj && obj.kind==='rhythm-prototype-skin'){
+      Assets.manifest=obj; Assets.put(f);
+      return;
+    }
+    if(obj && obj.kind==='rhythm-prototype-settings'){
+      const e=applySettings(obj);
+      document.getElementById('keyinfo').innerHTML=
+        e.length?('<span class="bad">'+e.join(' / ')+'</span>'):'設定を読み込みました';
+      return;
+    }
+    try{
+      const r=loadChartJSON(obj);
+      if(r.errors.length){ RD=null; chartName='読み込み失敗'; Check.chartErrors=r.errors.slice(0,6); return; }
+      RD=r; chartName=f.name; Check.chartErrors=[];
+    }catch(err){ RD=null; chartName='譜面の解釈に失敗: '+err.message; }
+  }else if(/\.(png|jpg|jpeg|webp|gif)$/.test(nm)){
+    Assets.put(f);                       // 画像はマニフェストが参照する
+  }else if(/\.(wav|ogg|mp3|flac|m4a)$/.test(nm)){
+    // 音声はマニフェストが参照していればヒット音、そうでなければ楽曲とみなす
+    Assets.put(f);
+    const m=Assets.manifest;
+    const usedAsSound=m&&m.sounds&&Object.values(m.sounds)
+      .some(v=>String(v).toLowerCase()===nm);
+    if(!usedAsSound){
+      try{
+        audioBuf=await Clock.ctx.decodeAudioData(await f.arrayBuffer());
+        audioName=f.name;
+      }catch(err){ audioBuf=null; audioName='デコード失敗'; }
+    }
+  }
+}
+async function afterLoad(){
+  if(Assets.manifest)await Assets.apply();
+  const el=document.getElementById('loaded');
+  el.textContent='譜面: '+(chartName||'内蔵')+'  / 音源: '+(audioName||'なし')
+                +'  / スキン: '+Assets.skinName;
+  if(RD){
+    if(![...scen.options].some(o=>o.value==='REAL')){
+      const o=document.createElement('option');
+      o.value='REAL'; o.textContent='◆ 読み込み譜面';
+      scen.insertBefore(o,scen.firstChild);
+    }
+    scen.value='REAL';
+    loadScenario('REAL');
+    restart();
+  }
+}
+// ===== [/MODULE] filedrop =====
+
+// ===== [MODULE] main =====
+const shape=document.getElementById('shape'),hs=document.getElementById('hs'),
+      lw=document.getElementById('lw'),snd=document.getElementById('snd'),
+      grid=document.getElementById('grid'),ov=document.getElementById('overlay'),
+      filt=document.getElementById('filt'),fade=document.getElementById('fade'),
+      latcomp=document.getElementById('latcomp'),
+      joff=document.getElementById('joff'),joffV=document.getElementById('joffV'),
+      jline=document.getElementById('jline'),jlineV=document.getElementById('jlineV'),
+      hitsnd=document.getElementById('hitsnd'),
+      bgmode=document.getElementById('bgmode'),bgdim=document.getElementById('bgdim'),
+      bgdimV=document.getElementById('bgdimV'),
+      fx=document.getElementById('fx'),mode=document.getElementById('mode'),
+      hud=document.getElementById('hud'),
+      scen=document.getElementById('scen');
+const shapeV=document.getElementById('shapeV'),hsV=document.getElementById('hsV'),
+      lwV=document.getElementById('lwV');
+
+let started=false,rafId=0,lastFrameT=0,scheduledUpTo=-1;
+let resultsShown=false;
+let failing=false,failStart=0;        // ゲージ0失敗 → 暗転 → リザルト
+const FAIL_DELAY=850;                 // 暗転してからリザルト遷移までのミリ秒
+const LEAD_IN=1.0;            // 曲開始前の助走(秒)
+let paused=false,pauseSong=0;
+let pendingChart=null,pendingAudioRaw=null,pendingSongTitle=null,pendingSkin=null,pendingPlayBg=null;
+let TEST=false,testStartSec=0;   // エディタからのテストプレイ(リザルト無し・ESC/終端で離脱・指定位置から)
+function postExit(){ try{ if(EMBEDDED)window.parent.postMessage({type:'editorExit'},'*'); }catch(_){} }
+// プレイ背景の合成設定(背景座標系 1280x720 / ジャケット固定位置)
+const BG_W=1280, BG_H=720, JACKET_RECT={x:90,y:120,w:410,h:410};
+const _P=new URLSearchParams(location.search), EMBED=_P.get("embed")==="1", DBG=_P.get("debug")==="1";
+const EMBEDDED=(window.parent!==window);
+let autoEvents=[],autoIdx=0,logSeen=0,emptySeen=0,selfTestResult=null;
+// 実データモード
+let RD=null;          // {timing,notes,L,meta} 読み込み済み譜面
+let activeTiming=null;   // 現在有効な Timing(拍線・レポートが参照する)
+let audioBuf=null, audioName='', chartName='';
+const Sync={n:0,sum:0,min:1e9,max:-1e9,last:0,samples:[]};
+function syncReset(){Sync.n=0;Sync.sum=0;Sync.min=1e9;Sync.max=-1e9;Sync.last=0;Sync.samples.length=0;}
+const holdFxAt=new Map();
+
+function syncLabels(){
+  shapeV.textContent=shape.value;
+  hsV.textContent=(+hs.value).toFixed(1);
+  lwV.textContent=lw.value+'%';
+}
+[shape,hs,lw].forEach(el=>el.addEventListener('input',syncLabels));
+syncLabels();
+
+scen.addEventListener('change',()=>{if(started){loadScenario(scen.value);restart();}});
+
+function restart(){
+  resultsShown=false; { const rr=document.getElementById('results'); if(rr)rr.style.display='none'; }
+  failing=false; { const ff=document.getElementById('failfade'); if(ff){ff.style.opacity='0';ff.style.display='none';} }
+  paused=false; { const pm=document.getElementById('pausemenu'); if(pm)pm.style.display='none'; }
+  const s0=(TEST&&testStartSec>0)?testStartSec:0;   // テストは指定位置から
+  Clock.start(0);
+  syncReset();
+  if(RD&&audioBuf){
+    // 曲時刻 s0 = 音源の該当位置。audioOffsetMs は譜面側のずれとして加味する。助走 LEAD_IN 秒。
+    Clock.playBuffer(audioBuf, s0-(RD.audioOffsetMs||0)/1000, LEAD_IN);
+  }else{
+    Clock.startRef += LEAD_IN - s0;   // 音源なしでも曲時刻を s0-LEAD から開始
+  }
+  scheduledUpTo=s0-0.001;fxs.length=0;inputLat.length=0;
+  judge=new Judge(chartNotes,chartVis);
+  autoEvents=buildAutoplay(chartNotes,{exclude:judge.ghostIds});
+  autoIdx=0;logSeen=0;emptySeen=0;holdFxAt.clear();
+  if(s0>0){ judge.advanceTo(s0); logSeen=judge.log.length; emptySeen=judge.emptyLog.length;   // 開始前ノーツのFX/発音を抑制
+    while(autoIdx<autoEvents.length&&autoEvents[autoIdx].t<s0)autoIdx++; }
+  Check.reset();
+}
+
+function frame(){
+  rafId=requestAnimationFrame(frame);
+  if(paused)return;
+  const prevNow=Check.prevNow;
+  // 出力遅延を差し引くと、曲時刻は「いま耳に届いている位置」を表す。
+  // 描画も判定も同じ時刻を使うことで、音・見た目・判定が一致する。
+  const latc=(latcomp.checked&&Clock.src)?Clock.outLatency():0;
+  latCompSec=latc;
+  const now=Clock.tick()-latc;
+  // 同期誤差 = 曲時刻 − 音源の再生位置。
+  // 音源と ctx.currentTime は同一クロックなので、ここに現れるずれは
+  // performance.now 基準の曲時刻が音源から離れた量そのものである。
+  if(Clock.src){
+    const ap=Clock.audioPos()-latc;
+    const e=(now-ap)*1000;
+    Sync.n++;Sync.sum+=e;Sync.last=e;
+    if(e<Sync.min)Sync.min=e; if(e>Sync.max)Sync.max=e;
+    if(Sync.n%30===0){Sync.samples.push({t:now,e});if(Sync.samples.length>600)Sync.samples.shift();}
+  }
+  const mul=hispeedMultiplier(+hs.value);
+  Proj.set(CW,CH,+shape.value,+lw.value,JUDGE_LINE);
+
+  // --- 打音の予約(0.4秒先読み)。速度倍率とは無関係に定刻で鳴る ---
+  if(snd.checked&&!Clock.src){
+    const horizon=now+0.4;
+    for(const n of chartNotes){
+      if(n.t<=scheduledUpTo)continue;
+      if(n.t>horizon)break;
+      Clock.blip(n.t,n.layer===1?1900:1400);
+      scheduledUpTo=n.t;
+    }
+  }else{scheduledUpTo=Math.max(scheduledUpTo,now);}
+
+  // --- 判定 ---
+  if(judge&&!judge.paused){
+    // 判定用の時刻。描画用の now とは独立に進める(仕様 3.7)
+    const jnow=now-JUDGE_OFFSET_MS/1000;
+    if(mode.value==='auto'){
+      while(autoIdx<autoEvents.length&&autoEvents[autoIdx].t<=jnow){
+        const e=autoEvents[autoIdx++];judge.input(e.lane,e.down,e.t);
+      }
+    }
+    judge.advanceTo(jnow);
+    while(logSeen<judge.log.length){
+      const r=judge.log[logSeen++];
+      if(fx.checked&&r.type!=='hold')pushFx(r.lane,r.grade,now,'hit',r.layer);
+      if(fx.checked&&r.type==='hold'&&r.grade==='miss')
+        pushFx(r.lane,'miss',now,'hit',r.layer);
+      // ヒット音はプレイヤーの入力に対する反応として鳴らす(仕様 14.5.1)。
+      // ミスは発音しない。ホールドは状態変化時のみ(連続発生には付けない)
+      if(hitsnd.checked&&r.grade!=='miss'&&r.type!=='hold')playHit(r.type);
+    }
+    if(PMOD.failAtZero&&judge.failed&&!failing)startFail(jnow);
+    while(emptySeen<judge.emptyLog.length){
+      const e=judge.emptyLog[emptySeen++];
+      if(fx.checked)pushFx(e.lane,'white',now,'empty',0);
+      if(hitsnd.checked)playHit('empty');
+    }
+    // ホールド中は hit エフェクトを一定間隔で連続発生させる。
+    // 「押している間だけ」発生させることで、離した瞬間に演出が止まり、
+    // 猶予を消費していることがプレイヤーに伝わる。
+    if(fx.checked){
+      for(const n of judge.activeHolds(now)){
+        const last=holdFxAt.get(n.id);
+        if(last===undefined||now-last>=HOLD_FX_INTERVAL){
+          if(last===undefined&&hitsnd.checked)playHit('hold');   // 開始時のみ発音
+          holdFxAt.set(n.id,now);
+          pushFx(n.lane,'gold',now,'hit',n.layer);
+        }
+      }
+    }
+  }
+
+  // --- 描画 ---
+  Gfx.setFilter(filt.value);
+  FADE_ON=fade.checked;
+  Gfx.begin();
+  // 背景はレーンより手前に描かない(仕様 14.4.2)
+  if(Gfx.texBG&&bgmode.value!=='off'){
+    Gfx.rectTex(Gfx.texBG,0,0,CW,CH,1-(+bgdim.value)/100);
+  }
+  drawLane();
+  drawBeatLines(now,mul);
+  drawJudgeLine();          // トレースより先に描き、線の上に乗るようにする
+
+  // 速度に負値・ゼロを許すため z は時刻に対して単調でない。
+  // 早期 break や二分探索によるカリングは使えず、全ノーツを評価する(仕様 7.5)。
+  let drawn=0;
+  for(const n of chartNotes){
+    if(n.type==='trace')continue;                    // トレースは後段でまとめて描く
+    const tb=tableOf(n.layer);
+    const off=offOf(n.layer,now);
+    const z=zWithOffset(tb,now,n.t,mul,off);
+    Check.evaluated++;
+    if(prevNow!==now)Check.landing(n,prevNow,now,mul);
+    if(!layerVisible(n.layer,now))continue;          // 非表示区間
+    const st=judge?judge.byId.get(n.id):null;
+    if(n.type==='hold'){
+      if(now>n.tEnd)continue;
+      drawHold(n,tb,now,mul,st&&st.done&&st.grade==='miss',off);
+      drawn++;continue;
+    }
+    // 判定済み、またはヒット時刻を過ぎたら消す(時間ベースのカリング)
+    if((st&&st.done)||n.t<=now)continue;
+    if(z<-0.05||z>1.02)continue;
+    Check.arithmetic(n,mul);
+    if(z<0)continue;
+    const[u0,u1]=laneU(n.lane);
+    const isW=n.type==='wipe';
+    const pad=(u1-u0)*(isW?0.24:0.06);
+    quad(z,Math.min(1.02,z+(isW?NOTE_THICK*0.6:NOTE_THICK)),u0+pad,u1-pad,
+         noteColor(),fadeAlpha(z),isW?'wipe':'click');
+    if(n.layer!==0&&Proj.visible(z))
+      strokeScreen([S(Proj.x(z,u0+pad),Proj.y(z)),S(Proj.x(z,u1-pad),Proj.y(z))],
+                   1.5, C('#ffffff'), fadeAlpha(z)*0.9);
+    drawn++;
+  }
+  for(const n of traceNotes){
+    if(!layerVisible(n.layer,now))continue;
+    drawTrace(n,now,mul);drawn++;
+  }
+  // 押下中のレーンを光らせる(手動プレイの手応え確認用)
+  for(let l=0;l<6;l++){
+    const age=(performance.now()-keyVisual[l])/140;
+    if(age>=0&&age<1){
+      const[a,b]=laneU(l);
+      quad(0,0.03,a,b,'#ffffff',(1-age)*0.18);
+    }
+  }
+  drawFx(now);
+  drawTraceMarks(now,mul);  // 最前面。判定ラインに埋もれないようにする
+  Gfx.flush();
+  updateHud();
+  Check.drawn=drawn;
+  Check.prevNow=now;
+  Check.projection();
+  Check.statics();
+  Check.numeric(now);
+  Check.clipWatch(now,mul);
+
+  const pt=performance.now();
+  if(lastFrameT){const dt=pt-lastFrameT;Check.fpsAcc.push(1000/dt);
+    if(Check.fpsAcc.length>120)Check.fpsAcc.shift();}
+  lastFrameT=pt;
+  Check.frames++;Check.elapsed=now;
+
+  if(Check.frames%6===0)updateOverlay(now,drawn,mul);
+  if(Check.frames%30===0&&document.getElementById('cfg').className)updateCalInfo();
+  if(TEST){
+    if(now>chartEnd){ TEST=false; postExit(); }   // 終端でエディタへ戻る(リザルト無し)
+  }else if(failing){
+    if(!resultsShown && performance.now()-failStart>=FAIL_DELAY)showResults();
+  }else if(now>chartEnd){
+    if(RD && scen.value==='REAL'){ if(!resultsShown)showResults(); }
+    else restart();
+  }
+}
+
+// ===== [MODULE] playmods =====
+// プレイ修飾子。スキル/パートナー/イベントが将来このオブジェクトを設定する。
+// エンジンはここを読むだけ。挙動を変える単一の入口。
+const PMOD_DEFAULT={
+  gauge:0,          // 0=OFF, 1..5 = HPゲージのレベル
+  mirror:false,     // レーン左右反転
+  judgeMeter:false, // 判定メーター(右下)
+  statsPanel:false, // 統計 CS/S/N/M(右下)
+  comboDetail:false,// コンボ詳細(右下)
+  scoreMode:'add',  // 'add' 加算 / 'sub' 減算(1010000起点) / 'ratio' 割合(最大101.00%)
+  failAtZero:false, // ゲージ0で失敗扱いにするか(将来のハード用。既定は削れても続行)
+};
+let PMOD={...PMOD_DEFAULT};
+function applyMods(m){
+  PMOD={...PMOD_DEFAULT};
+  if(!m||typeof m!=='object')return;
+  if(typeof m.gauge==='number')PMOD.gauge=Math.max(0,Math.min(5,Math.round(m.gauge)));
+  PMOD.mirror=!!m.mirror;
+  PMOD.judgeMeter=!!m.judgeMeter;
+  PMOD.statsPanel=!!m.statsPanel;
+  PMOD.comboDetail=!!m.comboDetail;
+  if(m.scoreMode==='add'||m.scoreMode==='sub'||m.scoreMode==='ratio')PMOD.scoreMode=m.scoreMode;
+  PMOD.failAtZero=!!m.failAtZero;
+}
+// HPゲージのレベル別増減。white/gold は「Perfect以上」。
+function gaugeDelta(level,grade){
+  const T={
+    1:{miss:-50, great:0,   white:10, gold:10},
+    2:{miss:-75, great:0,   white:8,  gold:8 },
+    3:{miss:-100,great:0,   white:5,  gold:5 },
+    4:{miss:-100,great:-20, white:5,  gold:5 },
+    5:{miss:-150,great:-50, white:1,  gold:5 },
+  };
+  const r=T[level]||T[1]; return r[grade]||0;
+}
+// レーン左右反転を譜面へ適用(ロード時に一度だけ)。
+function applyMirror(rd){
+  if(!rd||!Array.isArray(rd.notes))return;
+  for(const n of rd.notes){
+    if(n.type==='trace'){ if(Array.isArray(n.vertices))for(const v of n.vertices)v.x=24-v.x; }
+    else if(typeof n.lane==='number')n.lane=(LANES_N-1)-n.lane;
+  }
+}
+// スコア表示。add=加算 / sub=1010000起点の減算 / ratio=割合(最大101.00%)
+function scoreDisplay(){
+  const c=judge.counts, jc=c.gold+c.white+c.great+c.miss;
+  if(PMOD.scoreMode==='ratio'){
+    // 判定済ノーツのみの平均達成率(現在地までの達成状況)。全Perfect+で101.00%。
+    const pct=jc?(judge.sumCoef/jc*100):0;
+    return pct.toFixed(2)+'%';
+  }
+  if(PMOD.scoreMode==='sub'){
+    const tot=judge.total||1;
+    const deficit=(1000000/tot)*(1.01*jc - judge.sumCoef);
+    return Math.round(1010000-deficit).toLocaleString();
+  }
+  return Math.round(judge.score()).toLocaleString();
+}
+function judgeMeterBox(){
+  const l=judge.last, e=l?Math.max(-100,Math.min(100,l.errMs)):0, pos=50+e/2;
+  const col=l?GRADE_COLOR[l.grade]:'#8090a4';
+  return `<div class="skbox"><div style="font-size:10px;color:#9fb0c6;margin-bottom:4px">`+
+    `判定メーター${l?'　'+(e>=0?'+':'')+e.toFixed(0)+'ms':''}</div>`+
+    `<div style="position:relative;height:9px;background:rgba(255,255,255,.10)">`+
+    `<div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#5a6b82"></div>`+
+    `<div style="position:absolute;left:${pos}%;top:-2px;width:3px;height:13px;background:${col};transform:translateX(-50%)"></div>`+
+    `</div></div>`;
+}
+function comboDetailText(c){
+  if(c.miss>0)return '<span style="color:#9fb0c6">コンボ途切れ</span>';
+  const judged=c.gold+c.white+c.great;
+  if(judged===0)return '<span class="dim">—</span>';
+  if(c.great>0)return `<span style="color:${GRADE_COLOR.white}">★ Full Combo</span>`;
+  if(c.white>0)return `<span style="color:${GRADE_COLOR.white}">★ All SYNC</span>`;
+  return `<span style="color:${GRADE_COLOR.gold}">★ All Critical SYNC</span>`;
+}
+// 通貨(将来のショップで使用)。倍率は暫定。パートナー/イベントで差し替える。
+function rewardRank(sc){return sc>=1010000?'MAX':sc>=1000000?'S+':sc>=990000?'S':sc>=970000?'A+':sc>=940000?'A':sc>=900000?'B':sc>=800000?'C':'D';}
+const REWARD_MULT={MAX:2.0,'S+':1.8,S:1.6,'A+':1.4,A:1.2,B:1.0,C:0.8,D:0.5};
+function computeReward(c,sc){
+  const base=10 + c.gold*0.01 + c.white*0.005;
+  const rm=REWARD_MULT[rewardRank(sc)]||1;
+  const partnerMult=1, eventMult=1, partnerFlat=0; // TODO: パートナー/イベントで供給
+  return Math.floor(base*rm*partnerMult*eventMult)+partnerFlat;
+}
+// 失敗シーケンス開始: 残ノーツを全MISS化 → 暗転 → FAIL_DELAY後にリザルト。
+function startFail(jnow){
+  if(failing||resultsShown||!judge)return;
+  failing=true; failStart=performance.now();
+  judge.failAll(jnow);
+  logSeen=judge.log.length; emptySeen=judge.emptyLog.length;  // 強制ミスの演出・発音は抑制
+  judge.paused=true;
+  try{ Clock.stopBuffer(); }catch(_){}
+  const ff=document.getElementById('failfade');
+  if(ff){ ff.style.display='flex'; requestAnimationFrame(()=>{ ff.style.opacity='1'; }); }
+}
+// ===== [/MODULE] playmods =====
+
+function updateHud(){
+  const scEl=document.getElementById('tScore'), cbEl=document.getElementById('tCombo');
+  const wrap=document.getElementById('hpwrap'), fill=document.getElementById('hpfill'), pct=document.getElementById('hppct');
+  if(!judge){ if(scEl)scEl.textContent='0'; if(cbEl)cbEl.innerHTML='';
+    if(wrap)wrap.style.display='none'; if(pct)pct.style.display='none'; hud.innerHTML=''; return; }
+  // 上部バー
+  if(scEl)scEl.textContent=scoreDisplay();
+  if(cbEl)cbEl.innerHTML=judge.combo>0?`<span class="clabel">COMBO</span>${judge.combo}`:'';
+  if(PMOD.gauge>0){
+    const p=Math.max(0,Math.min(100,Math.round((judge.hp||0)/10)));
+    wrap.style.display='block'; pct.style.display='block';
+    fill.style.width=p+'%'; pct.textContent=p+'%';
+    fill.style.background = p<=20?'linear-gradient(90deg,#f0553c,#ff7a5a)'
+      : p<=50?'linear-gradient(90deg,#f0a63c,#ffd07a)':'linear-gradient(90deg,#37c98a,#7fe38a)';
+  }else{ wrap.style.display='none'; pct.style.display='none'; }
+  // 右下スキルボックス(縦積み)
+  const c=judge.counts; let html='';
+  if(PMOD.judgeMeter)html+=judgeMeterBox();
+  if(PMOD.statsPanel)html+=`<div class="skbox">`+
+    `<span style="color:${GRADE_COLOR.gold}">CS ${c.gold}</span>　`+
+    `<span style="color:${GRADE_COLOR.white}">S ${c.white}</span>　`+
+    `<span style="color:${GRADE_COLOR.great}">N ${c.great}</span>　`+
+    `<span style="color:${GRADE_COLOR.miss}">M ${c.miss}</span></div>`;
+  if(PMOD.comboDetail)html+=`<div class="skbox">${comboDetailText(c)}</div>`;
+  if(DBG||!EMBED){ const l=judge.last;
+    html+=`<div class="skbox" style="color:#7d8ba3">`+
+      `${l?`${l.type} ${l.grade} ${l.errMs>=0?'+':''}${l.errMs.toFixed(1)}ms`:'—'}`+
+      `　empty ${judge.empty}${judge.paused?'　[PAUSED]':''}</div>`;
+  }
+  hud.innerHTML=html;
+}
+
+// ---- リザルト画面 ----
+function resRow(label,n,col){return `<tr><td style="color:${col};padding:2px 16px 2px 0">${label}</td><td style="text-align:right">${n}</td></tr>`;}
+function showResults(){
+  if(!judge)return; resultsShown=true;
+  const isAuto=(document.getElementById('mode')&&document.getElementById('mode').value==='auto');
+  const c=judge.counts, sc=Math.round(judge.score()), tot=judge.total;
+  const acc=tot?(judge.sumCoef/tot*100):0, fc=(c.miss===0&&tot>0);
+  const rank= sc>=1010000?'MAX': sc>=1000000?'SS': sc>=990000?'S': sc>=950000?'A': sc>=900000?'B': sc>=800000?'C':'D';
+  const errs=judge.errsMs;
+  const mean=errs.length?errs.reduce((a,b)=>a+b,0)/errs.length:0;
+  const absm=errs.length?errs.reduce((a,b)=>a+Math.abs(b),0)/errs.length:0;
+  const rtitle=(RD&&RD.meta&&RD.meta.title)?RD.meta.title:(chartName||'');
+  if(EMBEDDED){
+    window.parent.postMessage({type:'result',auto:isAuto,score:isAuto?0:sc,rank:isAuto?'Auto':rank,
+      counts:{gold:c.gold,white:c.white,great:c.great,miss:c.miss},
+      maxCombo:judge.maxCombo,total:tot,acc,fc,mean,absm,empty:judge.empty,title:rtitle,
+      reward:isAuto?0:computeReward(c,sc),scoreMode:PMOD.scoreMode,failed:!!judge.failed},'*');
+    return;
+  }
+  document.getElementById('resScore').textContent=(isAuto?0:sc).toLocaleString();
+  document.getElementById('resRank').textContent=isAuto?'Auto':rank;
+  document.getElementById('resSong').textContent=(RD&&RD.meta&&RD.meta.title)?RD.meta.title:(chartName||'');
+  const cRank=(c.miss>0)?'':(c.great>0?'FULL COMBO':(c.white>0?'ALL SYNC':(tot>0?'ALL CRITICAL SYNC':'')));
+  const fcEl=document.getElementById('resFC'); fcEl.textContent=cRank?('\u2605 '+cRank):''; fcEl.style.color=cRank?'#ffe082':'transparent';
+  const g=GRADE_COLOR;
+  document.getElementById('resTable').innerHTML=
+    resRow('Critical SYNC',c.gold,g.gold)+resRow('SYNC',c.white,g.white)+resRow('Near',c.great,g.great)+resRow('Miss',c.miss,g.miss);
+  document.getElementById('resStats').innerHTML=
+    `MAX COMBO ${judge.maxCombo} / ${tot}\u3000\u9054\u6210\u7387 ${acc.toFixed(2)}%<br>`+
+    `\u5e73\u5747\u8aa4\u5dee ${mean>=0?'+':''}${mean.toFixed(1)}ms\u3000\u5e73\u5747\u7d76\u5bfe ${absm.toFixed(1)}ms\u3000\u7a7a\u6253\u3061 ${judge.empty}`;
+  document.getElementById('results').style.display='flex';
+}
+document.getElementById('resRetry').onclick=()=>{ document.getElementById('results').style.display='none'; restart(); };
+document.getElementById('resClose').onclick=()=>{ document.getElementById('results').style.display='none'; };
+
+// ---- ポーズ ----
+function reSync(songT){
+  Clock.start(0);
+  if(RD&&audioBuf&&songT<audioBuf.duration){ Clock.playBuffer(audioBuf, songT-(RD.audioOffsetMs||0)/1000); }
+  else { Clock.startRef -= songT; }
+}
+function pauseGame(){
+  if(paused||!started||resultsShown)return;
+  paused=true; pauseSong=Clock.t; Clock.stopBuffer(); Clock.running=false;
+  if(judge)judge.paused=true;
+  document.getElementById('pausemenu').style.display='flex';
+}
+function resumeGame(){
+  if(!paused)return;
+  paused=false; document.getElementById('pausemenu').style.display='none';
+  if(judge)judge.paused=false; reSync(pauseSong);
+}
+function togglePause(){ paused?resumeGame():pauseGame(); }
+document.getElementById('pResume').onclick=()=>resumeGame();
+document.getElementById('pRetry').onclick=()=>{ paused=false; document.getElementById('pausemenu').style.display='none'; if(judge)judge.paused=false; restart(); };
+document.getElementById('pSelect').onclick=()=>{ if(EMBEDDED){ window.parent.postMessage({type:'toSelect'},'*'); } else { location.reload(); } };
+
+// ---- 自動検証(オフセットスイープ / エッジケース / fps非依存性) ----
+function runSelfTests(){
+  const R={};
+  const mkC=(id,lane,t)=>({id,type:'click',lane,layer:0,t});
+  const mkW=(id,lane,t)=>({id,type:'wipe',lane,layer:0,t});
+  const mkH=(id,lane,t,e)=>({id,type:'hold',lane,layer:0,t,tEnd:e});
+  const E=(lane,down,t)=>({lane,down,t});
+  const go=(ns,evs,fps,end,vis)=>runOffline(ns,vis||{},evs.slice().sort((a,b)=>a.t-b.t),fps||240,end||9);
+
+  // (1) クリックのオフセットスイープ
+  {
+    const ns=[];for(let i=0;i<6;i++)ns.push(mkC(i+1,i,2+i));
+    const base=buildAutoplay(ns,{});
+    let bad=0,first='';
+    for(let off=-200;off<=200;off++){
+      const sft=off/1000;
+      const j=go(ns,base.map(e=>({lane:e.lane,down:e.down,t:e.t+sft})),120,9);
+      const g=gradeOf(sft),exp=g||'miss',expE=(g===null)?6:0,c=j.counts;
+      const got=c.gold===6?'gold':c.white===6?'white':c.great===6?'great':c.miss===6?'miss':'MIXED';
+      if(got!==exp||j.empty!==expE){bad++;if(!first)first=`off=${off} got=${got}/${j.empty} want=${exp}/${expE}`;}
+    }
+    R.sweepClick={points:401,bad,first};
+  }
+  // (2) ワイプのオフセットスイープ
+  {
+    const ns=[];for(let i=0;i<6;i++)ns.push(mkW(i+1,i,2+i));
+    let bad=0,first='';
+    for(let off=-200;off<=200;off++){
+      const sft=off/1000,evs=[];
+      for(const n of ns){evs.push(E(n.lane,true,n.t+sft));evs.push(E(n.lane,false,n.t+sft+0.0004));}
+      const j=go(ns,evs,120,9);
+      const exp=(off>=0&&off<=100)?6:0;
+      if(j.counts.gold!==exp){bad++;if(!first)first=`off=${off} gold=${j.counts.gold} want=${exp}`;}
+    }
+    R.sweepWipe={points:401,bad,first};
+  }
+  // (3) エッジケース
+  {
+    const cs=[];
+    const add=(name,got,want)=>cs.push({name,ok:got===want,got,want});
+    const holdRel=(ms,dur)=>go([mkH(1,0,2,2+(dur||2))],
+      [E(0,true,1.5),E(0,false,3.0),E(0,true,3.0+ms/1000)],240,8);
+    add('ホールド 290ms離脱 → 成功',holdRel(290).counts.gold,1);
+    add('ホールド 310ms離脱 → ミス',holdRel(310).counts.miss,1);
+    {const evs=[E(0,true,1.9)];let t=2.6;
+     for(let i=0;i<3;i++){evs.push(E(0,false,t));evs.push(E(0,true,t+0.299));t+=0.6;}
+     add('299ms離脱×3(連打) → 成功',go([mkH(1,0,2,5.5)],evs,240,9).counts.gold,1);}
+    add('引き打ち(ホールド上のクリック) → 両方成功',
+        go([mkH(1,0,2,4),mkC(2,0,3)],[E(0,true,1.9),E(0,false,2.995),E(0,true,3.0)],240,8).counts.gold,2);
+    {const vis={0:[{t:3,visible:false},{t:5,visible:true}]};
+     add('非表示区間中の離脱 → 成功(タイマー停止)',
+         go([mkH(1,0,2,6)],[E(0,true,1.9),E(0,false,2.95),E(0,true,5.04)],240,9,vis).counts.gold,1);}
+    add('ワイプ 手前から押しっぱなし → 成功',
+        go([mkW(1,0,5)],[E(0,true,0.5)],240,8).counts.gold,1);
+    add('ワイプ +99ms → 成功',
+        go([mkW(1,0,5)],[E(0,true,5.099),E(0,false,5.1)],240,8).counts.gold,1);
+    add('ワイプ +101ms → ミス',
+        go([mkW(1,0,5)],[E(0,true,5.101),E(0,false,5.11)],240,8).counts.miss,1);
+    {const j=go([mkC(1,0,2)],[E(0,true,2.2),E(0,false,2.21)],240,6);
+     add('クリック ±151ms → 空打ち',j.empty,1);
+     add('  その場合ノーツはミスで残る',j.counts.miss,1);}
+    {const s=mkH(1,0,2,2.1);
+     add('100msホールド 無入力 → ミス',go([s],[],240,6).counts.miss,1);
+     add('100msホールド 1回押下 → 成功',
+         go([s],[E(0,true,2.05),E(0,false,2.06)],240,6).counts.gold,1);}
+    {const vis={0:[{t:3,visible:false},{t:5,visible:true}]};
+     const j=new Judge([mkC(1,0,4),mkC(2,1,2)],vis);
+     add('非表示区間内のノーツはゴースト',j.total,1);}
+    {const j=go([mkW(1,0,2.0),mkC(2,0,2.1482)],
+       [E(0,true,2.0),E(0,false,2.02),E(0,true,2.1482),E(0,false,2.17)],240,6);
+     add('ワイプ優先: 直後のクリックが巻き込まれない',j.counts.gold,2);}
+    R.edge=cs;
+  }
+  // (3.5) オフセットは判定に影響しない
+  {
+    const cs=[];
+    const add=(name,got,want)=>cs.push({name,ok:got===want,got,want});
+    const base=runOffline(chartNotes.filter(n=>n.type!=='trace'),chartVis,
+      buildAutoplay(chartNotes.filter(n=>n.type!=='trace'),
+        {exclude:new Judge(chartNotes.filter(n=>n.type!=='trace'),chartVis).ghostIds}),240,chartEnd);
+    add('オフセット有無で判定結果が不変(スコア)',+base.score().toFixed(6),
+        +base.score().toFixed(6));
+    // ヒット時刻での位置がオフセット値と一致することを全ノーツで検査
+    let worst=0;
+    for(const n of chartNotes){
+      if(n.type==='trace')continue;
+      const off=offOf(n.layer,n.t);
+      const p=positionOf(tableOf(n.layer),n.t,n.t,1,off);
+      worst=Math.max(worst,Math.abs(p-off/100));
+    }
+    add('ヒット時刻の位置 = オフセット値(厳密)',worst===0,true);
+    R.offset={cases:cs,worst};
+  }
+
+  // (4) フレームレート非依存性(本編の譜面で)
+  {
+    const gh=new Judge(chartNotes,chartVis).ghostIds;
+    const evs=buildAutoplay(chartNotes,{offset:0.017,exclude:gh});
+    const sig=[30,60,90,144,240].map(f=>{
+      const j=runOffline(chartNotes,chartVis,evs,f,chartEnd);
+      return JSON.stringify({c:j.counts,s:+j.score().toFixed(6),mc:j.maxCombo,e:j.empty,n:j.log.length});
+    });
+    R.fps={ok:sig.every(x=>x===sig[0]),detail:sig[0]};
+  }
+  // (5) オートプレイ
+  {
+    const gh2=new Judge(chartNotes,chartVis).ghostIds;
+    const j=runOffline(chartNotes,chartVis,buildAutoplay(chartNotes,{exclude:gh2}),240,chartEnd);
+    R.autoplay={score:j.score(),counts:j.counts,empty:j.empty,total:j.total,
+                ok:Math.abs(j.score()-1010000)<1e-6&&j.counts.miss===0&&j.empty===0};
+  }
+  return R;
+}
+
+function stat(arr){
+  if(!arr.length)return{avg:0,min:0,max:0};
+  let s=0,mn=1e9,mx=-1e9;
+  for(const v of arr){s+=v;if(v<mn)mn=v;if(v>mx)mx=v;}
+  return{avg:s/arr.length,min:mn,max:mx};
+}
+function updateOverlay(now,drawn,mul){
+  const f=stat(Check.fpsAcc),d=stat(Clock.driftSamples),j=stat(Clock.jumpSamples);
+  const arithOK=Check.arithViolations===0;
+  const projOK=Check.projMaxErr<1e-6;
+  const staticOK=Check.staticFails.length===0&&Check.chartErrors.length===0;
+  
+  const numOK=Check.numViolations===0;
+  const c=(b)=>b?'ok':'bad';
+  const v0=table0.valueAt(now),v1=table1.valueAt(now);
+  ov.innerHTML=
+`<span class="dim">scenario</span> ${scen.value} ${SC.name}
+<span class="dim">time</span>  ${now.toFixed(2)}s / ${chartEnd.toFixed(1)}s   <span class="dim">fps</span> ${f.avg.toFixed(1)}
+<span class="dim">speed</span> L0 ${v0.toFixed(3)}${SC.useL1?('   L1 '+v1.toFixed(3)):''}
+${Clock.src?`<span class="${Math.abs(Sync.sum/Math.max(1,Sync.n))>5?'bad':'ok'}">sync   avg ${(Sync.sum/Math.max(1,Sync.n)).toFixed(2)}ms  min ${Sync.min.toFixed(2)}  max ${Sync.max.toFixed(2)}  now ${Sync.last.toFixed(2)}</span>
+<span class="dim">audio</span> ${(Clock.audioPos()||0).toFixed(2)}s / ${audioBuf?audioBuf.duration.toFixed(1):'-'}s  outLat ${(Clock.outLatency()*1000).toFixed(1)}ms
+`:''}<span class="dim">gl</span> draws ${Gfx.drawCalls}  quads ${Gfx.quads}  filter ${Gfx.filterMode}${Gfx.filterMode==='aniso'?('x'+Gfx.maxAniso):''}
+<span class="dim">notes</span> eval ${chartNotes.length}  drawn ${String(drawn).padStart(3)}  trace ${traceNotes.length}
+<span class="dim">offset</span> ${(()=>{const a=[];for(let i=0;i<NLAYERS;i++){const o=offOf(i,now);if(Math.abs(o)>0.01)a.push('L'+i+' '+o.toFixed(0)+'%');}return a.length?a.join('  '):'-';})()}
+<span class="dim">hispeed</span> x${mul.toFixed(3)}  <span class="dim">tilt</span> ${(tiltFromRatio(ratioForStep(+shape.value))*180/Math.PI).toFixed(2)}deg
+<span class="${c(arithOK)}">arith  ${arithOK?'OK':'VIOLATION '+Check.arithViolations}</span> (max ${Check.arithMaxErr.toExponential(1)})
+<span class="${c(numOK)}">numint ${numOK?'OK':'MISMATCH '+Check.numViolations}</span> max ${Check.numMaxErr.toExponential(1)} n=${Check.numSamples}
+<span class="${c(projOK)}">proj   ${projOK?'OK':'MISMATCH'}</span> (max ${Check.projMaxErr.toExponential(1)}px)
+<span class="${c(staticOK)}">static ${staticOK?'OK':(Check.staticFails.concat(Check.chartErrors).join(' / '))}</span>
+<span class="dim">visual quant ${Check.landingMaxMs.toFixed(2)}ms  frozen ${Check.landingFrozen}  tangent ${Check.landingTangent}  n=${Check.landingSamples}</span>
+<span class="dim">clock jump</span> avg ${j.avg.toFixed(4)} min ${j.min.toFixed(3)} max ${j.max.toFixed(3)} ms
+<span class="dim">clock resid</span> avg ${d.avg.toFixed(3)} min ${d.min.toFixed(2)} max ${d.max.toFixed(2)} ms
+<span class="${(()=>{const q=Clock.driftPpm();return (q!==null&&Math.abs(q)>Clock.MAX_RATE*1e6*0.5)?'bad':'dim';})()}">clock rate ${(()=>{const q=Clock.driftPpm();return q===null?('measuring... '+Clock.rspan().toFixed(0)+'s/20s'):q.toFixed(2)+' ppm'+((Math.abs(q)>Clock.MAX_RATE*1e6*0.5)?'  WARN: 補正上限に接近':'');})()}</span>`;
+}
+
+function makeReport(){
+  const f=stat(Check.fpsAcc),d=stat(Clock.driftSamples),j=stat(Clock.jumpSamples);
+  const L=[];
+  L.push('=== PROTOTYPE REPORT ===');
+  L.push('build: phase8');
+  L.push(`ua: ${navigator.userAgent}`);
+  L.push(`canvas: ${CW}x${CH} dpr=${DPR}`);
+  L.push(`scenario: ${scen.value} (${SC.name})  useLayer1=${SC.useL1}`);
+  L.push(`settings: shapeStep=${shape.value} (tilt=${(tiltFromRatio(ratioForStep(+shape.value))*180/Math.PI).toFixed(2)}deg, r=${ratioForStep(+shape.value).toFixed(4)}), hispeed=${(+hs.value).toFixed(1)} (x${hispeedMultiplier(+hs.value).toFixed(4)}), laneWidth=${lw.value}%`);
+  L.push(`elapsed: ${Check.elapsed.toFixed(2)}s  frames: ${Check.frames}`);
+  L.push(`fps: avg ${f.avg.toFixed(1)}  min ${f.min.toFixed(1)}  max ${f.max.toFixed(1)}`);
+  L.push('--- arithmetic check (position at hitTime must be exactly 0) ---');
+  L.push(`samples: ${Check.arithSamples}  violations: ${Check.arithViolations}  maxError: ${Check.arithMaxErr.toExponential(3)}`);
+  L.push('--- numeric integration cross-check (closed form vs midpoint rule) ---');
+  L.push(`samples: ${Check.numSamples}  violations: ${Check.numViolations}  maxError: ${Check.numMaxErr.toExponential(3)}`);
+  L.push('--- projection cross-check (closed form vs 4-corner homography) ---');
+  L.push(`samples: ${Check.projSamples}  maxError: ${Check.projMaxErr.toExponential(3)} px`);
+  L.push('--- static asserts / chart validation ---');
+  L.push(Check.staticFails.length||Check.chartErrors.length
+    ?('FAIL: '+Check.staticFails.concat(Check.chartErrors).join(' | ')):'OK');
+  L.push('--- visual crossing (frame-quantized; NOT a correctness check) ---');
+  L.push(`samples: ${Check.landingSamples}  quantizationErr max: ${Check.landingMaxMs.toFixed(4)}ms  overFrame: ${Check.landingOverFrame}`);
+  L.push(`frozen(zero-speed): ${Check.landingFrozen}   tangent(sign-reversal touch): ${Check.landingTangent}`);
+  L.push('--- audio clock (smoothed, max correction 0.5ms/s) ---');
+  L.push(`calibration: n=${Clock.calib.n} spread=${Clock.calib.spread.toFixed(2)}ms`);
+  L.push(`song-time jump vs perf delta: avg ${j.avg.toFixed(5)}ms  min ${j.min.toFixed(4)}ms  max ${j.max.toFixed(4)}ms  n=${Clock.jumpSamples.length}`);
+  const ppm=Clock.driftPpm();
+  L.push(`residual (oRaw-oSmooth): avg ${d.avg.toFixed(4)}ms  min ${d.min.toFixed(3)}ms  max ${d.max.toFixed(3)}ms`);
+  L.push(`measured audio-clock rate deviation: ${ppm===null?('n/a (window '+Clock.rspan().toFixed(1)+'s, needs 20s)'):ppm.toFixed(2)+' ppm'}  (correction limit = ${(Clock.MAX_RATE*1e6).toFixed(0)} ppm)`);
+  L.push(`sampleRate: ${Clock.ctx?Clock.ctx.sampleRate:'-'}  baseLatency: ${Clock.ctx&&Clock.ctx.baseLatency!==undefined?Clock.ctx.baseLatency:'-'}`);
+  if(judge){
+    L.push('--- judgment ---');
+    L.push(`mode: ${mode.value}  score: ${judge.score().toFixed(0)} / 1010000  total: ${judge.total}`);
+    L.push(`counts: gold ${judge.counts.gold}  white ${judge.counts.white}  great ${judge.counts.great}  miss ${judge.counts.miss}  empty ${judge.empty}`);
+    L.push(`combo: max ${judge.maxCombo}   ghosts: ${judge.ghostIds.size}`);
+    const es=stat(judge.errsMs);
+    L.push(`hit error: avg ${es.avg.toFixed(2)}ms  min ${es.min.toFixed(1)}ms  max ${es.max.toFixed(1)}ms  n=${judge.errsMs.length}`);
+    const il=stat(inputLat);
+    L.push(`input event->frame latency: avg ${il.avg.toFixed(2)}ms  max ${il.max.toFixed(2)}ms  n=${inputLat.length}`);
+  }
+  if(chartCheck.warnings.length){
+    L.push('--- chart warnings ---');
+    for(const w of chartCheck.warnings.slice(0,8))L.push('  '+w);
+    if(chartCheck.warnings.length>8)L.push(`  ...(+${chartCheck.warnings.length-8})`);
+  }
+  if(selfTestResult){
+    const R=selfTestResult;
+    L.push('--- self tests ---');
+    L.push(`click offset sweep: ${R.sweepClick.bad===0?'OK':'FAIL '+R.sweepClick.bad+'/401  '+R.sweepClick.first} (${R.sweepClick.points} points, 1ms step)`);
+    L.push(`wipe  offset sweep: ${R.sweepWipe.bad===0?'OK':'FAIL '+R.sweepWipe.bad+'/401  '+R.sweepWipe.first}`);
+    const ng=R.edge.filter(c=>!c.ok);
+    L.push(`edge cases: ${R.edge.length-ng.length}/${R.edge.length} passed`);
+    for(const c of ng)L.push(`  FAIL: ${c.name} (got ${c.got}, want ${c.want})`);
+    L.push(`frame-rate independence (30/60/90/144/240): ${R.fps.ok?'OK':'MISMATCH'}`);
+    L.push(`autoplay: ${R.autoplay.ok?'OK':'FAIL'}  score=${R.autoplay.score.toFixed(0)} counts=${JSON.stringify(R.autoplay.counts)} empty=${R.autoplay.empty}`);
+  }
+  if(Clock.src||RD){
+    L.push('--- real data ---');
+    L.push(`chart: ${chartName||'-'}   audio: ${audioName||'-'}`);
+    if(RD){
+      L.push(`title: ${RD.meta.title||'-'}  notes: ${RD.notes.length}  audioOffsetMs: ${RD.audioOffsetMs}`);
+      if(RD.declared)L.push(`declared totalNotes: ${RD.declared.totalNotes}  recomputed: ${judge?judge.total:'-'}`);
+    }
+    if(audioBuf)L.push(`audio: ${audioBuf.duration.toFixed(3)}s  ${audioBuf.sampleRate}Hz  ${audioBuf.numberOfChannels}ch`);
+    L.push(`outputLatency: ${(Clock.outLatency()*1000).toFixed(2)}ms  compensation: ${latcomp.checked?'on':'off'}`);
+    L.push('--- sync (song clock vs audio playback position) ---');
+    if(Sync.n){
+      L.push(`samples: ${Sync.n}  avg ${(Sync.sum/Sync.n).toFixed(3)}ms  min ${Sync.min.toFixed(3)}ms  max ${Sync.max.toFixed(3)}ms`);
+      if(Sync.samples.length>=4){
+        const a=Sync.samples[0],b=Sync.samples[Sync.samples.length-1];
+        const dt=b.t-a.t;
+        L.push(`trend: ${(b.e-a.e).toFixed(3)}ms over ${dt.toFixed(1)}s  = ${dt>0?((b.e-a.e)/dt*1000).toFixed(2):'-'} ppm`);
+      }
+    }else L.push('(no audio playing)');
+  }
+  L.push('--- player settings ---');
+  L.push(`judgeOffsetMs: ${JUDGE_OFFSET_MS}   judgeLine: ${Math.round(JUDGE_LINE*100)}%`);
+  L.push(`keys: ${KEYS.map(KEY_LABEL).join(' ')}   valid: ${validateKeys(KEYS).length===0}`);
+  {
+    const c=calibrationStats();
+    if(c&&c.median!==undefined)
+      L.push(`calibration: n=${c.n}  median ${c.median.toFixed(2)}ms  IQR ${c.q1.toFixed(1)}..${c.q3.toFixed(1)}ms  suggest ${c.suggest}ms`);
+    else L.push(`calibration: n=${c?c.n:0} (需要 8打以上)`);
+  }
+  L.push('--- assets ---');
+  L.push(`skin: ${Assets.skinName}   atlas: ${Gfx.atlasSize?Gfx.atlasSize.join('x'):'512x512 (procedural)'}   layout: ${Assets.layoutNote||'-'}`);
+  L.push(`colors: ${Assets.colorNote||'内蔵既定'}  note=${COLORS.note} trace=${COLORS.trace}`);
+  L.push(`sounds: ${SOUND_KEYS.map(k=>k+'='+(Assets.sounds[k]?'loaded':'synth')).join(' ')}`);
+  L.push(`background: ${Assets.bgImage?(Assets.bgImage.width+'x'+Assets.bgImage.height):'none'}  mode=${bgmode.value} dim=${bgdim.value}%`);
+  L.push(`volumes: ${Object.entries(VOL).map(([k,v])=>k+'='+v).join(' ')}`);
+  if(Assets.warnings.length){for(const w of Assets.warnings)L.push('  WARN: '+w);}
+  L.push('--- webgl ---');
+  {
+    const gl=Gfx.gl;
+    L.push(`renderer: ${gl?gl.getParameter(gl.RENDERER):'-'}`);
+    L.push(`vendor: ${gl?gl.getParameter(gl.VENDOR):'-'}  version: ${gl?gl.getParameter(gl.VERSION):'-'}`);
+    L.push(`maxTexSize: ${gl?gl.getParameter(gl.MAX_TEXTURE_SIZE):'-'}  atlas: 512`);
+    L.push(`filter: ${Gfx.filterMode}  anisotropy: ${Gfx.aniso?('supported, max '+Gfx.maxAniso):'NOT supported'}`);
+    L.push(`draw calls/frame: ${Gfx.drawCalls}   quads/frame: ${Gfx.quads}`);
+  }
+  L.push('--- phase4 effects ---');
+  L.push(`layers in use: ${[...new Set(chartNotes.map(n=>n.layer))].sort().join(',')}`);
+  L.push(`trace notes: ${traceNotes.length}   offset range seen: ${Check.offMin.toFixed(1)}% .. ${Check.offMax.toFixed(1)}%`);
+  L.push(`near-clip rejections (visible range but clipped): ${Check.nearClipHits}`);
+  if(selfTestResult&&selfTestResult.offset){
+    const O=selfTestResult.offset;
+    L.push(`offset independence: worstErr=${O.worst.toExponential(3)}  ${O.cases.every(c=>c.ok)?'OK':'FAIL'}`);
+  }
+  L.push('--- chart ---');
+  {
+    const tm=activeTiming||timing;
+    const bpms=tm.bpms.map(b=>b.bpm);
+    const sigs=tm.sigs.map(x=>`${x.beats}/${x.beatUnit}@m${x.m}`).join(' ');
+    L.push(`notes: ${chartNotes.length}  length: ${chartEnd.toFixed(2)}s`);
+    L.push(`bpm: ${bpms.join(' -> ')}   timeSig: ${sigs}   beatLines: ${beatTimes.length}`);
+  }
+  L.push('=== END ===');
+  return L.join('\n');
+}
+
+// 親から渡されたスキン(マニフェスト+ファイル)を適用
+async function applyPendingSkin(){
+  if(!pendingSkin||!pendingSkin.manifest)return;
+  try{
+    Assets.manifest=pendingSkin.manifest;
+    const files=pendingSkin.files||{};
+    for(const nm in files){ try{ Assets.put(new File([files[nm]], nm)); }catch(_){} }
+    await Assets.apply();
+  }catch(e){ console.warn('skin apply失敗',e); }
+}
+// プレイ背景の合成: 黒地 +(パートナー背景)+ 固定位置ジャケット を 1280x720 で作り、背景テクスチャに流す
+function loadImg(url){ return new Promise(res=>{ if(!url)return res(null);
+  const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=url; }); }
+function drawCover(g,img,dx,dy,dw,dh){
+  const ir=img.width/img.height, dr=dw/dh; let sw,sh,sx,sy;
+  if(ir>dr){ sh=img.height; sw=sh*dr; sx=(img.width-sw)/2; sy=0; }
+  else     { sw=img.width;  sh=sw/dr; sx=0; sy=(img.height-sh)/2; }
+  g.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
+}
+async function applyPlayBackground(){
+  const cfg=pendingPlayBg||{mode:'jacket',jacket:null,partnerBg:null};
+  const cv=document.createElement('canvas'); cv.width=BG_W; cv.height=BG_H;
+  const g=cv.getContext('2d');
+  g.fillStyle='#000'; g.fillRect(0,0,BG_W,BG_H);
+  if(cfg.mode==='partner' && cfg.partnerBg){ const bg=await loadImg(cfg.partnerBg); if(bg)drawCover(g,bg,0,0,BG_W,BG_H); }
+  if(cfg.mode!=='black' && cfg.jacket){ const jk=await loadImg(cfg.jacket);
+    if(jk){ let jr=JACKET_RECT;
+      // デフォルト背景は最大サイズ(縦いっぱいの正方形)を中央に置き、左右を黒帯で埋める
+      if(cfg.mode==='jacket'){ const sz=BG_H; jr={x:(BG_W-sz)/2,y:0,w:sz,h:sz}; }
+      drawCover(g,jk,jr.x,jr.y,jr.w,jr.h); } }
+  try{ Gfx.setBackground(cv); bgmode.value='on'; }catch(e){ console.warn('背景設定失敗',e); }
+}
+// --- 埋め込み: デバッグUIの非表示 & 親からの譜面/音源の受信 ---
+if(EMBED&&!DBG){
+  const ui=document.getElementById('ui'); if(ui)ui.style.display='none';
+  const ov=document.getElementById('overlay'); if(ov)ov.style.display='none';
+}
+window.addEventListener('message',e=>{
+  const d=e.data||{};
+  if(d.type==='load'){
+    pendingChart=d.chart||null; pendingAudioRaw=d.audio||null; pendingSongTitle=(d.song&&d.song.title)||null; pendingSkin=d.skin||null;
+    pendingPlayBg=d.playBg||null;
+    if(d.test){ TEST=true; testStartSec=+d.startSec||0; }
+    if(d.settings){ try{ applySettings(d.settings); }catch(_){} }
+    try{ applyMods(d.mods); }catch(_){}
+    const sp=document.getElementById('splash');
+    if(sp&&pendingChart){
+      const h=document.getElementById('spTitle');
+      if(h)h.textContent=TEST?'\u30c6\u30b9\u30c8\u30d7\u30ec\u30a4':(pendingSongTitle?('\u25b6 '+pendingSongTitle):'\u25b6 \u9078\u629e\u66f2');
+      const m=document.getElementById('spMsg'); if(m&&TEST)m.textContent='\u300c\u958b\u59cb\u300d\u3067\u30c6\u30b9\u30c8\u30d7\u30ec\u30a4\u3002Esc\u3067\u96e2\u8131\u3001\u6700\u5f8c\u307e\u3067\u518d\u751f\u3067\u30a8\u30c7\u30a3\u30bf\u306b\u623b\u308a\u307e\u3059\u3002';
+      const st=document.getElementById('startBtn'); if(st)st.textContent=TEST?'\u958b\u59cb':'\u6e96\u5099';
+    }
+  }
+});
+// --- 指置きチェック → 開始 ---
+let fcNeed=null, fcGot=null, checkKeyHandler=null;
+function buildKeyCheck(){
+  const box=document.getElementById('keyCheck'); if(!box)return;
+  const need=(KEYS||[]).filter(Boolean);
+  fcNeed=new Set(need); fcGot=new Set();
+  box.style.display='flex'; box.innerHTML='';
+  for(const code of need){
+    const d=document.createElement('div'); d.className='kc'; d.dataset.code=code;
+    d.textContent=KEY_LABEL(code); box.appendChild(d);
+  }
+}
+function updateKeyCheck(){
+  document.querySelectorAll('#keyCheck .kc').forEach(d=>d.classList.toggle('on',fcGot&&fcGot.has(d.dataset.code)));
+  const msg=document.getElementById('spMsg');
+  if(msg&&fcNeed)msg.textContent=`各レーンのキーに指を置いてください（${fcGot.size} / ${fcNeed.size}）`;
+}
+function finishStart(){
+  if(started)return;
+  if(checkKeyHandler){ window.removeEventListener('keydown',checkKeyHandler); checkKeyHandler=null; }
+  document.getElementById('splash').style.display='none';
+  bindInput(); setupDrop(); syncSettingsUI();
+  resize(); restart(); started=true;
+  cancelAnimationFrame(rafId); frame();
+  Promise.resolve().then(async()=>{ if(pendingSkin)await applyPendingSkin(); if(pendingPlayBg)await applyPlayBackground(); });
+}
+document.getElementById('startBtn').onclick=async()=>{
+  const btn=document.getElementById('startBtn');
+  btn.disabled=true; btn.style.display='none';
+  const msg=document.getElementById('spMsg'); if(msg)msg.textContent='音声を準備しています…';
+  await Clock.init();
+  await Clock.calibrate(600);
+  // 親から渡された譜面/音源を適用(選曲画面からの自動ロード)
+  if(typeof pendingChart==='string'&&pendingChart){
+    try{ const r=loadChartJSON(JSON.parse(pendingChart));
+      if(!r.errors.length){ RD=r; if(PMOD.mirror)applyMirror(RD); chartName=pendingSongTitle||'読み込み譜面';
+        if(![...scen.options].some(o=>o.value==='REAL')){const o=document.createElement('option');o.value='REAL';o.textContent='◆ 読み込み譜面';scen.insertBefore(o,scen.firstChild);}
+        scen.value='REAL'; }
+    }catch(e){}
+  }
+  if(pendingAudioRaw){ try{ audioBuf=await Clock.ctx.decodeAudioData(pendingAudioRaw.slice(0)); audioName='(loaded)'; }catch(e){} }
+  loadScenario(scen.value);
+  // テストプレイ・オートプレイ・キー未設定なら指置きチェックを省略して即開始
+  const auto=(document.getElementById('mode')&&document.getElementById('mode').value==='auto');
+  if(TEST||auto||!(KEYS||[]).filter(Boolean).length){ finishStart(); return; }
+  // 指置きチェック: 登録キーを1回ずつ押すと開始
+  buildKeyCheck(); updateKeyCheck();
+  checkKeyHandler=(e)=>{
+    if(e.repeat)return;
+    const c=e.code;
+    if(fcNeed.has(c)&&!fcGot.has(c)){ fcGot.add(c); updateKeyCheck();
+      if(fcGot.size===fcNeed.size)setTimeout(finishStart,120); }
+  };
+  window.addEventListener('keydown',checkKeyHandler);
+};
+document.getElementById('restart').onclick=()=>{if(started)restart();};
+// --- 設定パネル ---
+{
+  const panel=document.getElementById('cfg');
+  document.getElementById('cfgbtn').onclick=()=>{
+    panel.className=panel.className?'':'on';
+    if(panel.className){syncSettingsUI();updateCalInfo();}
+  };
+  document.getElementById('cfgclose').onclick=()=>{panel.className='';capturingLane=-1;};
+  joff.addEventListener('input',()=>{JUDGE_OFFSET_MS=+joff.value;syncSettingsUI();});
+  jline.addEventListener('input',()=>{JUDGE_LINE=+jline.value/100;syncSettingsUI();});
+  document.querySelectorAll('.vol').forEach(el=>{
+    el.addEventListener('input',()=>{VOL[el.dataset.k]=+el.value;syncSettingsUI();});
+  });
+  bgdim.addEventListener('input',()=>{bgdimV.textContent=bgdim.value+'%';});
+  document.getElementById('autocal').onclick=()=>{
+    const c=calibrationStats();
+    if(c&&c.suggest!==undefined){JUDGE_OFFSET_MS=Math.max(-100,Math.min(100,c.suggest));syncSettingsUI();}
+    updateCalInfo();
+  };
+  document.getElementById('keyreset').onclick=()=>{
+    KEYS=['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'];
+    capturingLane=-1; rebuildKeymap(); syncSettingsUI();
+  };
+  document.getElementById('cfgexp').onclick=async()=>{
+    const ta=document.getElementById('cfgtext');
+    ta.value=JSON.stringify(currentSettings(),null,1);
+    ta.style.display='block';
+    try{await navigator.clipboard.writeText(ta.value);
+        document.getElementById('cfgexp').textContent='コピーしました';
+        setTimeout(()=>document.getElementById('cfgexp').textContent='設定を書き出す',1200);
+    }catch(e){}
+  };
+}
+mode.addEventListener('change',()=>{if(started)restart();});
+document.getElementById('selftest').onclick=()=>{
+  const b=document.getElementById('selftest');
+  b.disabled=true;b.textContent='実行中…';
+  setTimeout(()=>{
+    try{selfTestResult=runSelfTests();b.textContent='自動検証 完了';}
+    catch(err){b.textContent='自動検証 エラー';console.error(err);}
+    b.disabled=false;
+    document.getElementById('reportText').value=makeReport();
+    document.getElementById('report').style.display='flex';
+  },30);
+};
+document.getElementById('mkreport').onclick=()=>{
+  document.getElementById('reportText').value=makeReport();
+  document.getElementById('report').style.display='flex';
+};
+document.getElementById('closeBtn').onclick=()=>{
+  document.getElementById('report').style.display='none';};
+document.getElementById('copyBtn').onclick=async()=>{
+  const ta=document.getElementById('reportText'),btn=document.getElementById('copyBtn');
+  try{await navigator.clipboard.writeText(ta.value);}
+  catch(e){ta.select();document.execCommand('copy');}
+  btn.textContent='コピーしました';
+  setTimeout(()=>btn.textContent='コピー',1200);
+};
+resize();
+// ===== [/MODULE] main =====
+</script>
+</body>
+</html>

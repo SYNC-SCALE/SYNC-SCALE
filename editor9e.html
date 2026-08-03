@@ -1,0 +1,2631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Chart Editor — SYNC/SCALE</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0c10;color:#dfe6f0;overflow:hidden;
+    font:13px/1.5 "Segoe UI",system-ui,sans-serif}
+  #bar{position:fixed;top:0;left:0;right:0;height:42px;display:flex;gap:10px;
+    align-items:center;padding:0 12px;background:rgba(8,10,14,.92);
+    border-bottom:1px solid #1e2734;z-index:10;flex-wrap:nowrap;overflow-x:auto}
+  #bar label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  button,select,input[type=number],input[type=text]{background:#1b2635;color:#dfe6f0;
+    border:1px solid #2f4058;border-radius:5px;padding:5px 10px;font:inherit}
+  button{cursor:pointer}
+  button:hover{background:#24334a}
+  button.on{background:#2b5cff;border-color:#4a78ff}
+  button:disabled{opacity:.4;cursor:default}
+  input[type=number]{width:66px}
+  .sep{width:1px;height:24px;background:#1e2734;margin:0 2px}
+  #main{position:fixed;top:42px;left:0;right:0;bottom:28px;display:flex}
+  #seekbar{position:fixed;left:0;right:0;bottom:0;height:28px;display:flex;align-items:center;
+    gap:10px;padding:0 12px;background:rgba(8,10,14,.95);border-top:1px solid #1e2734;z-index:10}
+  #seekbar input[type=range]{flex:1}
+  #seekbar .dim{white-space:nowrap;font-size:11px}
+  #left{width:390px;border-right:1px solid #1e2734;background:#0b0e14;display:flex;
+    flex-direction:column;min-width:0}
+  #previewwrap{position:relative;width:100%;background:#05070c;border-bottom:1px solid #1e2734}
+  #previewwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+  #pvbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:6px 10px;
+    border-bottom:1px solid #1e2734;font-size:11px}
+  #pvbar label{display:flex;gap:5px;align-items:center;white-space:nowrap;color:#9fb0c8}
+  #pvbar input[type=range]{width:78px}
+  #tabbar{display:flex;border-bottom:1px solid #1e2734;background:#0a0d13}
+  #tabbar .tab{flex:1;border:none;border-radius:0;border-right:1px solid #141b26;padding:7px 2px;
+    background:transparent;color:#7d8ba3;font-size:11px}
+  #tabbar .tab:hover{background:#131a26;color:#aebbd0}
+  #tabbar .tab.on{background:#141d2c;color:#dfe6f0;box-shadow:inset 0 -2px 0 #2b5cff}
+  #tabbar .tab.haserr{color:#ff6b6b}
+  #tabbar .tab.haswarn{color:#ffc857}
+  #controls{flex:1;overflow:auto;padding:10px 12px}
+  .tabpage{display:none}
+  .tabpage.on{display:block}
+  #controls h4{margin:12px 0 6px;color:#9fb0c8;font-size:12px;font-weight:600}
+  #controls h4:first-child{margin-top:0}
+  .kv{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:12px;gap:8px}
+  .kv b{color:#dfe6f0;font-weight:500}
+  .dim{color:#7d8ba3}.ok{color:#54e08a}.bad{color:#ff6b6b}.warn{color:#ffc857}
+  .row{display:flex;gap:5px;align-items:center;font-size:11px;padding:2px 0}
+  .row input[type=number]{width:52px;padding:3px 5px}
+  .row input.m{width:44px}
+  .minibtn{padding:3px 7px;font-size:11px}
+  #gridwrap{flex:1;position:relative;overflow:hidden}
+  #gridwrap canvas{display:block}
+  #prop{border:1px solid #1a2330;border-radius:6px;padding:8px;background:#070a0f}
+  #prop.empty{color:#5c6b82}
+  #prop select,#prop input{padding:3px 6px}
+  #msgs{font:11px/1.5 ui-monospace,Consolas,monospace;max-height:160px;overflow:auto;
+    background:#070a0f;border:1px solid #1a2330;border-radius:5px;padding:6px;margin-top:4px}
+  #io{position:fixed;inset:8% 18%;background:#0d1119;border:1px solid #2f4058;
+    border-radius:8px;padding:14px;display:none;flex-direction:column;gap:8px;z-index:30}
+  #io textarea{flex:1;background:#070a0f;color:#cfe0ff;border:1px solid #22304a;
+    border-radius:5px;font:12px/1.4 ui-monospace,monospace;padding:8px;resize:none}
+  #drop{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:20;
+    border:2px dashed #2f4058;border-radius:10px;padding:24px 40px;color:#7d8ba3;
+    background:rgba(8,10,14,.8);pointer-events:none;display:none}
+  #drop.on{display:block;border-color:#2b5cff;color:#dfe6f0}
+  .tool{min-width:64px;text-align:center;position:relative}
+  .tool .key{display:inline-block;margin-left:5px;padding:0 4px;border-radius:3px;
+    font-size:10px;background:#0d1a2e;border:1px solid #2f4058;color:#8fa6c4}
+  .tool.on .key{background:#1a3a8a;border-color:#4a78ff;color:#cfe0ff}
+  .lyr{min-width:26px;padding:5px 0;text-align:center;border-bottom:3px solid var(--lc,#2f4058)}
+  .lyr.on{background:#24334a;border-color:var(--lc,#4a78ff);box-shadow:0 0 0 1px var(--lc,#4a78ff) inset}
+  .meta input{width:100%;box-sizing:border-box;padding:3px 6px}
+  .meta{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;font-size:11px}
+  .meta .dim{justify-self:start}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <strong style="white-space:nowrap">Editor 9-G</strong>
+  <div class="sep"></div>
+  <button class="tool on" data-tool="click">クリック<span class="key">A</span></button>
+  <button class="tool" data-tool="wipe">ワイプ<span class="key">S</span></button>
+  <button class="tool" data-tool="hold">ホールド<span class="key">D</span></button>
+  <button class="tool" data-tool="trace">トレース<span class="key">F</span></button>
+  <button class="tool" data-tool="select">選択<span class="key">G</span></button>
+  <div class="sep"></div>
+  <span class="dim" style="white-space:nowrap">編集</span>
+  <span id="lyrName" style="min-width:72px;white-space:nowrap;color:#dfe6f0">メイン(1)</span>
+  <div id="lyrbtns" style="display:flex;gap:2px">
+    <button class="lyr on" data-layer="0">1</button>
+    <button class="lyr" data-layer="1">2</button>
+    <button class="lyr" data-layer="2">3</button>
+    <button class="lyr" data-layer="3">4</button>
+    <button class="lyr" data-layer="4">5</button>
+    <button class="lyr" data-layer="5">6</button>
+    <button class="lyr" data-layer="6">7</button>
+    <button class="lyr" data-layer="7">8</button>
+  </div>
+  <div class="sep"></div>
+  <label>分母
+    <select id="snap">
+      <option>1</option><option>2</option><option>3</option><option selected>4</option>
+      <option>6</option><option>8</option><option>12</option><option>16</option>
+      <option>24</option><option>32</option><option>48</option><option>64</option>
+    </select>
+  </label>
+  <label>横軸
+    <select id="tgrid" title="トレース頂点の横軸スナップ細分率">
+      <option value="7">7点</option><option value="13" selected>13点</option><option value="25">25点</option>
+    </select>
+  </label>
+  <button id="tracktoggle" class="on" title="レイヤートラック編集の表示切替">トラック</button>
+  <div class="sep"></div>
+  <button id="undo">元に戻す</button>
+  <button id="redo">やり直す</button>
+</div>
+
+<div id="main">
+  <div id="left">
+    <div id="previewwrap"><canvas id="pv"></canvas></div>
+    <div id="pvbar">
+      <label>見かけ速度 <input id="pvSpeed" type="range" min="0.5" max="6" step="0.1" value="2"></label>
+      <label>形状 <input id="pvShape" type="range" min="0" max="9" step="1" value="6"></label>
+      <label>幅 <input id="pvWidth" type="range" min="40" max="100" step="1" value="85"></label>
+      <label>判定線 <input id="pvJudge" type="range" min="0" max="60" step="1" value="12"></label>
+      <label>拍線 <input id="pvGrid" type="checkbox" checked></label>
+      <label>白単色 <input id="pvWhite" type="checkbox"></label>
+    </div>
+    <div id="tabbar">
+      <button class="tab on" data-tab="meta">メタ</button>
+      <button class="tab" data-tab="timing">ﾀｲﾐﾝｸﾞ</button>
+      <button class="tab" data-tab="sel">選択</button>
+      <button class="tab" data-tab="valid">検査</button>
+      <button class="tab" data-tab="help">操作</button>
+    </div>
+    <div id="controls">
+      <!-- メタ -->
+      <div class="tabpage on" data-page="meta">
+        <h4>ファイル</h4>
+        <div class="row" style="flex-wrap:wrap;gap:6px">
+          <button class="minibtn" id="load">♪ 音源を読込</button>
+          <button class="minibtn" id="impjson">JSON 読込</button>
+          <button class="minibtn" id="exp">JSON 書き出し</button>
+        </div>
+        <div class="dim" id="audioName" style="font-size:11px;margin-top:3px">音源: 未読込</div>
+        <h4>メタデータ</h4>
+        <div class="meta">
+          <span class="dim">タイトル</span><input id="m_title" type="text">
+          <span class="dim">アーティスト</span><input id="m_artist" type="text">
+          <span class="dim">譜面制作</span><input id="m_charter" type="text">
+          <span class="dim">難易度</span><select id="m_diff"><option value="EASY">EASY</option><option value="HARD">HARD</option><option value="MASTER">MASTER</option></select>
+          <span class="dim">レベル</span><input id="m_level" type="number" min="1" max="99">
+          <span class="dim">音源offset(ms)</span><input id="m_offset" type="number" step="1">
+          <span class="dim">試聴開始(ms)</span><input id="m_pvs" type="number" step="100" min="0">
+          <span class="dim">試聴長(ms)</span><input id="m_pvl" type="number" step="100" min="0">
+        </div>
+      </div>
+      <!-- タイミング -->
+      <div class="tabpage" data-page="timing">
+        <h4>BPM変化</h4>
+        <div id="bpmList"></div>
+        <button class="minibtn" id="addBpm">＋ 現在位置にBPM変化</button>
+        <h4>拍子変化</h4>
+        <div id="sigList"></div>
+        <button class="minibtn" id="addSig">＋ 現在の小節に拍子変化</button>
+      </div>
+      <!-- 選択 / 情報 -->
+      <div class="tabpage" data-page="sel">
+        <h4>選択操作</h4>
+        <div class="row">対象
+          <select id="selmode" title="選択・コピーのレイヤー範囲">
+            <option value="layer" selected>編集ﾚｲﾔｰ</option>
+            <option value="all">全ﾚｲﾔｰ</option>
+          </select>
+          <label style="margin-left:6px" title="速度・表示・オフセットの3トラックをまとめて含める">
+            <input id="optTracks" type="checkbox"> ｵﾌﾟｼｮﾝﾄﾗｯｸ</label>
+        </div>
+        <div class="row">小節
+          <input id="selFrom" type="number" min="0" value="0" class="m"> 〜
+          <input id="selTo" type="number" min="0" value="1" class="m">
+          <button class="minibtn" id="selRange">一括選択</button>
+        </div>
+        <div class="row"><button class="minibtn" id="flip">左右反転 (H)</button></div>
+        <h4>譜面</h4>
+        <div class="kv"><span class="dim">ノーツ数</span><b id="cnt">0</b></div>
+        <div class="kv"><span class="dim">長さ</span><b id="len">-</b></div>
+        <h4>選択 / プロパティ</h4>
+        <div id="prop" class="empty">ノーツ未選択</div>
+        <h4>カーソル</h4>
+        <div class="kv"><span class="dim">位置</span><b id="cur">-</b></div>
+        <div class="kv"><span class="dim">秒</span><b id="cursec">-</b></div>
+      </div>
+      <!-- 検査 -->
+      <div class="tabpage" data-page="valid">
+        <h4>検査</h4>
+        <div id="msgs" class="dim">—</div>
+      </div>
+      <!-- 操作 -->
+      <div class="tabpage" data-page="help">
+        <div class="dim" style="font-size:11px;line-height:1.7">
+          <b style="color:#9fb0c8">ツール</b>: A クリック / S ワイプ / D ホールド / F トレース / G 選択<br>
+          レイヤー: 1 メイン, 2〜8 サブ / 配置=左クリック・削除=右クリック/Delete<br>
+          ホールド: ドラッグで作成・終点付近で長さ変更<br>
+          <b style="color:#9fb0c8">トレース(F)</b>: 空きを順にクリック→Enter/ダブルクリックで確定(Esc取消)<br>
+          　頂点=ドラッグ移動・辺クリック挿入・右クリック削除。同座標は自動統合<br>
+          <b style="color:#9fb0c8">選択(G)</b>: 矩形ドラッグ / トレースは塊ごと / 優先 ワイプ>クリック>ホールド>トレース<br>
+          　H 左右反転 / 対象範囲は「選択」タブで切替 / 小節n〜m 一括選択<br>
+          Ctrl+A 全選択 / Ctrl+C/X/V コピー切取貼付(再生ライン基準) / Ctrl+Z/Y<br>
+          <b style="color:#9fb0c8">再生</b>: Space / 下部バーで全体シーク(グリッドにスナップ)<br>
+          ホイール スクロール / Ctrl+ホイール 拡大<br>
+          <b style="color:#9fb0c8">レイヤートラック</b>(グリッド右): 速度/ｵﾌｾｯﾄ=空きドラッグで区間・線上でキー追加・<br>
+          　ドラッグで値と時刻・ダブルクリックで数値入力・右クリック削除<br>
+          　表示=単ドラッグで区間配置(左ON/右OFF)・ダブルクリックで点切替(左ON/右OFF)(●○)。点線=レイヤー0速度(戻り先)<br>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="gridwrap"><canvas id="cv"></canvas></div>
+</div>
+
+<div id="seekbar">
+  <button id="play" disabled title="再生/停止 (Space)">▶</button>
+  <button id="testplay" title="現在の判定ライン位置からテストプレイ(Escで離脱)">▶テスト</button>
+  <button id="mute" class="on" title="曲だけミュート(打音は残る)">曲</button>
+  <button id="tick" class="on" title="打音">打音</button>
+  <button id="sfxcfg" title="打音の種類別設定">打音設定</button>
+  <label class="dim" style="gap:4px">速度
+    <select id="spd" title="再生速度(遅くすると細かいリズムが聞きやすい)">
+      <option value="100">100%</option><option value="90">90%</option><option value="80">80%</option>
+      <option value="70">70%</option><option value="60">60%</option><option value="50">50%</option>
+      <option value="40">40%</option><option value="30">30%</option><option value="20">20%</option>
+      <option value="10">10%</option>
+    </select></label>
+  <label class="dim" style="gap:4px">拡大 <input id="zoom" type="range" min="40" max="600" value="180" style="width:90px"></label>
+  <span class="dim" id="clock" style="white-space:nowrap">0.000s</span>
+  <div class="sep" style="height:16px"></div>
+  <input id="seek" type="range" min="0" max="1000" value="0" step="1">
+  <span class="dim" id="seeklbl">0.0 / 0.0s</span>
+</div>
+
+<input id="fileaudio" type="file" accept="audio/*" style="display:none">
+<input id="filejson" type="file" accept=".json,application/json" style="display:none">
+
+<div id="sfxpanel" style="display:none;position:fixed;right:14px;bottom:52px;z-index:70;
+  background:#0d1119;border:1px solid #2f4058;border-radius:8px;padding:10px 12px;
+  font:12px system-ui;color:#cfe0ff;min-width:210px;box-shadow:0 6px 24px rgba(0,0,0,.5)">
+  <div style="display:flex;gap:4px;margin-bottom:8px" id="sfxtabs">
+    <button data-sf="click" class="sftab on">クリック</button>
+    <button data-sf="wipe"  class="sftab">ワイプ</button>
+    <button data-sf="hold"  class="sftab">ホールド</button>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;margin:6px 0">
+    <input type="checkbox" id="sf_on"> この打音を鳴らす</label>
+  <label style="display:flex;align-items:center;gap:8px;margin:6px 0">音量
+    <input type="range" id="sf_vol" min="0" max="40" step="1" style="flex:1"><span id="sf_volV" class="dim"></span></label>
+  <label style="display:flex;align-items:center;gap:8px;margin:6px 0">音高
+    <input type="range" id="sf_freq" min="200" max="2400" step="20" style="flex:1"><span id="sf_freqV" class="dim"></span></label>
+  <div style="display:flex;justify-content:space-between;margin-top:8px">
+    <button id="sf_test">試聴</button><button id="sfxclose">閉じる</button>
+  </div>
+</div>
+
+<div id="drop">譜面(.json) または 音源をドロップ</div>
+
+<script>
+"use strict";
+
+// ============================================================
+//  Editor Core — Phase 9-D
+//  コア(rat / etiming / chartstate / command / serialize / validate)は
+//  9-A〜9-C の実証済み実装を無改変で流用。
+//  投影・速度積分・オフセット(preview 用)は Phase8 ランタイムから移植。
+// ============================================================
+
+// ===== [MODULE] rat =====
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){const t=a%b;a=b;b=t;}return a||1;}
+function normRat(m,n,d){
+  if(!(d>=1))throw new Error('d must be >= 1');
+  m=Math.floor(m); n=Math.floor(n); d=Math.floor(d);
+  const carry=Math.floor(n/d);
+  m+=carry; n-=carry*d;
+  const g=gcd(n,d);
+  return {m,n:n/g,d:d/g};
+}
+const ratKey=(t)=>`${t.m}:${t.n}/${t.d}`;
+function ratCmp(a,b){
+  if(a.m!==b.m)return a.m<b.m?-1:1;
+  const l=a.n*b.d, r=b.n*a.d;
+  return l<r?-1:l>r?1:0;
+}
+const ratEq=(a,b)=>ratCmp(a,b)===0;
+const ratFrac=(t)=>t.n/t.d;
+function snapSecToRat(timing,sec,d){
+  const total=timing.measureCount||4096;
+  let m=0;
+  while(m+1<total && timing.measureStartSec(m+1)<=sec) m++;
+  const t0=timing.measureStartSec(m), t1=timing.measureStartSec(m+1);
+  const span=t1-t0;
+  let n=Math.round((sec-t0)/span*d);
+  if(n>=d){m++;n=0;}
+  if(n<0){n=0;}
+  return normRat(m,n,d);
+}
+function ratToAbs(t){ return {num:t.m*t.d+t.n, den:t.d}; }
+function absToRat(num,den){ return normRat(0,num,den); }
+function ratAddAbs(t,dNum,dDen){
+  const a=ratToAbs(t);
+  const num=a.num*dDen + dNum*a.den;
+  const den=a.den*dDen;
+  return absToRat(num,den);
+}
+function absDelta(a,b){
+  const A=ratToAbs(a), B=ratToAbs(b);
+  return {num:B.num*A.den - A.num*B.den, den:A.den*B.den};
+}
+// ===== [/MODULE] rat =====
+
+
+// ===== [MODULE] etiming =====
+class ETiming{
+  constructor(timeSignatures,bpmChanges,measureCount=512){
+    if(!timeSignatures.length||timeSignatures[0].m!==0)
+      throw new Error('timeSignatures must start at measure 0');
+    if(!bpmChanges.length)throw new Error('bpmChanges is empty');
+    this.sigs=timeSignatures.slice().sort((a,b)=>a.m-b.m);
+    this.bpms=bpmChanges.slice().sort((a,b)=>
+      (a.time.m-b.time.m)||(a.time.n*b.time.d-b.time.n*a.time.d));
+    if(this.bpms[0].time.m!==0||this.bpms[0].time.n!==0)
+      throw new Error('first bpmChange must be at song start');
+    this.measureCount=measureCount;
+    this._build();
+  }
+  sigAt(m){let s=this.sigs[0];for(const x of this.sigs)if(x.m<=m)s=x;return s;}
+  beatsIn(m){return this.sigAt(m).beats;}
+  quartersIn(m){const s=this.sigAt(m);return 4*s.beats/s.beatUnit;}
+  _build(){
+    this.mq=[0];
+    for(let m=0;m<this.measureCount;m++)this.mq.push(this.mq[m]+this.quartersIn(m));
+    this.bq=this.bpms.map(c=>this.mq[c.time.m]+this.quartersIn(c.time.m)*(c.time.n/c.time.d));
+    this.bsec=[0];
+    for(let i=1;i<this.bpms.length;i++)
+      this.bsec.push(this.bsec[i-1]+(this.bq[i]-this.bq[i-1])*60/this.bpms[i-1].bpm);
+    this.msec=[];
+    for(let m=0;m<=this.measureCount;m++)this.msec.push(this.qToSec(this.mq[m]));
+  }
+  qToSec(q){
+    let i=0;
+    for(let k=0;k<this.bq.length;k++)if(this.bq[k]<=q+1e-12)i=k;
+    return this.bsec[i]+(q-this.bq[i])*60/this.bpms[i].bpm;
+  }
+  measureStartSec(m){
+    if(m<0)return this.msec[0];
+    if(m>=this.msec.length)return this.msec[this.msec.length-1];
+    return this.msec[m];
+  }
+  toSec(t){
+    if(!(t.d>=1))throw new Error('bad denominator');
+    if(!(t.n>=0&&t.n<t.d))throw new Error(`require 0<=n<d (${t.n}/${t.d})`);
+    return this.qToSec(this.mq[t.m]+this.quartersIn(t.m)*(t.n/t.d));
+  }
+  secToMeasure(sec){
+    let m=0;
+    while(m+1<this.measureCount&&this.msec[m+1]<=sec)m++;
+    return m;
+  }
+}
+// ===== [/MODULE] etiming =====
+
+
+// ===== [MODULE] chartstate =====
+class EditorChart{
+  constructor(init){
+    const o=init||{};
+    this.meta=Object.assign({title:'',artist:'',charter:'',
+      difficultyName:'MASTER',level:1,audioFile:'',
+      previewStartMs:0,previewLengthMs:15000},o.meta);
+    this.timeSignatures=o.timeSignatures||[{m:0,beats:4,beatUnit:4}];
+    this.bpmChanges=o.bpmChanges||[{time:{m:0,n:0,d:1},bpm:120}];
+    this.audioOffsetMs=o.audioOffsetMs||0;
+    this.notes=o.notes||[];
+    // 既定の表示状態: メイン(0)=on、サブ(1〜7)=off
+    this.layers=o.layers||Array.from({length:8},(_,i)=>({
+      id:i,name:i===0?'Main':`Sub${i}`,
+      speedSegments:[],
+      visibility:i===0?[]:[{time:{m:0,n:0,d:1},visible:false}],
+      offsetSegments:[]}));
+    this.nextId=o.nextId||1;
+    this.timing=new ETiming(this.timeSignatures,this.bpmChanges);
+  }
+  rebuildTiming(){this.timing=new ETiming(this.timeSignatures,this.bpmChanges);}
+  noteById(id){return this.notes.find(n=>n.id===id)||null;}
+  sec(t){return this.timing.toSec(t);}
+  sorted(){
+    // トレースは time を持たず vertices[0].time を開始時刻とする
+    const st=(n)=>(n.type==='trace')
+      ? (n.vertices&&n.vertices[0]?n.vertices[0].time:{m:0,n:0,d:1})
+      : n.time;
+    return this.notes.slice().sort((a,b)=>{
+      const c=ratCmp(st(a),st(b));
+      return c||(a.id-b.id);
+    });
+  }
+}
+// ===== [/MODULE] chartstate =====
+
+
+// ===== [MODULE] command =====
+const Cmd={
+  addNotes(chart,notes){
+    const added=[];
+    for(const n of notes){
+      const id=(n.id!==undefined&&n.id!==null)?n.id:chart.nextId++;
+      if(id>=chart.nextId)chart.nextId=id+1;
+      const c=Object.assign({},n,{id});
+      chart.notes.push(c);
+      added.push(id);
+    }
+    return {type:'removeNotes',ids:added};
+  },
+  removeNotes(chart,ids){
+    const set=new Set(ids);
+    const removed=chart.notes.filter(n=>set.has(n.id))
+                             .map(n=>JSON.parse(JSON.stringify(n)));
+    chart.notes=chart.notes.filter(n=>!set.has(n.id));
+    return {type:'addNotes',notes:removed};
+  },
+  moveNotes(chart,moves){
+    const inv=[];
+    for(const mv of moves){
+      const n=chart.noteById(mv.id);
+      if(!n)continue;
+      const before={id:n.id};
+      if(mv.time!==undefined){before.time=n.time;n.time=mv.time;}
+      if(mv.endTime!==undefined){before.endTime=n.endTime;n.endTime=mv.endTime;}
+      if(mv.lane!==undefined){before.lane=n.lane;n.lane=mv.lane;}
+      inv.push(before);
+    }
+    return {type:'moveNotes',moves:inv};
+  },
+  setNoteProps(chart,ids,props){
+    const inv=[];
+    for(const id of ids){
+      const n=chart.noteById(id);
+      if(!n)continue;
+      const before={};
+      for(const k in props){before[k]=n[k];n[k]=props[k];}
+      inv.push({id,props:before});
+    }
+    return {type:'setNotePropsMulti',items:inv};
+  },
+  setNotePropsMulti(chart,items){
+    const inv=[];
+    for(const it of items){
+      const n=chart.noteById(it.id);
+      if(!n)continue;
+      const before={};
+      for(const k in it.props){before[k]=n[k];n[k]=it.props[k];}
+      inv.push({id:it.id,props:before});
+    }
+    return {type:'setNotePropsMulti',items:inv};
+  },
+  setTiming(chart,timeSignatures,bpmChanges){
+    const inv={type:'setTiming',
+      timeSignatures:JSON.parse(JSON.stringify(chart.timeSignatures)),
+      bpmChanges:JSON.parse(JSON.stringify(chart.bpmChanges))};
+    if(timeSignatures)chart.timeSignatures=timeSignatures;
+    if(bpmChanges)chart.bpmChanges=bpmChanges;
+    chart.rebuildTiming();
+    return inv;
+  },
+  // レイヤーのタイムライン(速度/表示/オフセット)を丸ごと置換する。
+  // 逆操作は置換前のスナップショット。粒度は粗いが Undo は正しく成立する。
+  setLayers(chart,layers){
+    const inv={type:'setLayers',layers:JSON.parse(JSON.stringify(chart.layers))};
+    chart.layers=layers;
+    return inv;
+  },
+};
+
+class History{
+  constructor(chart){this.chart=chart;this.undoStack=[];this.redoStack=[];this.limit=200;}
+  do(op){
+    const inv=Cmd[op.type](this.chart,...argsOf(op));
+    this.undoStack.push(inv);
+    if(this.undoStack.length>this.limit)this.undoStack.shift();
+    this.redoStack.length=0;
+    return inv;
+  }
+  undo(){
+    if(!this.undoStack.length)return false;
+    const op=this.undoStack.pop();
+    const inv=Cmd[op.type](this.chart,...argsOf(op));
+    this.redoStack.push(inv);
+    return true;
+  }
+  redo(){
+    if(!this.redoStack.length)return false;
+    const op=this.redoStack.pop();
+    const inv=Cmd[op.type](this.chart,...argsOf(op));
+    this.undoStack.push(inv);
+    return true;
+  }
+  get canUndo(){return this.undoStack.length>0;}
+  get canRedo(){return this.redoStack.length>0;}
+}
+function argsOf(op){
+  switch(op.type){
+    case 'addNotes':return [op.notes];
+    case 'removeNotes':return [op.ids];
+    case 'moveNotes':return [op.moves];
+    case 'setNoteProps':return [op.ids,op.props];
+    case 'setNotePropsMulti':return [op.items];
+    case 'setTiming':return [op.timeSignatures,op.bpmChanges];
+    case 'setLayers':return [op.layers];
+    default:throw new Error('unknown command: '+op.type);
+  }
+}
+// ===== [/MODULE] command =====
+
+
+// ===== [MODULE] serialize =====
+function exportChart(chart){
+  const notes=chart.sorted().map(n=>{
+    const o={id:n.id,type:n.type,layer:n.layer};
+    if(n.type==='trace'){
+      o.vertices=n.vertices.map(v=>({time:v.time,x:v.x}));
+    }else{
+      o.lane=n.lane; o.time=n.time;
+      if(n.type==='hold')o.endTime=n.endTime;
+    }
+    return o;
+  });
+  const ghosts=resolveGhostIds(chart);
+  return {
+    formatVersion:1,
+    meta:Object.assign({},chart.meta),
+    timing:{
+      audioOffsetMs:chart.audioOffsetMs,
+      timeSignatures:chart.timeSignatures.map(s=>({m:s.m,beats:s.beats,beatUnit:s.beatUnit})),
+      bpmChanges:chart.bpmChanges.map(b=>({time:b.time,bpm:b.bpm})),
+    },
+    layers:chart.layers.map(l=>({
+      id:l.id,name:l.name,
+      speedSegments:l.speedSegments||[],
+      visibility:l.visibility||[],
+      offsetSegments:l.offsetSegments||[],
+    })),
+    notes,
+    derived:{
+      ghostNoteIds:ghosts,
+      totalNotes:notes.filter(n=>n.type!=='trace'&&!ghosts.includes(n.id)).length,
+    },
+  };
+}
+function resolveGhostIds(chart){
+  const out=[];
+  const visOf=(layer)=>{
+    const l=chart.layers.find(x=>x.id===layer);
+    return (l&&l.visibility)?l.visibility:[];
+  };
+  const visAt=(entries,sec)=>{
+    let v=true;
+    for(const e of entries){ if(chart.sec(e.time)<=sec)v=e.visible; else break; }
+    return v;
+  };
+  for(const n of chart.notes){
+    if(n.type==='trace')continue;
+    const e=visOf(n.layer);
+    if(!e.length)continue;
+    const t0=chart.sec(n.time);
+    if(n.type==='hold'){
+      const t1=chart.sec(n.endTime);
+      if(visAt(e,t0)!==false)continue;
+      let broken=false;
+      for(const x of e){
+        const s=chart.sec(x.time);
+        if(s>t0&&s<t1&&x.visible===true){broken=true;break;}
+      }
+      if(!broken)out.push(n.id);
+    }else{
+      if(visAt(e,t0)===false)out.push(n.id);
+    }
+  }
+  return out;
+}
+function importChart(obj){
+  const err=[];
+  if(!obj||typeof obj!=='object')return {errors:['JSON がオブジェクトではない']};
+  if(obj.formatVersion!==1)err.push('formatVersion が 1 ではない');
+  if(!obj.timing||!obj.timing.bpmChanges||!obj.timing.bpmChanges.length)
+    err.push('timing.bpmChanges が無い');
+  if(!obj.timing||!obj.timing.timeSignatures||!obj.timing.timeSignatures.length)
+    err.push('timing.timeSignatures が無い');
+  if(!Array.isArray(obj.notes))err.push('notes が配列でない');
+  if(err.length)return {errors:err};
+  let chart;
+  try{
+    chart=new EditorChart({
+      meta:obj.meta,
+      timeSignatures:obj.timing.timeSignatures,
+      bpmChanges:obj.timing.bpmChanges,
+      audioOffsetMs:obj.timing.audioOffsetMs||0,
+      notes:obj.notes.map(n=>JSON.parse(JSON.stringify(n))),
+      layers:obj.layers?JSON.parse(JSON.stringify(obj.layers)):undefined,
+      nextId:Math.max(0,...obj.notes.map(n=>n.id||0))+1,
+    });
+  }catch(e){ return {errors:['timing の構築に失敗: '+e.message]}; }
+  const v=validateEditorChart(chart);
+  return {chart,errors:v.errors,warnings:v.warnings};
+}
+// ===== [/MODULE] serialize =====
+
+
+// ===== [MODULE] validate =====
+const W_MISS_SEC=0.150;
+function validateEditorChart(chart){
+  const errors=[],warnings=[];
+  const warnPairs=[];
+  const seen=new Set();
+  for(const n of chart.notes){
+    if(seen.has(n.id))errors.push(`id ${n.id} が重複`);
+    seen.add(n.id);
+    if(!(n.layer>=0&&n.layer<8))errors.push(`id ${n.id}: layer が 0〜7 の範囲外`);
+    if(n.type==='trace'){
+      if(!Array.isArray(n.vertices)||n.vertices.length<2)
+        errors.push(`id ${n.id}: trace の頂点が2個未満`);
+      else{
+        for(const v of n.vertices)
+          if(!(v.x>=0&&v.x<=24))errors.push(`id ${n.id}: x が 0〜24 の範囲外`);
+        for(let i=1;i<n.vertices.length;i++)
+          if(ratCmp(n.vertices[i].time,n.vertices[i-1].time)<0)
+            errors.push(`id ${n.id}: 頂点が時刻昇順でない`);
+        // 時間広がりゼロ(始点=終点時刻)は描画されない(仕様5.5.4)
+        if(ratEq(n.vertices[0].time,n.vertices[n.vertices.length-1].time))
+          warnings.push(`id ${n.id}: トレースの時間広がりがゼロ(描画されません)`);
+      }
+    }else{
+      if(!(n.lane>=0&&n.lane<6))errors.push(`id ${n.id}: lane が 0〜5 の範囲外`);
+      if(!n.time||!(n.time.d>=1)||!(n.time.n>=0&&n.time.n<n.time.d))
+        errors.push(`id ${n.id}: 時刻が不正`);
+      if(n.type==='hold'){
+        if(!n.endTime)errors.push(`id ${n.id}: endTime が無い`);
+        else if(ratCmp(n.endTime,n.time)<=0)errors.push(`id ${n.id}: endTime <= time`);
+      }else if(n.type!=='click'&&n.type!=='wipe')
+        errors.push(`id ${n.id}: 未知の type "${n.type}"`);
+    }
+  }
+  const byLane=Array.from({length:6},()=>[]);
+  for(const n of chart.notes)
+    if(n.type!=='trace'&&n.lane>=0&&n.lane<6)byLane[n.lane].push(n);
+  for(let l=0;l<6;l++){
+    const ns=byLane[l].slice().sort((a,b)=>ratCmp(a.time,b.time));
+    for(let i=0;i<ns.length;i++){
+      for(let k=i+1;k<ns.length;k++){
+        const a=ns[i],b=ns[k];
+        let sa,sb;
+        try{sa=chart.sec(a.time);sb=chart.sec(b.time);}catch(e){break;}
+        if(sb-sa>W_MISS_SEC+1e-9)break;
+        if(a.type===b.type&&ratEq(a.time,b.time))
+          errors.push(`レーン${l}: 同一時刻に ${a.type} が重複 (id ${a.id}, ${b.id})`);
+        if(a.type!==b.type&&!ratEq(a.time,b.time)){
+          warnings.push(`レーン${l}: ${a.type}(id${a.id}) と ${b.type}(id${b.id}) が `+
+                        `${((sb-sa)*1000).toFixed(1)}ms 差で近接`);
+          warnPairs.push(a.id,b.id);
+        }
+      }
+    }
+  }
+  for(const ly of chart.layers){
+    for(const [key,nm] of [['speedSegments','speed'],['offsetSegments','offset']]){
+      const segs=ly[key]||[];
+      const sorted=segs.map((s,i)=>({s,i}))
+        .sort((a,b)=>ratCmp(a.s.keys[0].time,b.s.keys[0].time));
+      let prevEnd=null,prevIdx=-1;
+      for(const {s,i} of sorted){
+        if(!s.keys||s.keys.length<2){errors.push(`L${ly.id}.${nm}[${i}]: キーが2個未満`);continue;}
+        for(let k=0;k+1<s.keys.length;k++)
+          if(ratCmp(s.keys[k].time,s.keys[k+1].time)>=0)
+            errors.push(`L${ly.id}.${nm}[${i}]: キー時刻が昇順でない`);
+        const st=s.keys[0].time,en=s.keys[s.keys.length-1].time;
+        if(prevEnd&&ratCmp(st,prevEnd)<0)
+          errors.push(`L${ly.id}.${nm}[${i}] が [${prevIdx}] と時間的に重複`);
+        prevEnd=en;prevIdx=i;
+        if(nm==='offset')for(const k of s.keys)
+          if(k.value<-100||k.value>100)
+            errors.push(`L${ly.id}.offset: 値域外 ${k.value}%`);
+      }
+    }
+  }
+  return {errors,warnings,warnIds:new Set(warnPairs)};
+}
+// ===== [/MODULE] validate =====
+
+
+// ===== [MODULE] projection (Phase8 ランタイムから移植・数値検証済み) =====
+const NEG=-Infinity,POS=Infinity;
+function piece(t0,t1,v0,v1){return{t0,t1,v0,v1};}
+function valueInPiece(p,t){
+  if(p.t1===p.t0||!isFinite(p.t1-p.t0))return p.v0;
+  const u=(t-p.t0)/(p.t1-p.t0);return p.v0+(p.v1-p.v0)*u;}
+function slicePieces(pieces,a,b){const out=[];
+  for(const p of pieces){const s=Math.max(p.t0,a),e=Math.min(p.t1,b);
+    if(!(s<e))continue;out.push(piece(s,e,valueInPiece(p,s),valueInPiece(p,e)));}
+  return out;}
+function ownPiecesFromSegments(segments){const out=[];
+  for(const seg of segments){const ks=seg.keys;
+    for(let i=0;i+1<ks.length;i++)out.push(piece(ks[i].t,ks[i+1].t,ks[i].v,ks[i+1].v));}
+  out.sort((a,b)=>a.t0-b.t0);return out;}
+function fillGaps(own,fb){const out=[];let cursor=NEG;
+  for(const p of own){if(cursor<p.t0)out.push(...slicePieces(fb,cursor,p.t0));
+    out.push(p);cursor=p.t1;}
+  if(cursor<POS)out.push(...slicePieces(fb,cursor,POS));return out;}
+const CONST_ONE=[piece(NEG,POS,1,1)];
+class DistanceTable{
+  constructor(pieces){
+    this.pieces=pieces;
+    const fin=pieces.filter(p=>isFinite(p.t0)&&isFinite(p.t1));
+    this.fin=fin;this.cum=new Array(fin.length+1).fill(0);
+    for(let i=0;i<fin.length;i++){const p=fin[i];
+      this.cum[i+1]=this.cum[i]+(p.v0+p.v1)/2*(p.t1-p.t0);}
+    this.headV=pieces.length?pieces[0].v0:1;
+    this.tailV=pieces.length?pieces[pieces.length-1].v1:1;
+    this.tHead=fin.length?fin[0].t0:0;
+    this.tTail=fin.length?fin[fin.length-1].t1:0;
+    this.rawAtZero=this.rawDistance(0);}
+  rawDistance(t){
+    if(!this.fin.length)return this.headV*t;
+    if(t<=this.tHead)return this.headV*(t-this.tHead);
+    if(t>=this.tTail)return this.cum[this.fin.length]+this.tailV*(t-this.tTail);
+    let lo=0,hi=this.fin.length-1,idx=0;
+    while(lo<=hi){const mid=(lo+hi)>>1;
+      if(this.fin[mid].t0<=t){idx=mid;lo=mid+1;}else hi=mid-1;}
+    const p=this.fin[idx],dt=t-p.t0,span=p.t1-p.t0;
+    const vEnd=p.v0+(p.v1-p.v0)*(dt/span);
+    return this.cum[idx]+(p.v0+vEnd)/2*dt;}
+  distanceAt(t){return this.rawDistance(t)-this.rawAtZero;}
+}
+function buildDistanceTables(layersSec){
+  const l0=layersSec.find(l=>l.id===0);
+  if(!l0)throw new Error('speedmap: layer 0 not found');
+  const l0Pieces=fillGaps(ownPiecesFromSegments(l0.speedSegments||[]),CONST_ONE);
+  const tables={};
+  for(const l of layersSec)
+    tables[l.id]=new DistanceTable(l.id===0?l0Pieces:
+      fillGaps(ownPiecesFromSegments(l.speedSegments||[]),l0Pieces));
+  return tables;}
+const CONST_ZERO=[piece(NEG,POS,0,0)];
+function buildOffsetPieces(offsetSegments){
+  return fillGaps(ownPiecesFromSegments(offsetSegments||[]),CONST_ZERO);}
+function offsetAt(pieces,t){
+  for(const p of pieces)if(t>=p.t0&&t<p.t1)return valueInPiece(p,t);
+  return 0;}
+function hispeedMultiplier(v){return v>=6?v-5:1/(7-v);}
+function tiltFromRatio(r){return Math.atan(1/r-1);}
+function ratioForStep(s){return 1.0-s*(0.8/9);}
+const Proj={
+  W:0,H:0,tan:0,halfW:0,zj:0,
+  set(pxW,pxH,step,laneWidthPct,judgeLine){
+    this.zj=judgeLine||0;
+    this.W=pxW;this.H=pxH;
+    this.tan=Math.tan(tiltFromRatio(ratioForStep(step)));
+    this.halfW=pxW*laneWidthPct/100/2;
+  },
+  Z(z){return this.zj+z*(1-this.zj);},
+  denom(z){return 1+this.Z(z)*this.tan;},
+  visible(z){return this.denom(z)>0.02;},
+  y(z){const Z=this.Z(z);return this.H/2-(this.H/2)*((2*Z-1)/this.denom(z));},
+  x(z,u){return this.W/2+u*this.halfW/this.denom(z);},
+};
+function visibilityAt(entries,t){
+  let v=true;
+  for(const e of entries){ if(e.t<=t)v=e.visible; else break; }
+  return v;
+}
+// ===== [/MODULE] projection =====
+
+
+
+// ============================================================
+//  UI・操作層(9-A〜9-D)
+// ============================================================
+if(typeof document!=='undefined'){
+
+// ===== [MODULE] editor-ui =====
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const wrap=document.getElementById('gridwrap');
+let CW=0,CH=0,DPR=1;
+
+let chart=new EditorChart({meta:{title:'無題'}});
+let hist=new History(chart);
+let scrollSec=0;
+let pxPerSec=180;
+let hoverRat=null, hoverLane=-1, hoverX=-1;
+let validation={errors:[],warnings:[],warnIds:new Set()};
+
+let tool='click';
+let editLayer=0;
+let selection=new Set();
+let drag=null;
+let clipboard=null;
+let showTracks=true;      // レイヤートラック(速度/表示/オフセット)の表示
+let trackDrag=null;       // トラック編集のドラッグ状態
+let visLastClick={t:0,button:-1,rat:null};   // 表示トラックの手動ダブルクリック判定
+let selKey=null;          // 選択中のキー {track,segIdx,keyIdx}
+let rangeSel=null;        // 範囲選択の時間範囲(秒){t0,t1}。トラック込みコピー用
+let pendingTrace=null;    // 作成中トレースの頂点配列 [{time,x}]
+let selVert=null;         // 選択中トレース頂点 {id,idx}
+const selAllLayers=()=>document.getElementById('selmode').value==='all';        // 全レイヤー対象か
+const selWantTracks=()=>document.getElementById('optTracks').checked;           // オプショントラックを含むか
+
+const LANES=6;
+const PAD_L=54, PAD_R=16, PAD_B=40, PAD_T=16;
+const LAYER_COL=['#4fc3f7','#66e0a3','#ffd54f','#f06292','#b39ddb','#ff8a65','#4dd0e1','#f48fb1'];
+const layerColor=(id)=>LAYER_COL[id&7];
+const layerLabel=(id)=>id===0?'メイン':'サブ'+id;
+
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  CW=wrap.clientWidth; CH=wrap.clientHeight;
+  cv.style.width=CW+'px'; cv.style.height=CH+'px';
+  cv.width=Math.floor(CW*DPR); cv.height=Math.floor(CH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  resizePreview();
+  draw();
+}
+window.addEventListener('resize',resize);
+
+// レイヤートラックの定義。速度・オフセットは値×時間の2D編集(seg:true)。
+// ドラッグ時のスナップ刻み: 速度=1, オフセット=20%。より細かい値は数値入力(ダブルクリック)で。
+const TRACK_DEFS=[
+  {key:'speedSegments', label:'速度', w:106, min:-3, max:5, marks:[-2,-1,0,1,2,3,4], def:1, step:1, seg:true},
+  {key:'visibility',    label:'表示', w:46,  seg:false},
+  {key:'offsetSegments',label:'ｵﾌｾｯﾄ',w:106, min:-100, max:100, marks:[-100,-50,0,50,100], def:0, step:20, seg:true},
+];
+const TRACK_GAP=8;
+function tracksW(){ return showTracks?TRACK_DEFS.reduce((s,t)=>s+t.w,0)+TRACK_GAP:0; }
+const laneAreaW=()=>(CW-PAD_L-PAD_R-tracksW());
+const laneW=()=>laneAreaW()/LANES;
+const secToY=(s)=>CH-PAD_B-(s-scrollSec)*pxPerSec;
+const yToSec=(y)=>scrollSec+(CH-PAD_B-y)/pxPerSec;
+const laneToX=(l)=>PAD_L+l*laneW();
+function xToLane(x){const l=Math.floor((x-PAD_L)/laneW());return (l<0||l>=LANES)?-1:l;}
+const noteH=()=>Math.max(6,Math.min(16,pxPerSec*0.05));
+// トラックの左端x
+function trackLeft(key){
+  let x=PAD_L+laneAreaW()+TRACK_GAP;
+  for(const t of TRACK_DEFS){ if(t.key===key)return x; x+=t.w; }
+  return x;
+}
+// 画面xがどのトラックか
+function trackAtX(x){
+  if(!showTracks)return null;
+  let cx=PAD_L+laneAreaW()+TRACK_GAP;
+  for(const t of TRACK_DEFS){ if(x>=cx&&x<cx+t.w)return {def:t,left:cx}; cx+=t.w; }
+  return null;
+}
+const valToX=(t,left,v)=>left+(v-t.min)/(t.max-t.min)*t.w;
+function xToVal(t,left,x){
+  let v=t.min+(x-left)/t.w*(t.max-t.min);
+  v=Math.round(v/t.step)*t.step;
+  return Math.max(t.min,Math.min(t.max,v));
+}
+function keySec(k){ return secSafe(k.time); }
+// トラックのセグメント配列(現在レイヤー)
+function layerObj(L){ return chart.layers.find(l=>l.id===L)||null; }
+function trackSegs(L,key){ const ly=layerObj(L); return (ly&&ly[key])?ly[key]:[]; }
+// セグメント配列が妥当か(2キー以上/昇順/重複なし)
+function validTrack(segs){
+  const arr=segs.map(s=>({s,t0:keySec(s.keys[0]),t1:keySec(s.keys[s.keys.length-1])}))
+    .sort((a,b)=>ratCmp(a.s.keys[0].time,b.s.keys[0].time));
+  let prevEnd=null;
+  for(const {s} of arr){
+    if(!s.keys||s.keys.length<2)return false;
+    for(let k=0;k+1<s.keys.length;k++)if(ratCmp(s.keys[k].time,s.keys[k+1].time)>=0)return false;
+    const st=s.keys[0].time,en=s.keys[s.keys.length-1].time;
+    if(prevEnd&&ratCmp(st,prevEnd)<0)return false;
+    prevEnd=en;
+  }
+  return true;
+}
+// レイヤーLの key トラックを newSegs に置換(妥当なら)。commit=trueで確定。
+function setTrack(L,key,newSegs){
+  if(!validTrack(newSegs))return false;
+  const layers=JSON.parse(JSON.stringify(chart.layers));
+  const ly=layers.find(l=>l.id===L); if(!ly)return false;
+  ly[key]=newSegs;
+  hist.do({type:'setLayers',layers});
+  previewRefresh(); revalidate(); draw();
+  return true;
+}
+function snapDen(){return +document.getElementById('snap').value;}
+function secSafe(t){try{return chart.sec(t);}catch(e){return null;}}
+
+function movePreview(){
+  if(!drag)return null;
+  if(drag.mode==='resize-hold'&&drag.newEnd){
+    const n=chart.noteById(drag.id); if(!n)return null;
+    return new Map([[n.id,{time:n.time,endTime:drag.newEnd,lane:n.lane}]]);
+  }
+  if(drag.mode!=='move'||!drag.delta)return null;
+  const {num,den,dLane}=drag.delta;
+  const map=new Map();
+  for(const id of selection){
+    const n=chart.noteById(id); if(!n||n.type==='trace')continue;
+    const time=ratAddAbs(n.time,num,den);
+    let endTime; if(n.type==='hold')endTime=ratAddAbs(n.endTime,num,den);
+    const lane=Math.max(0,Math.min(LANES-1,n.lane+dLane));
+    map.set(id,{time,endTime,lane});
+  }
+  return map;
+}
+
+// ---- 編集グリッド描画 ----
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='#0a0c10'; ctx.fillRect(0,0,CW,CH);
+
+  const topSec=yToSec(PAD_T), botSec=yToSec(CH-PAD_B);
+  for(let l=0;l<LANES;l++){
+    ctx.fillStyle=(l%2)?'#0e131c':'#0c1017';
+    ctx.fillRect(laneToX(l),PAD_T,laneW(),CH-PAD_T-PAD_B);
+  }
+  const d=snapDen();
+  const m0=Math.max(0,chart.timing.secToMeasure(botSec));
+  const m1=Math.min(chart.timing.measureCount-1,chart.timing.secToMeasure(topSec)+1);
+  for(let m=m0;m<=m1;m++){
+    for(let k=0;k<d;k++){
+      const t={m,n:k,d};
+      let s=secSafe(t); if(s===null)continue;
+      if(s<botSec-0.5||s>topSec+0.5)continue;
+      const y=secToY(s);
+      const isBar=(k===0);
+      const beats=chart.timing.beatsIn(m);
+      const isBeat=(k*beats)%d===0;
+      ctx.strokeStyle=isBar?'#4a6a90':(isBeat?'#243247':'#182131');
+      ctx.lineWidth=isBar?1.5:1;
+      ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(CW-PAD_R,y); ctx.stroke();
+      if(isBar){
+        ctx.fillStyle='#5f7d9e'; ctx.font='11px ui-monospace,monospace';
+        ctx.fillText(String(m),6,y-3);
+      }
+    }
+  }
+  for(let l=0;l<=LANES;l++){
+    ctx.strokeStyle='#22304a'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(laneToX(l),PAD_T); ctx.lineTo(laneToX(l),CH-PAD_B); ctx.stroke();
+  }
+
+  const H=noteH(), preview=movePreview();
+  const order=chart.notes.filter(n=>n.type!=='trace')
+    .sort((a,b)=>(a.layer===editLayer?1:0)-(b.layer===editLayer?1:0));
+  for(const n of order){
+    const active=(n.layer===editLayer);
+    const col=layerColor(n.layer);
+    let pv=preview&&preview.get(n.id);
+    const time=pv?pv.time:n.time;
+    const lane=pv?pv.lane:n.lane;
+    const endTime=pv?pv.endTime:n.endTime;
+    let s=secSafe(time); if(s===null)continue;
+    const yTop=secToY(s), x=laneToX(lane);
+    ctx.globalAlpha=active?1:0.28;
+    if(n.type==='hold'){
+      // ホールドは始点に別ノーツを置かず、単純な長方形(帯)で表す
+      const se=(endTime!==undefined)?secSafe(endTime):null;
+      if(se!==null){
+        const yEnd=secToY(se);
+        ctx.fillStyle=col; ctx.globalAlpha=active?0.38:0.16;
+        ctx.fillRect(x+4,yEnd,laneW()-8,yTop-yEnd);
+        ctx.globalAlpha=active?0.9:0.3;
+        ctx.strokeStyle=col; ctx.lineWidth=1.5;
+        ctx.strokeRect(x+4,yEnd,laneW()-8,yTop-yEnd);
+        ctx.globalAlpha=active?1:0.28;
+      }
+    }else{
+      drawNoteHead(n.type,x,yTop,H,col);
+    }
+    if(active&&selection.has(n.id)){
+      ctx.globalAlpha=1;
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.strokeRect(x+2,yTop-H/2-1,laneW()-4,H+2);
+    }
+    if(active&&validation.warnIds&&validation.warnIds.has(n.id)){
+      ctx.globalAlpha=1;
+      ctx.strokeStyle='#ffc857'; ctx.lineWidth=2;
+      ctx.strokeRect(x+1,yTop-H/2-2,laneW()-2,H+4);
+    }
+  }
+  ctx.globalAlpha=1;
+
+  drawTraces();
+
+  if(drag&&drag.mode==='hold-create'&&drag.cur){
+    const s0=secSafe(drag.start.rat), s1=secSafe(drag.cur.rat);
+    if(s0!==null&&s1!==null){
+      const x=laneToX(drag.start.lane), col=layerColor(editLayer);
+      const yA=secToY(Math.min(s0,s1)), yB=secToY(Math.max(s0,s1));
+      ctx.globalAlpha=0.18; ctx.fillStyle=col;
+      ctx.fillRect(x+6,yA,laneW()-12,yB-yA);
+      ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1.5;
+      ctx.strokeRect(x+6,yA,laneW()-12,yB-yA);
+    }
+  }
+  if(drag&&drag.mode==='marquee'&&drag.cur){
+    const x0=Math.min(drag.x0,drag.cur.x), x1=Math.max(drag.x0,drag.cur.x);
+    const y0=Math.min(drag.y0,drag.cur.y), y1=Math.max(drag.y0,drag.cur.y);
+    ctx.fillStyle='rgba(43,92,255,.14)';
+    ctx.fillRect(x0,y0,x1-x0,y1-y0);
+    ctx.strokeStyle='#2b5cff'; ctx.lineWidth=1;
+    ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+  }
+  if(tool==='trace'&&hoverRat&&hoverX>=PAD_L&&hoverX<=PAD_L+laneAreaW()){
+    // 配置可能点に吸着する ○
+    const s=secSafe(hoverRat);
+    if(s!==null){
+      const gx=screenToXGrid(hoverX), px=xToScreen(gx), y=secToY(s);
+      ctx.strokeStyle='rgba(255,255,255,.28)';
+      ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(PAD_L+laneAreaW(),y); ctx.stroke();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(px,y,5,0,7); ctx.stroke();
+    }
+  }else if((tool==='click'||tool==='wipe'||tool==='hold')&&hoverRat&&hoverLane>=0&&hoverLane<LANES){
+    let s=secSafe(hoverRat);
+    if(s!==null){
+      const y=secToY(s), x=laneToX(hoverLane);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5;
+      ctx.strokeRect(x+3,y-H/2,laneW()-6,H);
+      ctx.strokeStyle='rgba(255,255,255,.30)';
+      ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(CW-PAD_R,y); ctx.stroke();
+    }
+  }
+  if(0>=botSec-1&&0<=topSec+1){
+    const y=secToY(0);
+    ctx.strokeStyle='#ff6b6b'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(CW-PAD_R,y); ctx.stroke();
+  }
+  const ps=Audio.playSec;
+  if(ps>=botSec-1&&ps<=topSec+1){
+    const y=secToY(ps);
+    ctx.strokeStyle='#39d3ff'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(CW-PAD_R,y); ctx.stroke();
+    ctx.fillStyle='#39d3ff'; ctx.font='10px ui-monospace,monospace';
+    ctx.fillText(ps.toFixed(3)+'s',PAD_L+2,y-3);
+  }
+
+  if(showTracks)drawTracks(topSec,botSec);
+  drawRangeOverlay();   // 範囲選択ハイライト(トラックより前面)
+
+  updateSide();
+  drawPreview();
+}
+// 範囲選択の帯(全幅・トラック前面)+ 範囲にかかるトラックオブジェクトの強調
+function drawRangeOverlay(){
+  if(!rangeSel)return;
+  const ya=secToY(rangeSel.t1), yb=secToY(rangeSel.t0);
+  const yTop=Math.min(ya,yb), h=Math.abs(yb-ya);
+  ctx.fillStyle='rgba(43,92,255,.10)';
+  ctx.fillRect(PAD_L,yTop,CW-PAD_R-PAD_L,h);
+  ctx.strokeStyle='rgba(90,140,255,.65)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD_L,ya); ctx.lineTo(CW-PAD_R,ya);
+  ctx.moveTo(PAD_L,yb); ctx.lineTo(CW-PAD_R,yb); ctx.stroke();
+  if(!showTracks||!selWantTracks())return;   // オプショントラックONのときのみ強調
+  // 範囲にかかる速度/オフセットのセグメント(塊)と表示エントリを強調(editLayer)
+  for(const t of TRACK_DEFS){
+    const left=trackLeft(t.key), w=t.w;
+    if(t.seg){
+      for(const seg of trackSegs(editLayer,t.key)){
+        const s0=secSafe(seg.keys[0].time), s1=secSafe(seg.keys[seg.keys.length-1].time);
+        if(s0===null||s1===null)continue;
+        if(s0>=rangeSel.t0-1e-9&&s1<=rangeSel.t1+1e-9){
+          const y0=secToY(s1), y1=secToY(s0);
+          ctx.strokeStyle='#ffd54f'; ctx.lineWidth=1.5;
+          ctx.strokeRect(left+2,Math.min(y0,y1)-3,w-4,Math.abs(y1-y0)+6);
+        }
+      }
+    }else{
+      for(const en of ((layerObj(editLayer)||{}).visibility||[])){
+        const s=secSafe(en.time); if(s===null)continue;
+        if(s>=rangeSel.t0-1e-9&&s<=rangeSel.t1+1e-9){
+          const y=secToY(s);
+          ctx.strokeStyle='#ffd54f'; ctx.lineWidth=2;
+          ctx.beginPath(); ctx.arc(left+w/2,y,7,0,7); ctx.stroke();
+        }
+      }
+    }
+  }
+}
+
+// ============================================================
+//  9-E: レイヤートラック(速度倍率 / 表示 / 判定オフセット)
+// ============================================================
+function segValueAt(seg,sec){
+  const ks=seg.keys;
+  const t0=keySec(ks[0]), tN=keySec(ks[ks.length-1]);
+  if(sec<=t0)return ks[0].value;
+  if(sec>=tN)return ks[ks.length-1].value;
+  for(let i=0;i+1<ks.length;i++){
+    const a=keySec(ks[i]), b=keySec(ks[i+1]);
+    if(sec>=a&&sec<=b){const u=(b-a)?(sec-a)/(b-a):0;return ks[i].value+(ks[i+1].value-ks[i].value)*u;}
+  }
+  return ks[ks.length-1].value;
+}
+function secInSeg(seg,sec){const a=keySec(seg.keys[0]),b=keySec(seg.keys[seg.keys.length-1]);
+  return a!==null&&b!==null&&sec>=a&&sec<=b;}
+// レイヤーLの有効速度(未設定はフォールバック: sub→L0, L0→1)
+function effSpeedAt(L,sec){
+  for(const s of trackSegs(L,'speedSegments'))if(secInSeg(s,sec))return segValueAt(s,sec);
+  return L===0?1:effSpeedAt(0,sec);
+}
+
+function drawTracks(topSec,botSec){
+  const yT=PAD_T, yB=CH-PAD_B;
+  for(const t of TRACK_DEFS){
+    const left=trackLeft(t.key), w=t.w;
+    ctx.fillStyle='#0b1017'; ctx.fillRect(left,yT,w,yB-yT);
+    ctx.strokeStyle='#1a2536'; ctx.lineWidth=1; ctx.strokeRect(left+.5,yT+.5,w-1,yB-yT-1);
+    ctx.fillStyle='#6f86a6'; ctx.font='10px system-ui'; ctx.textAlign='center';
+    ctx.fillText(t.label,left+w/2,yT-4); ctx.textAlign='left';
+    if(t.seg){
+      for(const mv of t.marks){
+        const mx=valToX(t,left,mv);
+        ctx.strokeStyle=mv===0?'#2b3a52':'#22303f'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(mx,yT); ctx.lineTo(mx,yB); ctx.stroke();
+        ctx.fillStyle='#3f546f'; ctx.font='9px ui-monospace'; ctx.textAlign='center';
+        ctx.fillText(String(mv),mx,yB+11); ctx.textAlign='left';
+      }
+      drawTrackReference(t,left);        // レイヤー0参照(薄表示・仕様3.1)
+      drawTrackSegs(t,left,editLayer);
+    }else{
+      drawVisTrack(left,w);
+    }
+  }
+}
+// 速度トラックにレイヤー0の有効値を薄い点線で重ねる(セグメント外で戻る先を示す)
+function drawTrackReference(t,left){
+  if(t.key!=='speedSegments')return;
+  ctx.strokeStyle='rgba(120,150,190,.30)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); let started=false;
+  for(let yy=PAD_T; yy<=CH-PAD_B; yy+=3){
+    const sec=yToSec(yy); if(sec<0){started=false;continue;}
+    const v=Math.max(t.min,Math.min(t.max,effSpeedAt(0,sec)));
+    const x=valToX(t,left,v);
+    if(!started){ctx.moveTo(x,yy);started=true;}else ctx.lineTo(x,yy);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function drawTrackSegs(t,left,L){
+  const segs=trackSegs(L,t.key); const col=layerColor(L);
+  const ov=(si,ki)=>{ // key-drag プレビューの座標差し替え
+    if(trackDrag&&trackDrag.mode==='key-drag'&&trackDrag.track===t.key&&trackDrag.L===L
+       &&trackDrag.segIdx===si&&trackDrag.keyIdx===ki)
+      return {time:trackDrag.newTime,value:trackDrag.newValue};
+    return null;
+  };
+  for(let si=0;si<segs.length;si++){
+    const ks=segs[si].keys;
+    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.beginPath();
+    for(let i=0;i<ks.length;i++){
+      const o=ov(si,i)||ks[i]; const s=keySec(o); if(s===null)continue;
+      const x=valToX(t,left,Math.max(t.min,Math.min(t.max,o.value))), y=secToY(s);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    for(let i=0;i<ks.length;i++){
+      const o=ov(si,i)||ks[i]; const s=keySec(o); if(s===null)continue;
+      const x=valToX(t,left,Math.max(t.min,Math.min(t.max,o.value))), y=secToY(s);
+      const sel=selKey&&selKey.track===t.key&&selKey.segIdx===si&&selKey.keyIdx===i;
+      ctx.fillStyle=sel?'#fff':col;
+      ctx.beginPath(); ctx.arc(x,y,sel?4.5:3.5,0,7); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1; ctx.stroke();
+    }
+  }
+  if(trackDrag&&trackDrag.mode==='seg-create'&&trackDrag.track===t.key&&trackDrag.L===L&&trackDrag.cur){
+    const s0=secSafe(trackDrag.start.time), s1=secSafe(trackDrag.cur.time);
+    if(s0!==null&&s1!==null){
+      const x0=valToX(t,left,trackDrag.start.value), x1=valToX(t,left,trackDrag.cur.value);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(x0,secToY(s0)); ctx.lineTo(x1,secToY(s1)); ctx.stroke(); ctx.setLineDash([]);
+      for(const pp of [[x0,s0],[x1,s1]]){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(pp[0],secToY(pp[1]),4,0,7);ctx.fill();}
+    }
+  }
+}
+// 仕様: 最初のエントリより前は表示(true)。冗長な(状態を変えない)エントリは畳む。
+function normalizeVis(entries){
+  const sorted=entries.slice().sort((a,b)=>ratCmp(a.time,b.time));
+  const out=[]; let prev=true;
+  for(const e of sorted){ if(e.visible!==prev){ out.push({time:{...e.time},visible:e.visible}); prev=e.visible; } }
+  return out;
+}
+// 表示トラック: 縦タイムライン。ON=実線(色), OFF=薄い点線。切替点に ●(ON)/○(OFF)。
+function drawVisTrack(left,w){
+  const cx=left+w/2, col=layerColor(editLayer);
+  const es=((layerObj(editLayer)||{}).visibility||[])
+    .map(e=>({t:secSafe(e.time),visible:e.visible})).filter(e=>e.t!==null).sort((a,b)=>a.t-b.t);
+  const stateAt=(sec)=>{let v=true;for(const e of es){if(e.t<=sec)v=e.visible;else break;}return v;};
+  const yTop=PAD_T, yBot=CH-PAD_B;
+  const bounds=[yTop,yBot];
+  for(const e of es){const y=secToY(e.t); if(y>yTop&&y<yBot)bounds.push(y);}
+  bounds.sort((a,b)=>a-b);
+  for(let i=0;i+1<bounds.length;i++){
+    const ya=bounds[i], yb=bounds[i+1];
+    const on=stateAt(yToSec((ya+yb)/2));
+    if(on){ ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.setLineDash([]); }
+    else  { ctx.strokeStyle='rgba(150,170,200,.5)'; ctx.lineWidth=1.5; ctx.setLineDash([2,4]); }
+    ctx.beginPath(); ctx.moveTo(cx,ya); ctx.lineTo(cx,yb); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  for(const e of es){
+    const y=secToY(e.t); if(y<yTop||y>yBot)continue;
+    ctx.beginPath(); ctx.arc(cx,y,5,0,7);
+    if(e.visible){ ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1; ctx.stroke(); }
+    else { ctx.fillStyle='#0b1017'; ctx.fill(); ctx.strokeStyle='rgba(185,205,230,.9)'; ctx.lineWidth=1.5; ctx.stroke(); }
+  }
+  // ドラッグ中の区間プレビュー
+  if(trackDrag&&trackDrag.mode==='vis-range'&&trackDrag.L===editLayer){
+    const sa=secSafe(trackDrag.startRat), sb=secSafe(trackDrag.curRat);
+    if(sa!==null&&sb!==null){
+      let ya=secToY(sa), yb=secToY(sb); if(ya>yb){const tmp=ya;ya=yb;yb=tmp;}
+      const want=(trackDrag.button===2)?false:true;
+      ctx.globalAlpha=.5; ctx.lineWidth=6;
+      ctx.strokeStyle=want?col:'rgba(150,170,200,.9)'; ctx.setLineDash(want?[]:[3,4]);
+      ctx.beginPath(); ctx.moveTo(cx,Math.max(yTop,ya)); ctx.lineTo(cx,Math.min(yBot,yb)); ctx.stroke();
+      ctx.globalAlpha=1; ctx.setLineDash([]);
+    }
+  }
+}
+
+// ---- トラック操作 ----
+function hitTrackKey(t,left,L,x,y){
+  const segs=trackSegs(L,t.key); let best=null,bd=64;
+  for(let si=0;si<segs.length;si++)for(let ki=0;ki<segs[si].keys.length;ki++){
+    const k=segs[si].keys[ki]; const s=keySec(k); if(s===null)continue;
+    const kx=valToX(t,left,Math.max(t.min,Math.min(t.max,k.value))), ky=secToY(s);
+    const d=(kx-x)*(kx-x)+(ky-y)*(ky-y);
+    if(d<bd){bd=d;best={segIdx:si,keyIdx:ki};}
+  }
+  return best;
+}
+function cloneSegs(L,key){return trackSegs(L,key).map(s=>({keys:s.keys.map(k=>({time:{...k.time},value:k.value}))}));}
+function setVisEntries(L,entries){
+  const layers=JSON.parse(JSON.stringify(chart.layers));
+  const ly=layers.find(l=>l.id===L); ly.visibility=entries;
+  hist.do({type:'setLayers',layers}); previewRefresh(); revalidate(); draw();
+}
+function handleTrackDown(e,x,y,tr){
+  const t=tr.def, left=tr.left, L=editLayer;
+  const sec=yToSec(y), rat=snapSecToRat(chart.timing,sec,snapDen());
+  if(t.key==='visibility'){
+    const now=performance.now();
+    const isDbl=(now-visLastClick.t<350)&&visLastClick.button===e.button&&visLastClick.rat&&ratEq(visLastClick.rat,rat);
+    visLastClick={t:now,button:e.button,rat};
+    if(isDbl){
+      // ダブルクリック=点で切替(左=ON / 右=OFF)。従来の単クリック挙動をここへ移設。
+      visLastClick.t=0;   // 3クリック目で再発火させない
+      const want=(e.button===2)?false:true;
+      const entries=((layerObj(L)||{}).visibility||[]).map(en=>({time:{...en.time},visible:en.visible}));
+      const filtered=entries.filter(en=>!ratEq(en.time,rat));
+      filtered.push({time:{m:rat.m,n:rat.n,d:rat.d},visible:want});
+      setVisEntries(L,normalizeVis(filtered));
+      return;
+    }
+    // 単クリック+ドラッグ=範囲をON/OFF区間として配置(左=ON区間 / 右=OFF区間)。
+    // ドラッグせず離した場合は何もしない(点はダブルクリック)。
+    trackDrag={mode:'vis-range',L,left,button:e.button,startRat:rat,curRat:rat};
+    draw();
+    return;
+  }
+  // 速度・オフセット(セグメント)
+  const hk=hitTrackKey(t,left,L,x,y);
+  if(e.button===2){
+    if(hk){
+      const segs=cloneSegs(L,t.key); const seg=segs[hk.segIdx];
+      seg.keys.splice(hk.keyIdx,1);
+      if(seg.keys.length<2)segs.splice(hk.segIdx,1);
+      selKey=null; setTrack(L,t.key,segs); return;
+    }
+    const segs=cloneSegs(L,t.key);
+    for(let si=0;si<segs.length;si++)if(secInSeg(segs[si],sec)){segs.splice(si,1);selKey=null;setTrack(L,t.key,segs);return;}
+    return;
+  }
+  if(hk){
+    selKey={track:t.key,segIdx:hk.segIdx,keyIdx:hk.keyIdx};
+    const k=trackSegs(L,t.key)[hk.segIdx].keys[hk.keyIdx];
+    trackDrag={mode:'key-drag',track:t.key,L,left,segIdx:hk.segIdx,keyIdx:hk.keyIdx,
+      newTime:{...k.time},newValue:k.value};
+    draw(); return;
+  }
+  // セグメント線上 → キー挿入
+  const segsC=trackSegs(L,t.key);
+  for(let si=0;si<segsC.length;si++){
+    if(secInSeg(segsC[si],sec)){
+      if(segsC[si].keys.some(k=>ratEq(k.time,rat)))return;
+      const segs=cloneSegs(L,t.key);
+      segs[si].keys.push({time:{m:rat.m,n:rat.n,d:rat.d},value:xToVal(t,left,x)});
+      segs[si].keys.sort((a,b)=>ratCmp(a.time,b.time));
+      selKey=null; setTrack(L,t.key,segs); return;
+    }
+  }
+  // 空き → ドラッグで新規セグメント
+  const v=xToVal(t,left,x);
+  trackDrag={mode:'seg-create',track:t.key,L,left,start:{time:rat,value:v},cur:{time:rat,value:v}};
+  draw();
+}
+function updateTrackDrag(x,y){
+  if(trackDrag.mode==='vis-range'){
+    trackDrag.curRat=snapSecToRat(chart.timing,yToSec(y),snapDen()); draw(); return;
+  }
+  const t=TRACK_DEFS.find(d=>d.key===trackDrag.track), left=trackDrag.left;
+  const rat=snapSecToRat(chart.timing,yToSec(y),snapDen()), val=xToVal(t,left,x);
+  if(trackDrag.mode==='seg-create'){ trackDrag.cur={time:rat,value:val}; }
+  else if(trackDrag.mode==='key-drag'){
+    const seg=trackSegs(trackDrag.L,trackDrag.track)[trackDrag.segIdx], ki=trackDrag.keyIdx;
+    let nt=rat;
+    if(ki>0&&ratCmp(nt,seg.keys[ki-1].time)<=0)nt=null;
+    if(nt&&ki<seg.keys.length-1&&ratCmp(nt,seg.keys[ki+1].time)>=0)nt=null;
+    if(nt)trackDrag.newTime=nt;
+    trackDrag.newValue=val;
+  }
+  draw();
+}
+function commitTrackDrag(){
+  const td=trackDrag; trackDrag=null;
+  if(td.mode==='vis-range'){
+    let a=td.startRat,b=td.curRat;
+    if(!a||!b||ratEq(a,b)){draw();return;}   // 動いていない=何もしない
+    if(ratCmp(a,b)>0){const tmp=a;a=b;b=tmp;}
+    const want=(td.button===2)?false:true;
+    const orig=((layerObj(td.L)||{}).visibility||[]).map(en=>({time:{...en.time},visible:en.visible}));
+    const sorted=orig.slice().sort((p,q)=>ratCmp(p.time,q.time));
+    let before=true;
+    for(const en of sorted){ if(ratCmp(en.time,a)<0)before=en.visible; else break; }
+    const kept=orig.filter(en=>ratCmp(en.time,a)<0||ratCmp(en.time,b)>0);
+    kept.push({time:{m:a.m,n:a.n,d:a.d},visible:want});      // 区間の始点=want
+    kept.push({time:{m:b.m,n:b.n,d:b.d},visible:before});    // 区間の終点=区間外の状態へ戻す
+    setVisEntries(td.L,normalizeVis(kept));
+    return;
+  }
+  if(td.mode==='seg-create'&&td.cur){
+    let a=td.start,b=td.cur;
+    if(ratEq(a.time,b.time)){draw();return;}
+    if(ratCmp(a.time,b.time)>0){const tmp=a;a=b;b=tmp;}
+    const segs=cloneSegs(td.L,td.track);
+    segs.push({keys:[{time:{m:a.time.m,n:a.time.n,d:a.time.d},value:a.value},
+                     {time:{m:b.time.m,n:b.time.n,d:b.time.d},value:b.value}]});
+    if(!setTrack(td.L,td.track,segs))draw();
+  }else if(td.mode==='key-drag'){
+    const segs=cloneSegs(td.L,td.track);
+    const k=segs[td.segIdx].keys[td.keyIdx];
+    k.time={m:td.newTime.m,n:td.newTime.n,d:td.newTime.d}; k.value=td.newValue;
+    if(!setTrack(td.L,td.track,segs))draw();
+  }
+}
+
+// ============================================================
+//  9-F: トレース編集(折線・横軸 x=0〜24)
+// ============================================================
+function traceGridN(){return +document.getElementById('tgrid').value;}
+function traceStep(){return 24/(traceGridN()-1);}   // 7点→4, 13点→2, 25点→1
+const xToScreen=(x)=>PAD_L+(x/24)*laneAreaW();
+function screenToXGrid(sx){
+  let raw=(sx-PAD_L)/laneAreaW()*24;
+  const st=traceStep();
+  let v=Math.round(raw/st)*st;
+  return Math.max(0,Math.min(24,Math.round(v)));
+}
+function ptSegDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;
+  let t=L2?((px-ax)*dx+(py-ay)*dy)/L2:0; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+function hitTraceVertex(sx,sy){
+  let best=null,bd=49;
+  for(const n of chart.notes){
+    if(n.type!=='trace'||n.layer!==editLayer||!n.vertices)continue;
+    for(let i=0;i<n.vertices.length;i++){
+      const v=n.vertices[i],s=secSafe(v.time); if(s===null)continue;
+      const d=(xToScreen(v.x)-sx)**2+(secToY(s)-sy)**2;
+      if(d<bd){bd=d;best={id:n.id,idx:i};}
+    }
+  }
+  return best;
+}
+function hitTraceEdge(sx,sy){
+  let best=null,bd=36;
+  for(const n of chart.notes){
+    if(n.type!=='trace'||n.layer!==editLayer||!n.vertices||n.vertices.length<2)continue;
+    for(let i=0;i+1<n.vertices.length;i++){
+      const a=n.vertices[i],b=n.vertices[i+1];
+      const sa=secSafe(a.time),sb=secSafe(b.time); if(sa===null||sb===null)continue;
+      const d=ptSegDist(sx,sy,xToScreen(a.x),secToY(sa),xToScreen(b.x),secToY(sb));
+      if(d<bd){bd=d;best={id:n.id,insertIdx:i+1};}
+    }
+  }
+  return best;
+}
+// 頂点/辺どちらかに当たればそのトレースid(塊選択用)
+function hitTraceAny(sx,sy){
+  const hv=hitTraceVertex(sx,sy); if(hv)return hv.id;
+  const he=hitTraceEdge(sx,sy); if(he)return he.id;
+  return null;
+}
+// 同一オブジェクト内の同座標(時刻かつx)頂点を統合
+function mergeVerts(vs){
+  const out=[];
+  for(let i=0;i<vs.length;i++){
+    if(i>0&&ratEq(vs[i].time,vs[i-1].time)&&vs[i].x===vs[i-1].x)continue;
+    out.push(vs[i]);
+  }
+  return out;
+}
+function drawTraces(){
+  for(const n of chart.notes){
+    if(n.type!=='trace'||!n.vertices||!n.vertices.length)continue;
+    const active=(n.layer===editLayer), col=layerColor(n.layer);
+    const vAt=(i)=>{
+      const v=n.vertices[i];
+      if(drag&&drag.mode==='vert-drag'&&drag.id===n.id&&drag.idx===i&&drag.newTime)
+        return {time:drag.newTime,x:drag.newX};
+      if(drag&&drag.mode==='move'&&drag.delta&&selection.has(n.id)){
+        const {num,den,dLane}=drag.delta;
+        return {time:ratAddAbs(v.time,num,den),x:Math.max(0,Math.min(24,v.x+dLane*4))};
+      }
+      return v;
+    };
+    const selectedTrace=selection.has(n.id);
+    const pts=[];
+    for(let i=0;i<n.vertices.length;i++){const v=vAt(i),s=secSafe(v.time);pts.push(s===null?null:{px:xToScreen(v.x),py:secToY(s)});}
+    const strokePath=()=>{let st=false;ctx.beginPath();for(const p of pts){if(!p){st=false;continue;}if(!st){ctx.moveTo(p.px,p.py);st=true;}else ctx.lineTo(p.px,p.py);}ctx.stroke();};
+    if(selectedTrace&&active){ctx.globalAlpha=1;ctx.strokeStyle='#ffffff';ctx.lineWidth=5;strokePath();}
+    ctx.globalAlpha=active?0.95:0.22; ctx.strokeStyle=col; ctx.lineWidth=2; strokePath();
+    if(active){
+      for(let i=0;i<n.vertices.length;i++){
+        const v=vAt(i),s=secSafe(v.time); if(s===null)continue;
+        const px=xToScreen(v.x),py=secToY(s);
+        const sel=selVert&&selVert.id===n.id&&selVert.idx===i;
+        ctx.globalAlpha=1; ctx.fillStyle=sel?'#fff':col;
+        ctx.beginPath(); ctx.arc(px,py,sel?4.5:3.5,0,7); ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1; ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha=1;
+  if(pendingTrace&&pendingTrace.length){
+    ctx.strokeStyle=layerColor(editLayer); ctx.lineWidth=2; ctx.setLineDash([5,3]);
+    ctx.beginPath(); let started=false;
+    for(const v of pendingTrace){const s=secSafe(v.time); if(s===null)continue;
+      const px=xToScreen(v.x),py=secToY(s); if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);}
+    ctx.stroke(); ctx.setLineDash([]);
+    for(const v of pendingTrace){const s=secSafe(v.time);if(s===null)continue;
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(xToScreen(v.x),secToY(s),3.5,0,7);ctx.fill();}
+  }
+}
+// トレースツール: 作成中は頂点追加。作成していないときは既存頂点/辺を編集。
+function traceToolDown(sx,sy,button){
+  if(pendingTrace){
+    if(button===2){ pendingTrace.pop(); if(!pendingTrace.length)pendingTrace=null; draw(); return; }
+    addPendingVertex(sx,sy); return;
+  }
+  const hv=hitTraceVertex(sx,sy);
+  if(button===2){ if(hv)deleteVertex(hv); return; }
+  if(hv){ selVert={...hv}; drag={mode:'vert-drag',id:hv.id,idx:hv.idx,newTime:null,newX:0}; draw(); return; }
+  const he=hitTraceEdge(sx,sy);
+  if(he){ insertVertexAtEdge(he,sx,sy); return; }
+  addPendingVertex(sx,sy);   // 空き → 新規トレース開始
+}
+function addPendingVertex(sx,sy){
+  if(sx<PAD_L||sx>PAD_L+laneAreaW())return;
+  const x=screenToXGrid(sx);
+  let time=snapSecToRat(chart.timing,yToSec(sy),snapDen());
+  if(!pendingTrace)pendingTrace=[];
+  if(pendingTrace.length){
+    const last=pendingTrace[pendingTrace.length-1];
+    if(ratCmp(time,last.time)<0)time={...last.time};
+    if(ratEq(time,last.time)&&x===last.x)return;   // 同座標は統合(追加しない)
+  }
+  pendingTrace.push({time:{m:time.m,n:time.n,d:time.d},x});
+  draw();
+}
+function deleteVertex(hv){
+  const n=chart.noteById(hv.id); if(!n)return;
+  const nv=n.vertices.filter((_,i)=>i!==hv.idx);
+  if(nv.length<2)hist.do({type:'removeNotes',ids:[hv.id]});
+  else hist.do({type:'setNoteProps',ids:[hv.id],props:{vertices:nv}});
+  selVert=null; revalidate(); draw();
+}
+function insertVertexAtEdge(he,sx,sy){
+  const n=chart.noteById(he.id); if(!n)return;
+  const rat=snapSecToRat(chart.timing,yToSec(sy),snapDen());
+  const nv=n.vertices.slice();
+  nv.splice(he.insertIdx,0,{time:{m:rat.m,n:rat.n,d:rat.d},x:screenToXGrid(sx)});
+  nv.sort((a,b)=>ratCmp(a.time,b.time));
+  hist.do({type:'setNoteProps',ids:[he.id],props:{vertices:mergeVerts(nv)}});
+  revalidate(); draw();
+}
+function finalizeTrace(){
+  if(pendingTrace){
+    // ダブルクリック等で生じる連続重複頂点を除去
+    const vs=pendingTrace.filter((v,i)=>i===0||!(ratEq(v.time,pendingTrace[i-1].time)&&v.x===pendingTrace[i-1].x));
+    if(vs.length>=2)hist.do({type:'addNotes',notes:[{type:'trace',layer:editLayer,vertices:vs}]});
+    revalidate();
+  }
+  pendingTrace=null; draw();
+}
+function cancelTrace(){ pendingTrace=null; draw(); }
+// 擬似判定ライン: 再生位置から1小節、xを0↔24へ往復(仕様5.5.4)
+function makePseudoLine(){
+  const base=snapSecToRat(chart.timing,Audio.playSec,snapDen());
+  const verts=[];
+  for(let i=0;i<=8;i++){const t=ratAddAbs(base,i,8); verts.push({time:{m:t.m,n:t.n,d:t.d},x:(i%2===0)?0:24});}
+  hist.do({type:'addNotes',notes:[{type:'trace',layer:editLayer,vertices:verts}]});
+  revalidate(); draw();
+  alert('擬似判定ライン(ジグザグ)を編集レイヤー'+(editLayer+1)+'に生成しました。\n'
+    +'このレイヤーの速度を0にし、表示トラックで出現/消滅を制御してください。');
+}
+
+function drawNoteHead(type,x,y,H,col){
+  const w=laneW();
+  if(type==='wipe'){
+    const ww=(w-6)*0.6, hh=Math.max(4,H*0.7);
+    ctx.fillStyle=col;
+    ctx.fillRect(x+(w-ww)/2,y-hh/2,ww,hh);
+    ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=1;
+    ctx.strokeRect(x+(w-ww)/2,y-hh/2,ww,hh);
+  }else if(type==='hold'){
+    ctx.fillStyle=col;
+    ctx.fillRect(x+3,y-H/2,w-6,H);
+    ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1;
+    ctx.strokeRect(x+3,y-H/2,w-6,H);
+  }else{
+    ctx.fillStyle=col;
+    ctx.fillRect(x+3,y-H/2,w-6,H);
+    ctx.strokeStyle='rgba(255,255,255,.65)'; ctx.lineWidth=1;
+    ctx.strokeRect(x+3,y-H/2,w-6,H);
+  }
+}
+
+function updateSide(){
+  document.getElementById('cnt').textContent=chart.notes.length;
+  let last=0;
+  for(const n of chart.notes){
+    const s=secSafe(n.endTime||n.time); if(s!==null&&s>last)last=s;
+  }
+  document.getElementById('len').textContent=last.toFixed(2)+'s';
+  document.getElementById('cur').textContent=
+    hoverRat?`m${hoverRat.m} ${hoverRat.n}/${hoverRat.d}`:'-';
+  const cs=hoverRat?secSafe(hoverRat):null;
+  document.getElementById('cursec').textContent=cs===null?'-':cs.toFixed(3)+'s';
+  document.getElementById('undo').disabled=!hist.canUndo;
+  document.getElementById('redo').disabled=!hist.canRedo;
+  document.getElementById('clock').textContent=Audio.playSec.toFixed(3)+'s';
+  updateSeekLabel();
+  const box=document.getElementById('msgs');
+  const e=validation.errors,w=validation.warnings;
+  if(!e.length&&!w.length){box.className='dim';box.textContent='問題なし';}
+  else{
+    box.className='';
+    box.innerHTML=e.map(x=>'<div class="bad">ERROR '+x+'</div>').join('')
+                 +w.map(x=>'<div class="warn">WARN '+x+'</div>').join('');
+  }
+  const vt=document.querySelector('#tabbar .tab[data-tab="valid"]');
+  if(vt){ vt.classList.toggle('haserr',e.length>0); vt.classList.toggle('haswarn',e.length===0&&w.length>0); }
+  renderProp();
+}
+
+function renderProp(){
+  const el=document.getElementById('prop');
+  const ids=[...selection].filter(id=>chart.noteById(id));
+  if(!ids.length){ el.className='empty'; el.textContent='ノーツ未選択'; return; }
+  el.className='';
+  const ns=ids.map(id=>chart.noteById(id));
+  const types=new Set(ns.map(n=>n.type));
+  const layers=new Set(ns.map(n=>n.layer));
+  const typeVal=types.size===1?[...types][0]:'';
+  const layerVal=layers.size===1?[...layers][0]:'';
+  el.innerHTML=
+    `<div class="kv"><span class="dim">選択数</span><b>${ids.length}</b></div>`+
+    `<div class="kv"><span class="dim">種別</span>`+
+      `<select id="pType"><option value="">${types.size>1?'(混在)':''}</option>`+
+      ['click','wipe','hold'].map(t=>`<option value="${t}" ${t===typeVal?'selected':''}>${t}</option>`).join('')+
+      `</select></div>`+
+    `<div class="kv"><span class="dim">レイヤー</span>`+
+      `<input id="pLayer" type="number" min="1" max="8" style="width:56px" `+
+      `value="${layerVal===''?'':layerVal+1}" placeholder="${layers.size>1?'混在':''}"></div>`+
+    `<div class="kv"><button id="pDel" style="width:100%">選択を削除 (Del)</button></div>`;
+
+  document.getElementById('pType').onchange=e=>{
+    const v=e.target.value; if(!v)return;
+    const items=[];
+    for(const n of ns){
+      const props={type:v};
+      if(v==='hold'&&n.type!=='hold')props.endTime=ratAddAbs(n.time,1,4);
+      else if(v!=='hold'&&n.type==='hold')props.endTime=undefined;
+      items.push({id:n.id,props});
+    }
+    hist.do({type:'setNotePropsMulti',items});
+    for(const n of ns)if(n.type!=='hold'&&'endTime' in n)delete n.endTime;
+    revalidate(); draw();
+  };
+  document.getElementById('pLayer').onchange=e=>{
+    const raw=parseInt(e.target.value,10);
+    if(isNaN(raw))return;
+    const v=Math.max(0,Math.min(7,raw-1));
+    hist.do({type:'setNoteProps',ids,props:{layer:v}});
+    revalidate(); draw();
+  };
+  document.getElementById('pDel').onclick=()=>deleteSelection();
+}
+
+function revalidate(){ validation=validateEditorChart(chart); }
+
+// ---- ヒットテスト(編集レイヤーのみ / ホールド終点=part 'end') ----
+// 重なり選択の優先順位: ワイプ>クリック>ホールド(>トレースは呼び出し側で最後に判定)
+const HIT_PR={wipe:0,click:1,hold:2};
+function hitAtScreen(x,y){
+  const H=noteH(), lane=xToLane(x);
+  let best=null,bestPr=99,bestDy=1e9,bestPart='body';
+  const consider=(n,dy,part)=>{
+    const pr=(HIT_PR[n.type]!==undefined)?HIT_PR[n.type]:3;
+    if(pr<bestPr||(pr===bestPr&&dy<bestDy)){best=n;bestPr=pr;bestDy=dy;bestPart=part;}
+  };
+  for(const n of chart.notes){
+    if(n.type==='trace'||n.layer!==editLayer||n.lane!==lane)continue;
+    const s=secSafe(n.time); if(s===null)continue;
+    const yh=secToY(s);
+    if(n.type==='hold'&&n.endTime){
+      const se=secSafe(n.endTime);
+      if(se!==null){
+        const ye=secToY(se);
+        if(Math.abs(y-ye)<=H/2+4)consider(n,Math.abs(y-ye),'end');
+        if(Math.abs(y-yh)<=H/2+4)consider(n,Math.abs(y-yh),'head');
+        if(y>Math.min(yh,ye)+H/2&&y<Math.max(yh,ye)-H/2)consider(n,2,'body');
+        continue;
+      }
+    }
+    if(Math.abs(y-yh)<=H/2+3)consider(n,Math.abs(y-yh),'head');
+  }
+  return best?{note:best,part:bestPart}:null;
+}
+
+function evPos(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+
+cv.addEventListener('mousemove',e=>{
+  const {x,y}=evPos(e);
+  hoverLane=xToLane(x); hoverX=x;
+  hoverRat=snapSecToRat(chart.timing,yToSec(y),snapDen());
+  if(trackDrag){ updateTrackDrag(x,y); return; }
+  if(drag){
+    drag.cur={x,y,rat:hoverRat,lane:hoverLane};
+    if(drag.mode==='move'){
+      const g=drag.grab;
+      drag.delta={...absDelta(g.rat,hoverRat),dLane:hoverLane-g.lane};
+    }else if(drag.mode==='resize-hold'){
+      const n=chart.noteById(drag.id);
+      if(n&&ratCmp(hoverRat,n.time)>0)drag.newEnd=hoverRat;
+    }else if(drag.mode==='vert-drag'){
+      drag.newTime=hoverRat; drag.newX=screenToXGrid(x);
+    }
+  }
+  draw();
+});
+cv.addEventListener('mouseleave',()=>{if(!drag){hoverRat=null;hoverLane=-1;draw();}});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+// 速度・オフセットのキーをダブルクリックで数値入力(Enterで反映・範囲外は収束)
+cv.addEventListener('dblclick',e=>{
+  const {x,y}=evPos(e);
+  if(tool==='trace'&&pendingTrace){finalizeTrace();return;}   // ダブルクリックでトレース確定
+  const tr=trackAtX(x); if(!tr||!tr.def.seg)return;
+  const hk=hitTrackKey(tr.def,tr.left,editLayer,x,y); if(!hk)return;
+  openKeyInput(tr.def,hk.segIdx,hk.keyIdx,e.clientX,e.clientY);
+});
+function openKeyInput(t,si,ki,clientX,clientY){
+  const seg=trackSegs(editLayer,t.key)[si]; if(!seg)return;
+  const k=seg.keys[ki];
+  document.querySelectorAll('.keyinput').forEach(el=>el.remove());
+  const inp=document.createElement('input');
+  inp.className='keyinput'; inp.type='number'; inp.step=t.step; inp.value=k.value;
+  inp.style.cssText='position:fixed;left:'+(clientX-32)+'px;top:'+(clientY-13)+'px;width:74px;'+
+    'z-index:60;background:#0d1119;color:#cfe0ff;border:1px solid #4a78ff;border-radius:4px;'+
+    'padding:3px 6px;font:12px system-ui';
+  document.body.appendChild(inp); inp.focus(); inp.select();
+  let done=false;
+  const finish=(apply)=>{
+    if(done)return; done=true;
+    if(apply){
+      let v=parseFloat(inp.value);
+      if(!isNaN(v)){
+        v=Math.max(t.min,Math.min(t.max,v));   // 範囲外は最大・最小へ収束
+        const segs=cloneSegs(editLayer,t.key);
+        if(segs[si]&&segs[si].keys[ki]){ segs[si].keys[ki].value=v; setTrack(editLayer,t.key,segs); }
+      }
+    }
+    inp.remove();
+  };
+  inp.addEventListener('keydown',ev=>{
+    ev.stopPropagation();
+    if(ev.key==='Enter'){ev.preventDefault();finish(true);}
+    else if(ev.key==='Escape'){ev.preventDefault();finish(false);}
+  });
+  inp.addEventListener('blur',()=>finish(true));
+}
+
+cv.addEventListener('mousedown',e=>{
+  const {x,y}=evPos(e);
+  if(x<PAD_L){ // ルーラーをクリックでシーク: 現在のグリッドにスナップ
+    const sr=snapSecToRat(chart.timing,Math.max(0,yToSec(y)),snapDen());
+    const s=secSafe(sr); Audio.seek(s===null?Math.max(0,yToSec(y)):s); draw(); return; }
+  rangeSel=null;   // クリック/右クリックで範囲選択ハイライトを解除(矩形選択のmouseupで再設定)
+  const tr=trackAtX(x);
+  if(tr){ handleTrackDown(e,x,y,tr); return; }   // レイヤートラック編集
+  if(tool==='trace'){ traceToolDown(x,y,e.button); return; }   // トレース(頂点編集/作成)
+  const lane=xToLane(x);
+  const rat=snapSecToRat(chart.timing,yToSec(y),snapDen());
+
+  if(e.button===2){
+    // ノーツ優先で削除、無ければトレース(塊)
+    const hit=(lane>=0&&lane<LANES)?hitAtScreen(x,y):null;
+    if(hit){ hist.do({type:'removeNotes',ids:[hit.note.id]}); revalidate(); draw(); return; }
+    if(tool==='select'){
+      const tid=hitTraceAny(x,y);
+      if(tid!==null){ hist.do({type:'removeNotes',ids:[tid]}); selection.delete(tid); revalidate(); draw(); return; }
+    }
+    if(lane>=0&&lane<LANES){
+      const same=chart.notes.filter(n=>n.type!=='trace'&&n.layer===editLayer&&n.lane===lane&&ratEq(n.time,rat));
+      if(same.length)hist.do({type:'removeNotes',ids:same.map(n=>n.id)});
+    }
+    revalidate(); draw(); return;
+  }
+
+  if(tool==='select'){
+    // ノーツ優先(ワイプ>クリック>ホールド)、トレースは最後
+    const hit=(lane>=0&&lane<LANES)?hitAtScreen(x,y):null;
+    if(hit&&hit.part==='end'){
+      selection=new Set([hit.note.id]);
+      drag={mode:'resize-hold',x0:x,y0:y,id:hit.note.id,newEnd:hit.note.endTime};
+      draw(); return;
+    }
+    if(hit){
+      if(e.shiftKey){ if(selection.has(hit.note.id))selection.delete(hit.note.id); else selection.add(hit.note.id); }
+      else if(!selection.has(hit.note.id)){ selection=new Set([hit.note.id]); }
+      selVert=null;
+      drag={mode:'move',x0:x,y0:y,grab:{rat,lane},delta:{num:0,den:1,dLane:0}};
+      draw(); return;
+    }
+    const tid=hitTraceAny(x,y);
+    if(tid!==null){
+      if(e.shiftKey){ if(selection.has(tid))selection.delete(tid); else selection.add(tid); }
+      else if(!selection.has(tid)){ selection=new Set([tid]); }
+      selVert=null;
+      drag={mode:'move',x0:x,y0:y,grab:{rat,lane},delta:{num:0,den:1,dLane:0}};
+      draw(); return;
+    }
+    if(!e.shiftKey)selection=new Set();
+    drag={mode:'marquee',x0:x,y0:y,base:new Set(selection)};
+    draw(); return;
+  }
+
+  if(lane<0||lane>=LANES)return;
+  if(tool==='hold'){
+    drag={mode:'hold-create',x0:x,y0:y,start:{rat,lane}};
+    draw(); return;
+  }
+  const dup=chart.notes.some(n=>n.type===tool&&n.lane===lane&&ratEq(n.time,rat));
+  if(!dup)hist.do({type:'addNotes',notes:[{type:tool,layer:editLayer,lane,time:rat}]});
+  revalidate(); draw();
+});
+
+window.addEventListener('mouseup',e=>{
+  if(trackDrag){ commitTrackDrag(); return; }
+  if(!drag)return;
+  const d=drag; drag=null;
+  if(d.mode==='vert-drag'){
+    const n=chart.noteById(d.id);
+    if(n&&d.newTime){
+      let nv=n.vertices.map((v,i)=>i===d.idx?{time:{m:d.newTime.m,n:d.newTime.n,d:d.newTime.d},x:d.newX}:{time:v.time,x:v.x});
+      nv.sort((a,b)=>ratCmp(a.time,b.time));   // 時刻昇順を保つ
+      nv=mergeVerts(nv);                        // 同座標頂点を統合
+      if(nv.length<2)hist.do({type:'removeNotes',ids:[d.id]});
+      else hist.do({type:'setNoteProps',ids:[d.id],props:{vertices:nv}});
+      selVert=null; revalidate();
+    }
+    draw(); return;
+  }
+  if(d.mode==='resize-hold'&&d.newEnd){
+    const n=chart.noteById(d.id);
+    if(n&&n.type==='hold'&&!ratEq(d.newEnd,n.endTime)&&ratCmp(d.newEnd,n.time)>0){
+      hist.do({type:'moveNotes',moves:[{id:n.id,endTime:d.newEnd}]});
+      revalidate();
+    }
+  }else if(d.mode==='move'&&d.delta){
+    const {num,den,dLane}=d.delta;
+    if(!(num===0&&dLane===0)){
+      const moves=[]; const traceMoves=[];
+      for(const id of selection){
+        const n=chart.noteById(id); if(!n)continue;
+        if(n.type==='trace'){
+          // 剛体移動: 全頂点の時刻をずらし、xはレーン移動×4(1レーン=4x)で平行移動
+          const nv=n.vertices.map(v=>({time:ratAddAbs(v.time,num,den),x:Math.max(0,Math.min(24,v.x+dLane*4))}));
+          traceMoves.push({id,vertices:mergeVerts(nv)});
+        }else{
+          const time=ratAddAbs(n.time,num,den);
+          const mv={id,time,lane:Math.max(0,Math.min(LANES-1,n.lane+dLane))};
+          if(n.type==='hold')mv.endTime=ratAddAbs(n.endTime,num,den);
+          moves.push(mv);
+        }
+      }
+      if(moves.length)hist.do({type:'moveNotes',moves});
+      for(const tm of traceMoves)hist.do({type:'setNoteProps',ids:[tm.id],props:{vertices:tm.vertices}});
+      revalidate();
+    }
+  }else if(d.mode==='marquee'&&d.cur){
+    const x0=Math.min(d.x0,d.cur.x), x1=Math.max(d.x0,d.cur.x);
+    const y0=Math.min(d.y0,d.cur.y), y1=Math.max(d.y0,d.cur.y);
+    const allL=selAllLayers();   // 全レイヤー選択か
+    const sel=new Set(d.base);
+    for(const n of chart.notes){
+      if(n.type==='trace')continue;
+      if(!allL&&n.layer!==editLayer)continue;
+      const s=secSafe(n.time); if(s===null)continue;
+      const cx=laneToX(n.lane)+laneW()/2, cy=secToY(s);
+      let inside=(cx>=x0&&cx<=x1&&cy>=y0&&cy<=y1);
+      if(!inside&&n.type==='hold'&&n.endTime){
+        const se=secSafe(n.endTime);
+        if(se!==null){const ey=secToY(se);
+          if(cx>=x0&&cx<=x1&&Math.max(cy,ey)>=y0&&Math.min(cy,ey)<=y1)inside=true;}
+      }
+      if(inside)sel.add(n.id);
+    }
+    // トレースは塊ごと: いずれかの頂点が矩形内なら選択
+    for(const n of chart.notes){
+      if(n.type!=='trace'||!n.vertices)continue;
+      if(!allL&&n.layer!==editLayer)continue;
+      for(const v of n.vertices){
+        const s=secSafe(v.time); if(s===null)continue;
+        const px=xToScreen(v.x), py=secToY(s);
+        if(px>=x0&&px<=x1&&py>=y0&&py<=y1){ sel.add(n.id); break; }
+      }
+    }
+    selection=sel;
+    // 矩形の時間範囲を記録(トラック込みコピー用)
+    rangeSel={t0:Math.min(yToSec(y0),yToSec(y1)),t1:Math.max(yToSec(y0),yToSec(y1))};
+  }else if(d.mode==='hold-create'&&d.cur){
+    const a=d.start.rat, b=d.cur.rat, lane=d.start.lane;
+    let time,endTime;
+    if(ratCmp(a,b)<0){time=a;endTime=b;}else{time=b;endTime=a;}
+    if(ratCmp(endTime,time)>0){
+      const dup=chart.notes.some(n=>n.type==='hold'&&n.lane===lane&&ratEq(n.time,time));
+      if(!dup)hist.do({type:'addNotes',notes:[{type:'hold',layer:editLayer,lane,time,endTime}]});
+      revalidate();
+    }
+  }
+  draw();
+});
+
+wrap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(e.ctrlKey){
+    pxPerSec=Math.max(40,Math.min(600,pxPerSec*(e.deltaY<0?1.1:1/1.1)));
+    document.getElementById('zoom').value=Math.round(pxPerSec);
+  }else{
+    scrollSec=Math.max(0,scrollSec-e.deltaY/pxPerSec*0.6);
+  }
+  draw();
+},{passive:false});
+
+// ---- クリップボード(ノーツ + 範囲内のトラック:速度/表示/オフセット) ----
+function doCopy(){
+  const ids=[...selection].filter(id=>chart.noteById(id));
+  const ns=ids.map(id=>chart.noteById(id)).filter(n=>n.type!=='trace');
+  const traceNs=ids.map(id=>chart.noteById(id)).filter(n=>n.type==='trace');
+  // オプショントラックは「オプショントラック」ON かつ矩形範囲があるときのみ含める。
+  // レイヤー範囲は選択対象(編集ﾚｲﾔｰ/全ﾚｲﾔｰ)に従う。
+  const trackRaw=[]; const cands=ns.map(n=>n.time);
+  for(const n of traceNs)cands.push(n.vertices[0].time);
+  if(rangeSel&&selWantTracks()){
+    const trackLayers=selAllLayers()?chart.layers:chart.layers.filter(l=>l.id===editLayer);
+    for(const ly of trackLayers){
+      for(const key of ['speedSegments','offsetSegments']){
+        for(const seg of (ly[key]||[])){
+          const s0=secSafe(seg.keys[0].time), s1=secSafe(seg.keys[seg.keys.length-1].time);
+          if(s0!==null&&s1!==null&&s0>=rangeSel.t0-1e-9&&s1<=rangeSel.t1+1e-9){
+            trackRaw.push({layer:ly.id,key,seg}); cands.push(seg.keys[0].time);
+          }
+        }
+      }
+      for(const en of (ly.visibility||[])){
+        const s=secSafe(en.time);
+        if(s!==null&&s>=rangeSel.t0-1e-9&&s<=rangeSel.t1+1e-9){
+          trackRaw.push({layer:ly.id,key:'visibility',entry:en}); cands.push(en.time);
+        }
+      }
+    }
+  }
+  if(!ns.length&&!traceNs.length&&!trackRaw.length)return;
+  let anchor=null;
+  for(const t of cands)if(anchor===null||ratCmp(t,anchor)<0)anchor=t;
+  if(!anchor)anchor={m:0,n:0,d:1};
+  clipboard={
+    anchor:{...anchor},
+    layerBase:editLayer,
+    shiftLayer:(!selAllLayers()),   // 編集ﾚｲﾔｰ基準ならペースト時に現在ﾚｲﾔｰへ移す
+    items:[
+      ...ns.map(n=>{const it={type:n.type,layer:n.layer,lane:n.lane,rel:absDelta(anchor,n.time)};
+        if(n.type==='hold')it.holdLen=absDelta(n.time,n.endTime); return it;}),
+      ...traceNs.map(n=>({type:'trace',layer:n.layer,
+        vertices:n.vertices.map(v=>({rel:absDelta(anchor,v.time),x:v.x}))})),
+    ],
+    tracks:trackRaw.map(tr=>{
+      if(tr.key==='visibility')return {layer:tr.layer,key:'visibility',rel:absDelta(anchor,tr.entry.time),visible:tr.entry.visible};
+      return {layer:tr.layer,key:tr.key,keys:tr.seg.keys.map(k=>({rel:absDelta(anchor,k.time),value:k.value}))};
+    }),
+  };
+}
+function doPaste(){
+  if(!clipboard)return;
+  const base=snapSecToRat(chart.timing,Audio.playSec,snapDen());   // 再生ライン基準
+  // 編集ﾚｲﾔｰ基準コピーは現在のレイヤーへ移して貼付(越境コピー)
+  const dLayer=clipboard.shiftLayer?(editLayer-(clipboard.layerBase||0)):0;
+  const mapL=(L)=>Math.max(0,Math.min(7,L+dLayer));
+  const notes=[];
+  for(const it of clipboard.items){
+    if(it.type==='trace'){
+      notes.push({type:'trace',layer:mapL(it.layer),
+        vertices:it.vertices.map(v=>({time:ratAddAbs(base,v.rel.num,v.rel.den),x:v.x}))});
+      continue;
+    }
+    const time=ratAddAbs(base,it.rel.num,it.rel.den);
+    const n={type:it.type,layer:mapL(it.layer),lane:it.lane,time};
+    if(it.type==='hold')n.endTime=ratAddAbs(time,it.holdLen.num,it.holdLen.den);
+    notes.push(n);
+  }
+  let layers=null;
+  if(clipboard.tracks&&clipboard.tracks.length){
+    layers=JSON.parse(JSON.stringify(chart.layers));
+    for(const tr of clipboard.tracks){
+      const ly=layers.find(l=>l.id===tr.layer); if(!ly)continue;
+      if(tr.key==='visibility'){
+        const time=ratAddAbs(base,tr.rel.num,tr.rel.den);
+        const filtered=(ly.visibility||[]).filter(en=>!ratEq(en.time,time));
+        filtered.push({time,visible:tr.visible});
+        ly.visibility=normalizeVis(filtered);
+      }else{
+        const seg={keys:tr.keys.map(k=>({time:ratAddAbs(base,k.rel.num,k.rel.den),value:k.value}))};
+        const cand=(ly[tr.key]||[]).concat([seg]);
+        if(validTrack(cand))ly[tr.key]=cand;   // 重複するなら追加しない
+      }
+    }
+  }
+  if(notes.length){ const inv=hist.do({type:'addNotes',notes}); selection=new Set(inv.ids); }
+  if(layers){ hist.do({type:'setLayers',layers}); }
+  previewRefresh(); revalidate(); draw();
+}
+function deleteSelection(){
+  const ids=[...selection].filter(id=>chart.noteById(id));
+  if(!ids.length)return;
+  hist.do({type:'removeNotes',ids});
+  selection=new Set();
+  revalidate(); draw();
+}
+// 選択の左右反転: レーン l→(5-l)、トレース x→(24-x)
+function flipSelection(){
+  const ids=[...selection].filter(id=>chart.noteById(id));
+  if(!ids.length)return;
+  const moves=[], traceItems=[];
+  for(const id of ids){
+    const n=chart.noteById(id); if(!n)continue;
+    if(n.type==='trace')traceItems.push({id,vertices:n.vertices.map(v=>({time:v.time,x:24-v.x}))});
+    else moves.push({id,lane:LANES-1-n.lane});
+  }
+  if(moves.length)hist.do({type:'moveNotes',moves});
+  for(const ti of traceItems)hist.do({type:'setNoteProps',ids:[ti.id],props:{vertices:ti.vertices}});
+  revalidate(); draw();
+}
+// 2つの小節線 [from, to) の間を一括選択
+function selectMeasureRange(){
+  const from=Math.max(0,parseInt(document.getElementById('selFrom').value,10)||0);
+  let to=parseInt(document.getElementById('selTo').value,10); if(isNaN(to))to=from+1;
+  to=Math.max(from,to);
+  const t0=chart.timing.measureStartSec(from), t1=chart.timing.measureStartSec(to);
+  const allL=selAllLayers(); const sel=new Set();
+  for(const n of chart.notes){
+    if(!allL&&n.layer!==editLayer)continue;
+    if(n.type==='trace'){
+      if(!n.vertices)continue;
+      for(const v of n.vertices){const s=secSafe(v.time); if(s!==null&&s>=t0-1e-9&&s<t1-1e-9){sel.add(n.id);break;}}
+    }else{
+      const s=secSafe(n.time); if(s!==null&&s>=t0-1e-9&&s<t1-1e-9)sel.add(n.id);
+    }
+  }
+  selection=sel; rangeSel={t0,t1}; draw();
+}
+// 曲/譜面の総尺(秒)。シークバー用。
+function chartEndSec(){
+  let last=0;
+  for(const n of chart.notes){
+    let s;
+    if(n.type==='trace')s=(n.vertices&&n.vertices.length)?secSafe(n.vertices[n.vertices.length-1].time):null;
+    else s=secSafe(n.endTime||n.time);
+    if(s!==null&&s>last)last=s;
+  }
+  return last;
+}
+function songLen(){ return Audio.buffer?Audio.buffer.duration:Math.max(chartEndSec()+1,10); }
+// 再生ヘッド(判定ライン)を編集グリッドの下端から約30%の位置へ置くようスクロール追従
+function followPlayhead(){
+  scrollSec=Math.max(0, Audio.playSec-(CH*0.30-PAD_B)/pxPerSec);
+}
+function updateSeekLabel(){
+  const len=songLen();
+  document.getElementById('seek').value=len>0?Math.round(Math.max(0,Math.min(1,Audio.playSec/len))*1000):0;
+  document.getElementById('seeklbl').textContent=Audio.playSec.toFixed(1)+' / '+len.toFixed(1)+'s';
+}
+
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+  const ctrl=e.ctrlKey||e.metaKey;
+  const k=e.key.toLowerCase();
+  if(ctrl&&k==='z'&&!e.shiftKey){e.preventDefault();hist.undo();selection=new Set();afterStructuralChange();return;}
+  if((ctrl&&k==='z'&&e.shiftKey)||(ctrl&&k==='y')){e.preventDefault();hist.redo();selection=new Set();afterStructuralChange();return;}
+  if(ctrl&&k==='a'){e.preventDefault();selection=new Set(chart.notes.map(n=>n.id));draw();return;}
+  if(ctrl&&k==='c'){e.preventDefault();doCopy();return;}
+  if(ctrl&&k==='x'){e.preventDefault();doCopy();deleteSelection();return;}
+  if(ctrl&&k==='v'){e.preventDefault();doPaste();return;}
+  if(e.key==='Enter'&&pendingTrace){e.preventDefault();finalizeTrace();return;}
+  if(k==='delete'||k==='backspace'){e.preventDefault();deleteSelection();return;}
+  if(k==='escape'){ if(pendingTrace)cancelTrace(); else{selection=new Set();draw();} return; }
+  if(e.key===' '){e.preventDefault();Audio.toggle();return;}
+  if(k==='a'){setTool('click');return;}
+  if(k==='s'){setTool('wipe');return;}
+  if(k==='d'){setTool('hold');return;}
+  if(k==='f'){setTool('trace');return;}
+  if(k==='g'){setTool('select');return;}
+  if(k==='h'){e.preventDefault();flipSelection();return;}
+  if(e.key>='1'&&e.key<='8'){setLayer(+e.key-1);return;}
+});
+
+// undo/redo/load 後、タイミングが変わっている可能性があるので preview も更新
+function afterStructuralChange(){ previewRefresh(); revalidate(); renderTiming(); syncMetaInputs(); draw(); }
+
+// ---- ツール切替 ----
+function setTool(t){
+  if(pendingTrace&&t!=='trace')finalizeTrace();   // 作成中トレースを確定
+  tool=t;
+  for(const b of document.querySelectorAll('.tool'))b.classList.toggle('on',b.dataset.tool===t);
+  draw();
+}
+for(const b of document.querySelectorAll('.tool'))b.onclick=()=>setTool(b.dataset.tool);
+
+function setLayer(id){
+  id=Math.max(0,Math.min(7,id));
+  if(id===editLayer)return;
+  editLayer=id;
+  selection=new Set(); selKey=null; trackDrag=null;
+  for(const b of document.querySelectorAll('.lyr'))b.classList.toggle('on',+b.dataset.layer===id);
+  const lbl=document.getElementById('lyrName');
+  if(lbl)lbl.textContent=`${layerLabel(id)}(${id+1})`;
+  draw();
+}
+for(const b of document.querySelectorAll('.lyr')){
+  b.style.setProperty('--lc',layerColor(+b.dataset.layer));
+  b.onclick=()=>setLayer(+b.dataset.layer);
+}
+
+// ============================================================
+//  9-D: タイミング編集(BPM変化・拍子変化 / 複数区間)
+// ============================================================
+function commitTiming(sigs,bpms){
+  // 適用前に整合性を検証(不正なら状態を壊さない)
+  try{ new ETiming(sigs,bpms); }catch(err){ alert('タイミングが不正です: '+err.message); renderTiming(); return; }
+  hist.do({type:'setTiming',
+    timeSignatures:JSON.parse(JSON.stringify(sigs)),
+    bpmChanges:JSON.parse(JSON.stringify(bpms))});
+  previewRefresh(); revalidate(); renderTiming(); draw();
+}
+function cursorRat(){ return hoverRat||snapSecToRat(chart.timing,Audio.playSec,snapDen()); }
+
+function renderTiming(){
+  // BPM変化
+  const bl=document.getElementById('bpmList');
+  const bpms=chart.bpmChanges.slice().sort((a,b)=>ratCmp(a.time,b.time));
+  bl.innerHTML=bpms.map((c,i)=>{
+    const first=(c.time.m===0&&c.time.n===0);
+    return `<div class="row" data-i="${i}">`+
+      `<span class="dim" style="width:66px">m${c.time.m} ${c.time.n}/${c.time.d}</span>`+
+      `BPM<input class="bpmv" type="number" step="0.001" min="1" value="${c.bpm}" style="width:72px">`+
+      (first?`<span class="dim" style="font-size:10px">(基点)</span>`
+            :`<button class="minibtn bpmdel">×</button>`)+
+      `</div>`;
+  }).join('');
+  bl.querySelectorAll('.row').forEach(row=>{
+    const i=+row.dataset.i;
+    row.querySelector('.bpmv').onchange=ev=>{
+      const v=Math.max(1,+ev.target.value||120);
+      const arr=bpms.map(x=>({time:{...x.time},bpm:x.bpm})); arr[i].bpm=v;
+      commitTiming(chart.timeSignatures,arr);
+    };
+    const del=row.querySelector('.bpmdel');
+    if(del)del.onclick=()=>{
+      const arr=bpms.filter((_,j)=>j!==i).map(x=>({time:{...x.time},bpm:x.bpm}));
+      commitTiming(chart.timeSignatures,arr);
+    };
+  });
+  // 拍子変化
+  const sl=document.getElementById('sigList');
+  const sigs=chart.timeSignatures.slice().sort((a,b)=>a.m-b.m);
+  sl.innerHTML=sigs.map((s,i)=>{
+    const first=(s.m===0);
+    return `<div class="row" data-i="${i}">`+
+      `<span class="dim" style="width:40px">m${s.m}</span>`+
+      `<input class="sbeats" type="number" min="1" max="16" value="${s.beats}" style="width:44px">/`+
+      `<input class="sunit" type="number" min="1" max="16" value="${s.beatUnit}" style="width:44px">`+
+      (first?`<span class="dim" style="font-size:10px">(基点)</span>`
+            :`<button class="minibtn sigdel">×</button>`)+
+      `</div>`;
+  }).join('');
+  sl.querySelectorAll('.row').forEach(row=>{
+    const i=+row.dataset.i;
+    const apply=()=>{
+      const beats=Math.max(1,Math.min(16,+row.querySelector('.sbeats').value||4));
+      const unit=Math.max(1,Math.min(16,+row.querySelector('.sunit').value||4));
+      const arr=sigs.map(x=>({m:x.m,beats:x.beats,beatUnit:x.beatUnit}));
+      arr[i].beats=beats; arr[i].beatUnit=unit;
+      commitTiming(arr,chart.bpmChanges);
+    };
+    row.querySelector('.sbeats').onchange=apply;
+    row.querySelector('.sunit').onchange=apply;
+    const del=row.querySelector('.sigdel');
+    if(del)del.onclick=()=>{
+      const arr=sigs.filter((_,j)=>j!==i).map(x=>({m:x.m,beats:x.beats,beatUnit:x.beatUnit}));
+      commitTiming(arr,chart.bpmChanges);
+    };
+  });
+}
+document.getElementById('addBpm').onclick=()=>{
+  const t=cursorRat();
+  const arr=chart.bpmChanges.map(x=>({time:{...x.time},bpm:x.bpm}));
+  const ex=arr.find(x=>ratEq(x.time,t));
+  if(ex){ /* 既存を選ぶだけ */ }
+  else arr.push({time:{m:t.m,n:t.n,d:t.d},bpm:chart.bpmChanges[chart.bpmChanges.length-1].bpm});
+  commitTiming(chart.timeSignatures,arr);
+};
+document.getElementById('addSig').onclick=()=>{
+  const m=cursorRat().m;
+  const arr=chart.timeSignatures.map(x=>({m:x.m,beats:x.beats,beatUnit:x.beatUnit}));
+  if(!arr.find(x=>x.m===m)){
+    const base=arr.filter(x=>x.m<=m).sort((a,b)=>b.m-a.m)[0]||arr[0];
+    arr.push({m,beats:base.beats,beatUnit:base.beatUnit});
+  }
+  commitTiming(arr,chart.bpmChanges);
+};
+
+// ============================================================
+//  9-D: メタデータ編集
+// ============================================================
+// 難易度名を EASY/HARD/MASTER に正規化。ファイル接尾辞 _e/_h/_m を導出。
+function diffKey(name){const d=(name||'').toUpperCase();return d.includes('EASY')?'EASY':d.includes('HARD')?'HARD':'MASTER';}
+function diffSuffix(){return {EASY:'_e',HARD:'_h',MASTER:'_m'}[diffKey(chart.meta.difficultyName)];}
+function bindMeta(id,apply){document.getElementById(id).addEventListener('input',e=>apply(e.target.value));}
+bindMeta('m_title', v=>chart.meta.title=v);
+bindMeta('m_artist',v=>chart.meta.artist=v);
+bindMeta('m_charter',v=>chart.meta.charter=v);
+bindMeta('m_diff',  v=>chart.meta.difficultyName=v);
+bindMeta('m_level', v=>chart.meta.level=Math.max(1,parseInt(v,10)||1));
+bindMeta('m_offset',v=>{chart.audioOffsetMs=parseInt(v,10)||0;});
+bindMeta('m_pvs',   v=>chart.meta.previewStartMs=Math.max(0,parseInt(v,10)||0));
+bindMeta('m_pvl',   v=>chart.meta.previewLengthMs=Math.max(0,parseInt(v,10)||0));
+function syncMetaInputs(){
+  document.getElementById('m_title').value=chart.meta.title||'';
+  document.getElementById('m_artist').value=chart.meta.artist||'';
+  document.getElementById('m_charter').value=chart.meta.charter||'';
+  document.getElementById('m_diff').value=diffKey(chart.meta.difficultyName);
+  document.getElementById('m_level').value=chart.meta.level||1;
+  document.getElementById('m_offset').value=chart.audioOffsetMs||0;
+  document.getElementById('m_pvs').value=chart.meta.previewStartMs||0;
+  document.getElementById('m_pvl').value=chart.meta.previewLengthMs||0;
+}
+
+// ============================================================
+//  9-D: 2D 投影プレビュー(実プレイ相当)
+// ============================================================
+const pv=document.getElementById('pv'), pctx=pv.getContext('2d');
+const pvWrap=document.getElementById('previewwrap');
+let PVW=0,PVH=0;
+let pvTables=null, pvOff={}, pvVis={}, pvBeats=[];
+const pvSpeed=document.getElementById('pvSpeed'), pvShape=document.getElementById('pvShape'),
+      pvWidth=document.getElementById('pvWidth'), pvJudge=document.getElementById('pvJudge'),
+      pvGrid=document.getElementById('pvGrid');
+for(const el of [pvSpeed,pvShape,pvWidth,pvJudge])el.addEventListener('input',drawPreview);
+pvGrid.addEventListener('change',drawPreview);
+
+function resizePreview(){
+  const w=pvWrap.clientWidth, h=Math.round(w*9/16);
+  pvWrap.style.height=h+'px';
+  PVW=w; PVH=h;
+  pv.style.width=w+'px'; pv.style.height=h+'px';
+  pv.width=Math.floor(w*DPR); pv.height=Math.floor(h*DPR);
+  pctx.setTransform(DPR,0,0,DPR,0,0);
+}
+function segToSec(segs){
+  return (segs||[]).map(sg=>({keys:sg.keys.map(k=>({t:chart.sec(k.time),v:k.value}))}));
+}
+function previewRefresh(){
+  const specs=[];
+  pvOff={}; pvVis={};
+  for(let i=0;i<8;i++){
+    const ly=chart.layers.find(l=>l.id===i)||{speedSegments:[],offsetSegments:[],visibility:[]};
+    let ss=[],os=[];
+    try{ ss=segToSec(ly.speedSegments); os=segToSec(ly.offsetSegments); }catch(e){}
+    specs.push({id:i,speedSegments:ss});
+    pvOff[i]=buildOffsetPieces(os);
+    pvVis[i]=(ly.visibility||[]).map(e=>{ try{return {t:chart.sec(e.time),visible:!!e.visible};}catch(_){return null;} }).filter(Boolean);
+  }
+  try{ pvTables=buildDistanceTables(specs); }catch(e){ pvTables=null; }
+  // 拍線(秒)
+  pvBeats=[];
+  const tm=chart.timing;
+  for(let m=0;m<tm.measureCount;m++){
+    const beats=tm.beatsIn(m);
+    for(let b=0;b<beats;b++){
+      let s; try{s=tm.toSec({m,n:b,d:beats});}catch(_){continue;}
+      pvBeats.push({t:s,bar:b===0});
+    }
+    if(pvBeats.length>4000)break;
+  }
+}
+
+function pvQuad(z0,z1,u0,u1,fill,alpha){
+  if(!Proj.visible(z0)||!Proj.visible(z1))return;
+  const y0=Proj.y(z0),y1=Proj.y(z1);
+  pctx.globalAlpha=alpha==null?1:alpha; pctx.fillStyle=fill;
+  pctx.beginPath();
+  pctx.moveTo(Proj.x(z0,u0),y0); pctx.lineTo(Proj.x(z0,u1),y0);
+  pctx.lineTo(Proj.x(z1,u1),y1); pctx.lineTo(Proj.x(z1,u0),y1);
+  pctx.closePath(); pctx.fill(); pctx.globalAlpha=1;
+}
+function pvLine(z,u0,u1,color,width,alpha){
+  if(!Proj.visible(z))return;
+  pctx.globalAlpha=alpha==null?1:alpha; pctx.strokeStyle=color; pctx.lineWidth=width||1;
+  pctx.beginPath(); pctx.moveTo(Proj.x(z,u0),Proj.y(z)); pctx.lineTo(Proj.x(z,u1),Proj.y(z)); pctx.stroke();
+  pctx.globalAlpha=1;
+}
+function laneU(lane){const w=2/LANES;return[-1+lane*w,-1+(lane+1)*w];}
+// トレース1辺を [t>=now] かつ [z:0..1] にクリップして画面座標の線分を返す(nullなら不可視)
+function clipTraceEdge(a,b,now){
+  if(!a||!b)return null;
+  let pa=0,pb=1;
+  const dt=b.t-a.t;
+  if(dt!==0){const pn=(now-a.t)/dt; if(dt>0)pa=Math.max(pa,pn); else pb=Math.min(pb,pn);}
+  else if(a.t<now)return null;
+  const dz=b.z-a.z;
+  if(dz!==0){const p0=(0-a.z)/dz,p1=(1-a.z)/dz; pa=Math.max(pa,Math.min(p0,p1)); pb=Math.min(pb,Math.max(p0,p1));}
+  else if(a.z<0||a.z>1)return null;
+  if(pa>=pb)return null;
+  const za=a.z+(b.z-a.z)*pa, ua=a.u+(b.u-a.u)*pa, zb=a.z+(b.z-a.z)*pb, ub=a.u+(b.u-a.u)*pb;
+  if(!Proj.visible(za)||!Proj.visible(zb))return null;
+  return [Proj.x(za,ua),Proj.y(za),Proj.x(zb,ub),Proj.y(zb)];
+}
+
+function drawPreview(){
+  if(!PVW)return;
+  // 再生中は再生位置、停止中は編集グリッドの下端(現在の閲覧時刻)を映す。
+  // これにより、後方の小節を編集していてもプレビューがその時刻を表示する。
+  const now=Audio.playing?Audio.playSec:Math.max(0,scrollSec);
+  pctx.clearRect(0,0,PVW,PVH);
+  pctx.fillStyle='#05070c'; pctx.fillRect(0,0,PVW,PVH);
+  Proj.set(PVW,PVH,+pvShape.value,+pvWidth.value,(+pvJudge.value)/100);
+  if(!pvTables){ return; }
+  const mul=+pvSpeed.value, tb0=pvTables[0];
+  const white=document.getElementById('pvWhite').checked;
+  const noteCol=(L)=>white?'#ffffff':layerColor(L);
+  // レーン床
+  pvQuad(0,1,-1,1,'#10151f',1);
+  // レーン境界
+  for(let i=0;i<=LANES;i++){
+    const u=-1+i*2/LANES, edge=(i===0||i===LANES);
+    if(Proj.visible(0)&&Proj.visible(1)){
+      pctx.strokeStyle=edge?'#3c5170':'#1e2a3d'; pctx.lineWidth=edge?2:1;
+      pctx.beginPath(); pctx.moveTo(Proj.x(0,u),Proj.y(0)); pctx.lineTo(Proj.x(1,u),Proj.y(1)); pctx.stroke();
+    }
+  }
+  // 拍線(レイヤー0 の速度・オフセットに追従)
+  if(pvGrid.checked){
+    const off0=offsetAt(pvOff[0]||[],now)/100;
+    for(const bt of pvBeats){
+      if(bt.t<now-0.05)continue; if(bt.t>now+6)break;
+      const z=(tb0.distanceAt(bt.t)-tb0.distanceAt(now))*mul+off0;
+      if(z<0||z>1)continue;
+      pvLine(z,-1,1,'#8fb4ff',bt.bar?1.2:0.6,bt.bar?0.5:0.2);
+    }
+  }
+  // ノーツ(レイヤー可視性を now で判定 = ゴースト相当)
+  const NT=0.02;
+  for(const n of chart.notes){
+    if(n.type==='trace')continue;
+    const L=n.layer;
+    if(!visibilityAt(pvVis[L]||[],now))continue;
+    const tb=pvTables[L]||tb0;
+    const off=offsetAt(pvOff[L]||[],now)/100;
+    const col=noteCol(L);
+    const [u0,u1]=laneU(n.lane);
+    if(n.type==='hold'){
+      const t0=secSafe(n.time), t1=secSafe(n.endTime);
+      if(t0===null||t1===null||now>t1)continue;
+      const tA=Math.max(t0,now), tB=t1; if(tB<=tA)continue;
+      const N=Math.max(8,Math.min(200,Math.ceil((tB-tA)/0.02)));
+      const pad=(u1-u0)*0.18;
+      let pz=(tb.distanceAt(tA)-tb.distanceAt(now))*mul+off;
+      for(let i=1;i<=N;i++){
+        const t=tA+(tB-tA)*i/N;
+        let z=(tb.distanceAt(t)-tb.distanceAt(now))*mul+off;
+        let a=pz,b=z; pz=z;
+        if((a<0&&b<0)||(a>1&&b>1))continue;
+        a=Math.max(0,Math.min(1,a)); b=Math.max(0,Math.min(1,b));
+        if(Math.abs(a-b)<1e-6)continue;
+        pvQuad(Math.min(a,b),Math.max(a,b),u0+pad,u1-pad,col,0.5);
+      }
+    }else{
+      const t=secSafe(n.time); if(t===null)continue;
+      const z=(tb.distanceAt(t)-tb.distanceAt(now))*mul+off;
+      if(z<0||z>1)continue;
+      const z1=Math.min(1,z+NT);
+      if(n.type==='wipe'){
+        const pad=(u1-u0)*0.22;
+        pvQuad(z,Math.min(1,z+NT*0.7),u0+pad,u1-pad,col,1);
+      }else{
+        const pad=(u1-u0)*0.06;
+        pvQuad(z,z1,u0+pad,u1-pad,col,1);
+      }
+    }
+  }
+  // トレース(折線)。各辺を [時刻>=now] かつ [z:0..1] にクリップして描画(仕様5.5.5)。
+  for(const n of chart.notes){
+    if(n.type!=='trace'||!n.vertices||n.vertices.length<2)continue;
+    const L=n.layer;
+    if(!visibilityAt(pvVis[L]||[],now))continue;
+    const tb=pvTables[L]||tb0, off=offsetAt(pvOff[L]||[],now)/100, col=noteCol(L);
+    pctx.strokeStyle=col; pctx.lineWidth=2;
+    const P=n.vertices.map(v=>{const s=secSafe(v.time);
+      return s===null?null:{t:s,z:(tb.distanceAt(s)-tb.distanceAt(now))*mul+off,u:(v.x/24)*2-1};});
+    for(let i=0;i+1<P.length;i++){
+      const seg=clipTraceEdge(P[i],P[i+1],now);
+      if(seg){pctx.beginPath();pctx.moveTo(seg[0],seg[1]);pctx.lineTo(seg[2],seg[3]);pctx.stroke();}
+    }
+  }
+  // 判定ライン
+  pvLine(0,-1,1,'#ff6b6b',2,1);
+}
+
+// ---- タイミング設定 & 表示 UI 配線 ----
+document.getElementById('snap').addEventListener('change',draw);
+document.getElementById('zoom').addEventListener('input',e=>{pxPerSec=+e.target.value;draw();});
+document.getElementById('tracktoggle').onclick=()=>{
+  showTracks=!showTracks;
+  document.getElementById('tracktoggle').classList.toggle('on',showTracks);
+  draw();
+};
+document.getElementById('tgrid').addEventListener('change',draw);
+document.getElementById('flip').onclick=()=>flipSelection();
+document.getElementById('selRange').onclick=()=>selectMeasureRange();
+document.getElementById('selmode').addEventListener('change',draw);
+document.getElementById('optTracks').addEventListener('change',draw);
+document.getElementById('pvWhite').addEventListener('change',drawPreview);
+document.getElementById('seek').addEventListener('input',e=>{
+  const len=songLen(); const t=(+e.target.value/1000)*len;
+  Audio.seek(Math.max(0,t)); followPlayhead(); draw();
+});
+document.getElementById('undo').onclick=()=>{hist.undo();selection=new Set();afterStructuralChange();};
+document.getElementById('redo').onclick=()=>{hist.redo();selection=new Set();afterStructuralChange();};
+
+// ---- タブ切替 ----
+for(const b of document.querySelectorAll('#tabbar .tab')){
+  b.onclick=()=>{
+    const t=b.dataset.tab;
+    for(const x of document.querySelectorAll('#tabbar .tab'))x.classList.toggle('on',x===b);
+    for(const p of document.querySelectorAll('.tabpage'))p.classList.toggle('on',p.dataset.page===t);
+  };
+}
+
+// ---- JSON 書き出し(ダウンロード) / 読み込み ----
+function safeName(s){ return (s||'chart').replace(/[\\/:*?"<>|]+/g,'_').slice(0,60)||'chart'; }
+document.getElementById('exp').onclick=()=>{
+  revalidate();
+  if(validation.errors.length){
+    alert('エラーがあるため書き出せません:\n\n'+validation.errors.slice(0,12).map(x=>'・'+x).join('\n')
+      +(validation.errors.length>12?'\n…他':''));
+    document.querySelector('#tabbar .tab[data-tab="valid"]').click();
+    return;
+  }
+  const data=JSON.stringify(exportChart(chart),null,1);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=safeName(chart.meta.title)+diffSuffix()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+};
+document.getElementById('impjson').onclick=()=>document.getElementById('filejson').click();
+document.getElementById('filejson').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{ loadChartObj(JSON.parse(await f.text())); }
+  catch(err){ alert('JSON の読込に失敗: '+err.message); }
+  e.target.value='';
+};
+
+function loadChartObj(obj){
+  const r=importChart(obj);
+  if(r.errors&&r.errors.length&&!r.chart){
+    validation={errors:r.errors,warnings:[],warnIds:new Set()}; updateSide(); return false;
+  }
+  chart=r.chart; hist=new History(chart); selection=new Set();
+  scrollSec=0;
+  previewRefresh(); revalidate(); renderTiming(); syncMetaInputs(); draw(); return true;
+}
+
+// ---- 音源・再生・打音 ----
+const Audio={
+  ctx:null, buffer:null, source:null, playing:false,
+  startCtxTime:0, startSongSec:0, playSec:0, prevSec:0, raf:0,
+  rate:1, muted:false, musicGain:null,
+  sfx:{ click:{on:true,vol:15,freq:1000}, wipe:{on:true,vol:15,freq:1400}, hold:{on:true,vol:15,freq:700} },
+  ensureCtx(){ if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)(); return this.ctx; },
+  musicOut(){ const ctx=this.ensureCtx();
+    if(!this.musicGain){ this.musicGain=ctx.createGain(); this.musicGain.connect(ctx.destination); }
+    this.musicGain.gain.value=this.muted?0:1; return this.musicGain; },
+  async loadFile(file){
+    const ctx=this.ensureCtx();
+    const buf=await file.arrayBuffer();
+    this.rawBuf=buf.slice(0);   // テストプレイでplayerに渡す生データ(decodeで detach されるため複製)
+    this.buffer=await ctx.decodeAudioData(buf);
+    document.getElementById('play').disabled=false;
+    chart.meta.audioFile=file.name;
+    const an=document.getElementById('audioName');
+    if(an)an.textContent='音源: '+file.name+' ('+this.buffer.duration.toFixed(1)+'s)';
+    updateSeekLabel();
+  },
+  seek(sec){ this.stopSource(); this.playSec=sec; this.prevSec=sec; },
+  toggle(){ this.playing?this.pause():this.play(); },
+  play(){
+    const ctx=this.ensureCtx(); if(ctx.state==='suspended')ctx.resume();
+    this.playing=true;
+    this.startCtxTime=ctx.currentTime;
+    this.startSongSec=this.playSec;
+    this.prevSec=this.playSec;
+    if(this.buffer){
+      this.stopSource();
+      const src=ctx.createBufferSource();
+      src.buffer=this.buffer;
+      src.playbackRate.value=this.rate;
+      src.connect(this.musicOut());
+      const off=Math.max(0,this.playSec + (chart.audioOffsetMs||0)/1000);
+      if(off<this.buffer.duration)src.start(0,off);
+      this.source=src;
+    }
+    document.getElementById('play').textContent='⏸';
+    this.loop();
+  },
+  pause(){
+    this.playing=false; this.stopSource();
+    document.getElementById('play').textContent='▶';
+    cancelAnimationFrame(this.raf);
+    draw();
+  },
+  stopSource(){ if(this.source){try{this.source.stop();}catch(e){} this.source.disconnect(); this.source=null;} },
+  loop(){
+    if(!this.playing)return;
+    const ctx=this.ctx;
+    this.playSec=this.startSongSec+(ctx.currentTime-this.startCtxTime)*this.rate;
+    this.fireTicks(this.prevSec,this.playSec);
+    this.prevSec=this.playSec;
+    const target=this.playSec-(CH*0.30-PAD_B)/pxPerSec;
+    scrollSec=Math.max(0,target);
+    draw();
+    this.raf=requestAnimationFrame(()=>this.loop());
+  },
+  fireTicks(prev,now){
+    if(!document.getElementById('tick').classList.contains('on'))return;
+    if(now<=prev)return;
+    for(const n of chart.notes){
+      if(n.type==='trace')continue;
+      const s=secSafe(n.time); if(s===null)continue;
+      if(s>prev&&s<=now)this.blip(n.type);
+    }
+  },
+  blip(type){
+    const s=this.sfx[type]||this.sfx.click; if(!s.on)return;
+    const ctx=this.ensureCtx();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='square';
+    o.frequency.value=s.freq;
+    const peak=Math.max(0.0001,s.vol/100);
+    g.gain.setValueAtTime(0.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(peak,ctx.currentTime+0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.05);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+0.06);
+  },
+  // 再生速度変更(再生中は現在位置で貼り直し)。r=0.1〜1.0
+  setRate(r){
+    r=Math.max(0.1,Math.min(1,r));
+    if(this.playing&&this.ctx){
+      const ctx=this.ctx;
+      this.playSec=this.startSongSec+(ctx.currentTime-this.startCtxTime)*this.rate;
+      this.rate=r;
+      this.startSongSec=this.playSec; this.startCtxTime=ctx.currentTime; this.prevSec=this.playSec;
+      if(this.buffer){
+        this.stopSource();
+        const src=ctx.createBufferSource(); src.buffer=this.buffer;
+        src.playbackRate.value=this.rate; src.connect(this.musicOut());
+        const off=Math.max(0,this.playSec+(chart.audioOffsetMs||0)/1000);
+        if(off<this.buffer.duration)src.start(0,off);
+        this.source=src;
+      }
+    }else{ this.rate=r; }
+  },
+  toggleMute(){
+    this.muted=!this.muted;
+    if(this.musicGain)this.musicGain.gain.value=this.muted?0:1;
+    const b=document.getElementById('mute');
+    if(b){ b.classList.toggle('on',!this.muted); b.textContent=this.muted?'曲✕':'曲'; }
+  },
+};
+document.getElementById('load').onclick=()=>document.getElementById('fileaudio').click();
+document.getElementById('fileaudio').onchange=e=>{
+  const f=e.target.files[0]; if(f)Audio.loadFile(f).catch(err=>alert('音源の読込に失敗: '+err.message));
+};
+document.getElementById('play').onclick=()=>Audio.toggle();
+document.getElementById('tick').onclick=()=>document.getElementById('tick').classList.toggle('on');
+document.getElementById('mute').onclick=()=>Audio.toggleMute();
+document.getElementById('spd').onchange=e=>Audio.setRate((+e.target.value)/100);
+
+// ---- テストプレイ(player.html をオーバーレイ起動。Esc/終端でエディタに戻る) ----
+// エディタ見かけ速度(mul) → player の hispeed(1〜11)へ逆変換
+function invHispeed(mul){ return mul>=1 ? mul+5 : 7-1/mul; }
+document.getElementById('testplay').onclick=()=>{
+  if(!Audio.rawBuf){ alert('先に音源を読み込んでください'); return; }
+  let chartObj; try{ chartObj=exportChart(chart); }catch(err){ alert('譜面の書き出しに失敗: '+err.message); return; }
+  if(Audio.playing)Audio.pause();   // エディタ側の再生を止める
+  const startSec=Math.max(0, Audio.playing?Audio.playSec:scrollSec);
+  const settings={ kind:'rhythm-prototype-settings', version:1,
+    judgeOffsetMs:0, keys:['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'],
+    judgeLine:+pvJudge.value, shapeStep:+pvShape.value, laneWidth:+pvWidth.value, hispeed:invHispeed(+pvSpeed.value),
+    latencyComp:true, volumes:{master:80,music:80,click:70,wipe:70,hold:70,empty:35} };
+  let ov=document.getElementById('testOverlay');
+  if(!ov){ ov=document.createElement('iframe'); ov.id='testOverlay';
+    ov.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;z-index:200;background:#000';
+    document.body.appendChild(ov); }
+  ov.style.display='block';
+  ov.onload=()=>{ try{ ov.contentWindow.postMessage({ type:'load', test:true, startSec,
+    chart:JSON.stringify(chartObj), audio:Audio.rawBuf.slice(0), settings,
+    song:{title:(chart.meta&&chart.meta.title)||'テストプレイ'} }, '*'); }catch(err){ console.warn(err); } };
+  ov.src='player.html?embed=1&test=1';
+};
+window.addEventListener('message', e=>{
+  if(e.data && e.data.type==='editorExit'){
+    const ov=document.getElementById('testOverlay'); if(ov){ ov.src='about:blank'; ov.style.display='none'; }
+  }
+});
+
+// ---- 打音の種類別設定パネル ----
+{
+  let sfType='click';
+  const panel=document.getElementById('sfxpanel');
+  const on=document.getElementById('sf_on'), vol=document.getElementById('sf_vol'),
+        volV=document.getElementById('sf_volV'), freq=document.getElementById('sf_freq'),
+        freqV=document.getElementById('sf_freqV');
+  function syncSfx(){
+    const s=Audio.sfx[sfType];
+    on.checked=s.on; vol.value=s.vol; volV.textContent=s.vol;
+    freq.value=s.freq; freqV.textContent=s.freq+'Hz';
+    document.querySelectorAll('#sfxtabs .sftab').forEach(b=>{
+      const act=b.dataset.sf===sfType;
+      b.classList.toggle('on',act);
+      b.style.background=act?'#2b5cff':''; b.style.borderColor=act?'#4a78ff':'';
+    });
+  }
+  document.querySelectorAll('#sfxtabs .sftab').forEach(b=>{
+    b.onclick=()=>{ sfType=b.dataset.sf; syncSfx(); };
+  });
+  on.onchange=()=>{ Audio.sfx[sfType].on=on.checked; };
+  vol.oninput=()=>{ Audio.sfx[sfType].vol=+vol.value; volV.textContent=vol.value; };
+  freq.oninput=()=>{ Audio.sfx[sfType].freq=+freq.value; freqV.textContent=freq.value+'Hz'; };
+  document.getElementById('sf_test').onclick=()=>Audio.blip(sfType);
+  document.getElementById('sfxcfg').onclick=()=>{
+    const show=panel.style.display==='none';
+    panel.style.display=show?'block':'none';
+    if(show)syncSfx();
+  };
+  document.getElementById('sfxclose').onclick=()=>panel.style.display='none';
+}
+
+// ---- ドロップ(譜面 or 音源) ----
+{
+  const dz=document.getElementById('drop'); let depth=0;
+  window.addEventListener('dragover',e=>e.preventDefault());
+  window.addEventListener('dragenter',e=>{e.preventDefault();depth++;dz.className='on';});
+  window.addEventListener('dragleave',e=>{e.preventDefault();if(--depth<=0){depth=0;dz.className='';}});
+  window.addEventListener('drop',async e=>{
+    e.preventDefault(); depth=0; dz.className='';
+    const files=[...e.dataTransfer.files];
+    const json=files.find(x=>x.name.toLowerCase().endsWith('.json'));
+    const audio=files.find(x=>/\.(mp3|wav|ogg|m4a|flac)$/i.test(x.name)||x.type.startsWith('audio'));
+    if(json){
+      try{ loadChartObj(JSON.parse(await json.text())); }
+      catch(err){ validation={errors:['JSON の解析に失敗: '+err.message],warnings:[],warnIds:new Set()}; updateSide(); }
+    }
+    if(audio){ Audio.loadFile(audio).catch(err=>alert('音源の読込に失敗: '+err.message)); }
+  });
+}
+
+// ---- 起動 ----
+setTool('click');
+renderTiming();
+syncMetaInputs();
+previewRefresh();
+revalidate();
+resize();
+// ===== [/MODULE] editor-ui =====
+}
+
+// Node 検証用にコアと投影を公開
+if(typeof module!=='undefined'&&module.exports){
+  module.exports={gcd,normRat,ratCmp,ratEq,ratToAbs,absToRat,ratAddAbs,absDelta,
+    snapSecToRat,ETiming,EditorChart,Cmd,History,exportChart,importChart,
+    validateEditorChart,resolveGhostIds,
+    buildDistanceTables,buildOffsetPieces,offsetAt,hispeedMultiplier,Proj,visibilityAt};
+}
+</script>
+</body>
+</html>

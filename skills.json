@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "_note": "スキルは同一取得で☆(star)が上がり最大5。stats はキー☆のみ書けば線形補間(☆1と☆5を書けば間は自動)。mod は装備時にONにするプレイ修飾子キー(player側のPMOD)。unique:true は固有スキル(パートナー装備時に常時発動)。",
+  "skills": [
+    {
+      "id": "skill_test",
+      "name": "テスト用スキル",
+      "desc": "動作確認用の汎用スキル。装備すると統計表示がONになり、通貨・イベント率に微バフ。",
+      "mod": "statsPanel",
+      "stats": [
+        { "star": 1, "curAdd": 0,  "curMul": 0.00, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 50, "curMul": 0.10, "ticketAdd": 0.10 }
+      ]
+    },
+    {
+      "id": "skill_unique_test",
+      "name": "テスト用固有スキル",
+      "desc": "パートナーの固有スキル例。相棒に設定している間つねに発動し、通貨に強めのバフ。",
+      "unique": true,
+      "mod": "comboDetail",
+      "stats": [
+        { "star": 1, "curAdd": 30, "curMul": 0.05, "ticketAdd": 0.03 },
+        { "star": 5, "curAdd": 30, "curMul": 0.05, "ticketAdd": 0.03 }
+      ]
+    }
+  ]
+}

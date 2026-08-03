@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "songs": [
+    {
+      "id": "song01",
+      "title": "チュートリアル",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "チュートリアル.ogg",
+      "jacket": "チュートリアル_jacket.png",
+      "diffs": {
+        "Easy":   { "level": 1, "chart": "チュートリアル_e.json" },
+        "Hard":   { "level": 6, "chart": "チュートリアル_h.json" },
+        "Master": { "level": 7, "chart": "チュートリアル_m.json", "unlock": { "cost": 300 } }
+      }
+    },
+    {
+      "id": "song02",
+      "title": "Maelstrom",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "shop",
+      "audio": "Maelstrom.ogg",
+      "jacket": "Maelstrom_jacket.png",
+      "diffs": {
+        "Master": { "level": 12, "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
+        "Hard":   { "level": 8, "chart": "Maelstrom_h.json" }
+      }
+    }
+  ]
+}

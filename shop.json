@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "_note": "ショップ商品。reward.type = song/partner/skill/noteskin/icon/diffTicket/eventTicket/currency。画面はtype別セクションで表示。",
+  "shop": [
+    { "id": "shop_song_test",   "reward": { "type": "song",        "id": "song02" },       "cost": 1000 },
+    { "id": "shop_partner_test","reward": { "type": "partner",     "id": "partner01" }, "cost": 1000 },
+    { "id": "shop_skill_test",  "reward": { "type": "skill",       "id": "skill_test" },   "cost": 5000 },
+    { "id": "shop_eventticket", "reward": { "type": "eventTicket", "id": null },           "cost": 500 },
+    { "id": "cash_diffticket",  "reward": { "type": "currency", "id": 300 }, "pay": { "type": "diffTicket",  "amount": 1 } },
+    { "id": "cash_eventticket", "reward": { "type": "currency", "id": 200 },  "pay": { "type": "eventTicket", "amount": 1 } }
+  ]
+}

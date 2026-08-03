@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "_note": "画像素材の定義。全てpng。type=chara(正方形) / bg(1280x720) / icon(正方形)。file は images/ 配下想定。",
+  "images": [
+    { "id": "タルカン_icon",  "type": "icon",  "file": "タルカン_icon.png" },
+    { "id": "タルカン_bg",    "type": "bg",    "file": "タルカン_bg.png" },
+    { "id": "タルカン_chara", "type": "chara", "file": "タルカン_chara.png" }
+  ]
+}

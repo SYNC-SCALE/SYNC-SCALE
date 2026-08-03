@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "_note": "解禁対象のノーツスキン定義。image はアトラス画像(skins/ 配下、基本は無彩色/グレースケール)。colors でカラーコードを指定すると乗算で着色される。指定できるキー: note(クリック/ワイプ/ホールド), trace(トレース線・頂点), gold/white/great/miss(判定演出色)。省略したキーはテクスチャの色をそのまま使用。トレースは透明度50%固定。",
+  "noteskins": [
+    {
+      "id": "skin01_blue",
+      "name": "海",
+      "image": "skin02.png",
+      "colors": { "note": "#4fa3ff", "trace": "#7fd0ff" }
+    }
+  ]
+}
