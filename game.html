@@ -406,10 +406,11 @@ let playing=null;   // {id,diff} 現在プレイ中の曲
 function showScreen(name){
   if(!SCREENS.includes(name))return;
   if(current==='play'&&name!=='play')document.getElementById('playFrame').src='about:blank';
+  if(current==='select'&&name!=='select')stopPreview();   // 選曲を離れたら試聴停止
   if(current==='timing'&&name!=='timing'){ if(typeof calStop==='function')calStop(); if(metroTimer){clearInterval(metroTimer);metroTimer=null;} }
   current=name;
   for(const s of SCREENS)document.getElementById(s).classList.toggle('on',s===name);
-  if(name==='select')renderAll();
+  if(name==='select'){ renderAll(); startPreview(songById(selId)); }
   if(name==='partner')renderPartner();
   if(name==='shop')renderShop();
   if(name==='settings')loadSettingsUI();
@@ -591,6 +592,7 @@ async function loadManifestSongs(){
       return {id:'b:'+m.id, source:'bundled', acquire:(m.source||'free'),
         title:m.title||m.id, artist:m.artist||'', charter:m.charter||'', illustrator:m.illustrator||'',
         added:n-i, jacketSrc:m.jacket?dir+m.jacket:null, audioSrc:m.audio?dir+m.audio:null,
+        previewStart:(+m.previewStart||0), previewLength:(+m.previewLength||15000),
         audioBuf:null, audioName:m.audio||null, diffs};
     });
   }catch(e){ console.warn('manifest 取得不可(ローカルHTTP未使用の可能性)',e); return []; }
@@ -953,6 +955,29 @@ function renderShop(){
   }
   if(!shown)box.innerHTML='<div class="center-msg">ショップに商品がありません</div>';
 }
+/* ===== 曲プレビュー(選曲画面で試聴) ===== */
+let previewEl=null, previewId=null, previewBlobUrl=null;
+function stopPreview(){
+  if(previewEl){ try{ previewEl.pause(); }catch(_){} previewEl.ontimeupdate=null; previewEl.onloadedmetadata=null; }
+  if(previewBlobUrl){ try{ URL.revokeObjectURL(previewBlobUrl); }catch(_){} previewBlobUrl=null; }
+  previewId=null;
+}
+function startPreview(s){
+  stopPreview();
+  if(!s)return;
+  const vol=(loadSettings().vol&&loadSettings().vol.music!=null)?(loadSettings().vol.music/100):0.7;
+  if(vol<=0)return;   // 楽曲音量0なら試聴しない
+  let url=null;
+  if(s.audioSrc)url=s.audioSrc;
+  else if(s.audioBuf){ try{ previewBlobUrl=URL.createObjectURL(new Blob([s.audioBuf])); url=previewBlobUrl; }catch(_){} }
+  if(!url)return;
+  const start=(s.previewStart||0)/1000, len=(s.previewLength||15000)/1000;
+  if(!previewEl)previewEl=new Audio();
+  previewEl.src=url; previewEl.volume=Math.min(1,vol*0.85); previewId=s.id;
+  previewEl.onloadedmetadata=()=>{ try{ previewEl.currentTime=Math.min(start, Math.max(0,(previewEl.duration||start)-0.1)); }catch(_){} };
+  previewEl.ontimeupdate=()=>{ if(previewEl.currentTime>=start+len){ try{ previewEl.currentTime=start; }catch(_){} } };  // 区間ループ
+  const p=previewEl.play(); if(p&&p.catch)p.catch(()=>{});
+}
 const RANKCOL={S:'#4fc3f7',AAA:'#e0a020',AA:'#37c98a','A':'#9aa6b8'};
 function rankColor(r){return RANKCOL[r]||'var(--ink)';}
 function songById(id){return songs.find(s=>s.id===id);}
@@ -984,7 +1009,7 @@ function renderList(){
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
       `<div><div class="ti">${esc(s.title)}</div><div class="ar">${esc(s.artist)}</div></div>`+
       `<div class="sc">${scHtml}</div>`;
-    row.onclick=()=>{ selId=s.id; renderSide(); renderList(); };
+    row.onclick=()=>{ selId=s.id; startPreview(s); renderSide(); renderList(); };
     box.appendChild(row);
   }
   document.getElementById('addRow').style.display=debugOn()?'flex':'none';
@@ -1149,7 +1174,7 @@ function startPlay(){
     const st=loadSettings();
     if(st.skinId&&String(st.skinId).indexOf('note:')===0){ const n=noteskinById(String(st.skinId).slice(5));
       if(n&&n.image){ try{ const r=await fetch(skinAsset(n.image),{cache:'no-cache'}); if(r.ok){ const buf=await r.arrayBuffer();
-        payload.skin={manifest:{kind:'rhythm-prototype-skin',name:n.name,atlas:n.image,colors:(n.colors||undefined)}, files:{[n.image.toLowerCase()]:buf}}; } }catch(e){ console.warn('スキン取得失敗',e); } } }
+        payload.skin={manifest:{kind:'rhythm-prototype-skin',name:n.name,atlas:n.image,colors:(n.colors||undefined),blend:(n.blend||undefined)}, files:{[n.image.toLowerCase()]:buf}}; } }catch(e){ console.warn('スキン取得失敗',e); } } }
     // プレイ背景(ジャケットは固定位置に合成)
     { const jk=s?s.jacketSrc:null; const bgSel=st.bgMode||'jacket';
       let playBg;
@@ -1182,7 +1207,7 @@ function showResult(r){
   { const fcEl=document.getElementById('rFC'); const cc=r.counts||{};
     if(r.failed){ fcEl.textContent='☠ FAILED'; fcEl.style.color='#ff5a5a'; }
     else if(r.auto){ fcEl.textContent=''; fcEl.style.color=''; }
-    else { const cr=comboRank(cc); fcEl.textContent=cr?('★ '+cr):''; fcEl.style.color=cr==='All Critical SYNC'?'#ffe082':''; } }
+    else { const cr=comboRank(cc); fcEl.textContent=cr?('★ '+cr):''; fcEl.style.color=cr==='All Critical SYNC'?'#7fd8ff':''; } }
   // 通貨獲得＋イベントチケットのドロップ(オート・失敗時は無し)。内訳表示用に基礎/追加を分離
   let earned=0, tkDrop=0, curBase=0, curBonus=0, tkBaseRate=0, tkBonusRate=0, tkCapped=false;
   if(!r.auto && !r.failed){
@@ -1202,7 +1227,7 @@ function showResult(r){
   }
   const c=r.counts||{};
   document.getElementById('rTable').innerHTML=
-    trow('Critical SYNC',c.gold,'#ffe082')+trow('SYNC',c.white,'#ffffff')+trow('Near',c.great,'#7fe38a')+trow('Miss',c.miss,'#ff5a5a');
+    trow('Critical SYNC',c.gold,'#7fd8ff')+trow('SYNC',c.white,'#ffffff')+trow('Near',c.great,'#ffb14e')+trow('Miss',c.miss,'#ff6b6b');
   document.getElementById('rStats').innerHTML=
     `MAX COMBO ${r.maxCombo} / ${r.total}　達成率 ${(+r.acc).toFixed(2)}%<br>平均誤差 ${r.mean>=0?'+':''}${(+r.mean).toFixed(1)}ms　空打ち ${r.empty}`+
     (r.auto?'':

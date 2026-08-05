@@ -896,6 +896,9 @@ const Gfx = {
     this.drawCalls++;
     this.n=0;
   },
+  // 合成モード切替(事前乗算アルファ)。add=true で加算合成(グロー)、false で通常のsource-over
+  setBlend(add){ this.flush(); const gl=this.gl;
+    gl.blendFunc(gl.ONE, add?gl.ONE:gl.ONE_MINUS_SRC_ALPHA); },
 };
 // ===== [/MODULE] gfx =====
 
@@ -1840,13 +1843,15 @@ const LANES=6;
 // 内蔵スキンは白一色のスプライトなので、既定色を与えて種別を区別している。
 const DEFAULT_COLORS={
   note:'#ffffff', trace:'#ffffff',
-  gold:'#ffe082', white:'#ffffff', great:'#7fe38a', miss:'#ff5a5a',
+  // 判定色: CS(gold)=水色 / SYNC(white)=白 / Near(great)=みかん / Miss=赤（すべて明るめ）
+  gold:'#7fd8ff', white:'#ffffff', great:'#ffb14e', miss:'#ff6b6b',
 };
 let COLORS=Object.assign({},DEFAULT_COLORS);
 function noteColor(){return COLORS.note;}
 function traceColor(){return COLORS.trace;}
 const NOTE_THICK=0.014;   // レーン空間でのノーツ厚み
 const TRACE_ALPHA=0.5;    // トレースの透明度(固定50%)
+let BLEND_ADD=false;      // スキンの合成モード。true=加算合成(グロー)
 const FLASH_SEC=0.16;     // ヒット演出の残光時間
 const FADE_FROM=0.90;     // 描画範囲の奥側10%でフェード
 
@@ -1997,27 +2002,18 @@ function drawFx(now){
     const f=fxs[i];
     const age=(now-f.t)/FLASH_SEC;
     if(age<0||age>1){fxs.splice(i,1);continue;}
+    if(f.kind==='empty')continue;              // 空打ちは表示しない
     const col=C(GRADE_COLOR[f.grade]||'#ffffff');
     const[u0,u1]=laneU(f.lane);
-    const e=1-(1-age)*(1-age);
-    const a=(1-age)*(1-age);
     const zc=f.z;
     if(!Proj.visible(zc))continue;
-    const y0=Proj.y(zc), xL=Proj.x(zc,u0), xR=Proj.x(zc,u1);
-    const gh=(xR-xL)*0.45*(1+e*0.6);
-    // 共通: 判定位置のぼかし発光
-    Gfx.quadPts([S(xL-gh*0.3,y0+gh),S(xR+gh*0.3,y0+gh),
-                 S(xR+gh*0.3,y0-gh),S(xL-gh*0.3,y0-gh)],
-                'glow',col,a*(f.kind==='empty'?0.35:0.6));
-    if(f.kind==='empty')continue;
-    // 図形輪郭の拡大
-    const zTop=Math.min(1.02,zc+FX_GROW*e);
-    const spread=(u1-u0)*0.10*e;
-    const a0=u0-spread,a1=u1+spread;
-    if(!Proj.visible(zTop))continue;
-    const pts=[S(Proj.x(zc,a0),Proj.y(zc)),S(Proj.x(zc,a1),Proj.y(zc)),
-               S(Proj.x(zTop,a1),Proj.y(zTop)),S(Proj.x(zTop,a0),Proj.y(zTop))];
-    strokeScreen([pts[0],pts[1],pts[2],pts[3],pts[0]],2.4,col,a*0.95);
+    // レーン中心・判定位置を中心に、縦横比固定(画面上で正方形)でふわっと拡大しながらフェード
+    const xL=Proj.x(zc,u0), xR=Proj.x(zc,u1), cx=(xL+xR)/2, cy=Proj.y(zc);
+    const base=Math.abs(xR-xL)*0.6;
+    const e=1-(1-age)*(1-age);                 // イーズアウト拡大
+    const size=base*(0.35+e*0.95);             // 中心から広がる
+    const a=(1-age)*(1-age);                    // フェードアウト
+    Gfx.quadPts([S(cx-size,cy+size),S(cx+size,cy+size),S(cx+size,cy-size),S(cx-size,cy-size)],'glow',col,a*0.75);
   }
 }
 // トレース描画。x は 0〜24(25分割)、u = -1 + x/12。
@@ -2358,23 +2354,24 @@ const Assets={
     //   colors:"default"       → 内蔵スキン相当の着色を行う
     //   colors:{note:"#..."}   → 指定された色で着色する
     const hex=/^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+    // 判定色(gold/white/great/miss)は原則 固定パレット(DEFAULT_COLORS)を既定にする。
+    // note/trace は未指定ならテクスチャそのまま(白で乗算)。
+    BLEND_ADD=(m.blend==='add');
     if(m.colors===undefined){
-      COLORS={note:'#ffffff',trace:'#ffffff',
-              gold:'#ffffff',white:'#ffffff',great:'#ffffff',miss:'#ffffff'};
-      this.colorNote='テクスチャの色をそのまま使用';
+      COLORS=Object.assign({},DEFAULT_COLORS,{note:'#ffffff',trace:'#ffffff'});
+      this.colorNote='テクスチャの色をそのまま使用(判定色は固定)';
     }else if(m.colors==='default'){
       COLORS=Object.assign({},DEFAULT_COLORS);
       this.colorNote='既定色で着色';
     }else if(typeof m.colors==='object'){
-      COLORS=Object.assign({note:'#ffffff',trace:'#ffffff',
-        gold:'#ffffff',white:'#ffffff',great:'#ffffff',miss:'#ffffff'},{});
+      COLORS=Object.assign({},DEFAULT_COLORS,{note:'#ffffff',trace:'#ffffff'});
       let bad=[];
       for(const k in DEFAULT_COLORS){
         const v=m.colors[k];
         if(v===undefined)continue;
         if(hex.test(v))COLORS[k]=v; else bad.push(k);
       }
-      if(bad.length)this.warnings.push('色の指定が不正: '+bad.join(', ')+'(白を使用)');
+      if(bad.length)this.warnings.push('色の指定が不正: '+bad.join(', ')+'(既定を使用)');
       this.colorNote='スキン指定色';
     }
     // --- アトラス ---
@@ -2754,8 +2751,7 @@ function frame(){
     if(PMOD.failAtZero&&judge.failed&&!failing)startFail(jnow);
     while(emptySeen<judge.emptyLog.length){
       const e=judge.emptyLog[emptySeen++];
-      if(fx.checked)pushFx(e.lane,'white',now,'empty',0);
-      if(hitsnd.checked)playHit('empty');
+      if(hitsnd.checked)playHit('empty');   // 空打ちは音のみ・ヒットエフェクトは出さない
     }
     // ホールド中は hit エフェクトを一定間隔で連続発生させる。
     // 「押している間だけ」発生させることで、離した瞬間に演出が止まり、
@@ -2787,6 +2783,7 @@ function frame(){
   // 速度に負値・ゼロを許すため z は時刻に対して単調でない。
   // 早期 break や二分探索によるカリングは使えず、全ノーツを評価する(仕様 7.5)。
   let drawn=0;
+  if(BLEND_ADD)Gfx.setBlend(true);   // スキンが加算指定ならノーツ/トレースをグロー合成
   for(const n of chartNotes){
     if(n.type==='trace')continue;                    // トレースは後段でまとめて描く
     const tb=tableOf(n.layer);
@@ -2820,6 +2817,7 @@ function frame(){
     if(!layerVisible(n.layer,now))continue;
     drawTrace(n,now,mul);drawn++;
   }
+  if(BLEND_ADD)Gfx.setBlend(false);   // 加算合成を解除(以降は通常合成)
   // 押下中のレーンを光らせる(手動プレイの手応え確認用)
   for(let l=0;l<6;l++){
     const age=(performance.now()-keyVisual[l])/140;
@@ -2828,7 +2826,7 @@ function frame(){
       quad(0,0.03,a,b,'#ffffff',(1-age)*0.18);
     }
   }
-  drawFx(now);
+  Gfx.setBlend(true); drawFx(now); Gfx.setBlend(false);   // ヒットエフェクトはスキンによらず常に加算合成
   drawTraceMarks(now,mul);  // 最前面。判定ラインに埋もれないようにする
   Gfx.flush();
   updateHud();
@@ -3010,7 +3008,7 @@ function showResults(){
   document.getElementById('resRank').textContent=isAuto?'Auto':rank;
   document.getElementById('resSong').textContent=(RD&&RD.meta&&RD.meta.title)?RD.meta.title:(chartName||'');
   const cRank=(c.miss>0)?'':(c.great>0?'FULL COMBO':(c.white>0?'ALL SYNC':(tot>0?'ALL CRITICAL SYNC':'')));
-  const fcEl=document.getElementById('resFC'); fcEl.textContent=cRank?('\u2605 '+cRank):''; fcEl.style.color=cRank?'#ffe082':'transparent';
+  const fcEl=document.getElementById('resFC'); fcEl.textContent=cRank?('\u2605 '+cRank):''; fcEl.style.color=cRank?'#7fd8ff':'transparent';
   const g=GRADE_COLOR;
   document.getElementById('resTable').innerHTML=
     resRow('Critical SYNC',c.gold,g.gold)+resRow('SYNC',c.white,g.white)+resRow('Near',c.great,g.great)+resRow('Miss',c.miss,g.miss);
