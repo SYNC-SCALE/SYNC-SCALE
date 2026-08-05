@@ -297,6 +297,7 @@
           <option value="add">加算(通常)</option><option value="sub">減算(1010000起点)</option><option value="ratio">割合(最大101.00%)</option>
         </select><span class="val"></span></div>
       <div class="field"><label>ゲージ0で失敗</label><input id="m_fail" type="checkbox"><span class="val muted small" style="text-align:left">OFFなら削れても続行</span></div>
+      <div class="field"><label>速度80%</label><input id="m_spd80" type="checkbox"><span class="val muted small" style="text-align:left">ノーツ速度を80%に</span></div>
       <div class="field"><label>ベストスコア表示(上部バー)</label><input id="m_best" type="checkbox"><span class="val"></span></div>
     </div>
 
@@ -348,21 +349,25 @@
 <!-- ============ リザルト ============ -->
 <section id="results" class="screen">
   <div class="topbar"><div class="h-title">RESULT</div></div>
-  <div class="panel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-    <div id="rSong" class="muted"></div>
-    <div style="display:flex;align-items:center;gap:26px;margin:14px 0">
-      <div id="rRank" style="font-size:84px;font-weight:800;color:var(--acc);min-width:150px">A</div>
-      <div style="text-align:left"><div class="muted small">SCORE</div><div id="rScore" style="font-size:46px;font-weight:700;line-height:1">0</div></div>
+  <div class="panel" style="display:flex;align-items:center;justify-content:center;gap:32px;position:relative;overflow:hidden">
+    <img id="rJacket" alt="" style="display:none;width:34vh;height:34vh;object-fit:cover;border:1px solid var(--line2);flex:0 0 auto">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;flex:0 0 auto">
+      <div id="rSong" class="muted"></div>
+      <div style="display:flex;align-items:center;gap:26px;margin:14px 0">
+        <div id="rRank" style="font-size:84px;font-weight:800;color:var(--acc);min-width:150px">A</div>
+        <div style="text-align:left"><div class="muted small">SCORE</div><div id="rScore" style="font-size:46px;font-weight:700;line-height:1">0</div></div>
+      </div>
+      <div id="rFC" style="height:22px;font-weight:800;letter-spacing:2px;color:#7fd8ff"></div>
+      <table id="rTable" style="margin:14px auto;font:15px/1.9 ui-monospace,Consolas,monospace;border-collapse:collapse"></table>
+      <div id="rStats" class="muted"></div>
+      <div id="rBest" style="margin-top:10px;font-weight:800"></div>
+      <div style="display:flex;gap:14px;margin-top:26px">
+        <button class="cta primary" id="rRetry">もう一度</button>
+        <button class="cta" id="rSelect">選曲へ</button>
+        <button class="cta" id="rHome">ホームへ</button>
+      </div>
     </div>
-    <div id="rFC" style="height:22px;font-weight:800;letter-spacing:2px;color:#ffe082"></div>
-    <table id="rTable" style="margin:14px auto;font:15px/1.9 ui-monospace,Consolas,monospace;border-collapse:collapse"></table>
-    <div id="rStats" class="muted"></div>
-    <div id="rBest" style="margin-top:10px;font-weight:800"></div>
-    <div style="display:flex;gap:14px;margin-top:26px">
-      <button class="cta primary" id="rRetry">もう一度</button>
-      <button class="cta" id="rSelect">選曲へ</button>
-      <button class="cta" id="rHome">ホームへ</button>
-    </div>
+    <img id="rPartner" alt="" style="display:none;max-height:78vh;max-width:38vw;object-fit:contain;flex:0 1 auto;pointer-events:none">
   </div>
 </section>
 
@@ -416,6 +421,7 @@ function showScreen(name){
   if(name==='settings')loadSettingsUI();
   if(name==='timing')loadTimingUI();
   if(name==='play')startPlay();
+  updateMenuBgm(name);   // 選曲/プレイ以外でメニューBGM
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.go)));
 // プレイ(iframe)からの通知
@@ -978,6 +984,20 @@ function startPreview(s){
   previewEl.ontimeupdate=()=>{ if(previewEl.currentTime>=start+len){ try{ previewEl.currentTime=start; }catch(_){} } };  // 区間ループ
   const p=previewEl.play(); if(p&&p.catch)p.catch(()=>{});
 }
+/* ===== メニューBGM(選曲画面以外で再生。固定パス bgm/menu.ogg) ===== */
+let menuBgm=null, bgmArmed=false;
+function bgmVolume(){ const v=(loadSettings().vol&&loadSettings().vol.music!=null)?loadSettings().vol.music/100:0.7; return Math.min(1,v*0.5); }
+function ensureBgm(){ if(!menuBgm){ menuBgm=new Audio(DATA_BASE+'bgm/menu.ogg'); menuBgm.loop=true; } menuBgm.volume=bgmVolume(); return menuBgm; }
+function isMenuScreen(name){ return name!=='select' && name!=='play'; }   // 選曲(試聴)とプレイ以外でBGM
+function updateMenuBgm(name){
+  const el=ensureBgm();
+  if(isMenuScreen(name) && bgmVolume()>0){ const p=el.play(); if(p&&p.catch)p.catch(()=>armBgm()); }
+  else { try{ el.pause(); }catch(_){} }
+}
+function armBgm(){ if(bgmArmed)return; bgmArmed=true;
+  window.addEventListener('pointerdown',function h(){ window.removeEventListener('pointerdown',h);
+    if(isMenuScreen(current))updateMenuBgm(current); }, {once:true}); }
+
 const RANKCOL={S:'#4fc3f7',AAA:'#e0a020',AA:'#37c98a','A':'#9aa6b8'};
 function rankColor(r){return RANKCOL[r]||'var(--ink)';}
 function songById(id){return songs.find(s=>s.id===id);}
@@ -1201,6 +1221,12 @@ function showResult(r){
   if(!r.auto && playing){ const s=songById(playing.id); const dd=s&&s.diffs[playing.diff];
     const prev=getBest(playing.id,playing.diff);
     if(dd&&(!prev||r.score>prev.score)){ const b={rank:r.rank,score:r.score}; dd.best=b; setBest(playing.id,playing.diff,b); newBest=true; } }
+  // ジャケット(左)と相棒の立ち絵(右)
+  { const s=playing?songById(playing.id):null; const jk=document.getElementById('rJacket');
+    if(s&&s.jacketSrc){ jk.src=s.jacketSrc; jk.style.display=''; } else jk.style.display='none'; }
+  { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null;
+    const pn=document.getElementById('rPartner');
+    if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; }
   document.getElementById('rSong').textContent=(r.title||'')+(r.auto?'　（オートプレイ）':'');
   document.getElementById('rRank').textContent=r.rank;                 // オート時は 'Auto'
   document.getElementById('rScore').textContent=(r.score||0).toLocaleString('en-US');  // オート時は 0
@@ -1322,7 +1348,7 @@ document.getElementById('resetSettings').onclick=()=>{settings=JSON.parse(JSON.s
 
 /* ===== プレイ修飾子(開発用。将来はスキル/パートナーが供給) ===== */
 const MKEY='rhythmPlayMods';
-const MODS_DEFAULT={gauge:0,mirror:false,judgeMeter:false,statsPanel:false,comboDetail:false,scoreMode:'add',failAtZero:false,showBest:true};
+const MODS_DEFAULT={gauge:0,mirror:false,judgeMeter:false,statsPanel:false,comboDetail:false,scoreMode:'add',failAtZero:false,speed80:false,showBest:true};
 function loadMods(){try{return Object.assign({...MODS_DEFAULT},JSON.parse(localStorage.getItem(MKEY)||'{}'));}catch(e){return {...MODS_DEFAULT};}}
 function saveMods(m){localStorage.setItem(MKEY,JSON.stringify(m));}
 function loadModsUI(){
@@ -1335,6 +1361,7 @@ function loadModsUI(){
   document.getElementById('m_combo').checked=!!m.comboDetail;
   document.getElementById('m_score').value=m.scoreMode||'add';
   document.getElementById('m_fail').checked=!!m.failAtZero;
+  document.getElementById('m_spd80').checked=!!m.speed80;
   document.getElementById('m_best').checked=m.showBest!==false;
 }
 function bindMods(){
@@ -1346,9 +1373,10 @@ function bindMods(){
     comboDetail:document.getElementById('m_combo').checked,
     scoreMode:document.getElementById('m_score').value,
     failAtZero:document.getElementById('m_fail').checked,
+    speed80:document.getElementById('m_spd80').checked,
     showBest:document.getElementById('m_best').checked,
   });
-  ['m_gauge','m_mirror','m_meter','m_stats','m_combo','m_score','m_fail','m_best']
+  ['m_gauge','m_mirror','m_meter','m_stats','m_combo','m_score','m_fail','m_spd80','m_best']
     .forEach(id=>document.getElementById(id).addEventListener('change',commit));
 }
 bindMods();
@@ -1445,6 +1473,7 @@ window.addEventListener('keydown',e=>{ if(current==='timing'&&CAL.on&&e.code==='
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 applyTheme();
 initSongs();   // 保存済みの曲・記録を読み込む
+updateMenuBgm(current);   // 起動時にメニューBGM開始(自動再生が弾かれたら最初のクリックで開始)
 </script>
 </body>
 </html>
