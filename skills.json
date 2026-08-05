@@ -3,13 +3,111 @@
   "_note": "スキルは同一取得で☆(star)が上がり最大5。stats はキー☆のみ書けば線形補間(☆1と☆5を書けば間は自動)。mod は装備時にONにするプレイ修飾子キー(player側のPMOD)。unique:true は固有スキル(パートナー装備時に常時発動)。",
   "skills": [
     {
-      "id": "skill_test",
+      "id": "skill00",
       "name": "テスト用スキル",
-      "desc": "動作確認用の汎用スキル。装備すると統計表示がONになり、通貨・イベント率に微バフ。",
+      "desc": "通貨のドロップ率が増加する。",
+      "stats": [
+        { "star": 1, "curAdd": 10, "curMul": 0.10, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 50, "curMul": 0.50, "ticketAdd": 0.00 }
+      ]
+    },
+    {
+      "id": "skill01",
+      "name": "ドロップ率増加【銅】",
+      "desc": "通貨のドロップ率が増加する。",
+      "stats": [
+        { "star": 1, "curAdd": 10, "curMul": 0.05, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 50, "curMul": 0.25, "ticketAdd": 0.00 }
+      ]
+    },
+    {
+      "id": "skill02",
+      "name": "ドロップ率増加【銀】",
+      "desc": "HardGage【LV.1】 通貨のドロップ率が大きく増加する。",
+      "gauge": 1,
+      "stats": [
+        { "star": 1, "curAdd": 10, "curMul": 0.10, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 50, "curMul": 0.50, "ticketAdd": 0.00 }
+      ]
+    },
+    {
+      "id": "skill03",
+      "name": "ドロップ率増加【金】",
+      "desc": "HardGage【LV.2】 通貨のドロップ率がとても大きく増加する。",
+      "gauge": 2,
+      "stats": [
+        { "star": 1, "curAdd": 10, "curMul": 0.20, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 50, "curMul": 1.00, "ticketAdd": 0.00 }
+      ]
+    },
+    {
+      "id": "skill04",
+      "name": "ドロップ率増加【幸運】",
+      "desc": "HardGage【LV.1】イベントチケットのドロップ率が増加する。",
+      "gauge": 1,
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.06 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.30 }
+      ]
+    },
+    {
+      "id": "skill05",
+      "name": "ドロップ率増加【強運】",
+      "desc": "HardGage【LV.2】イベントチケットのドロップ率が増加する。",
+      "gauge": 2,
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.14 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.70 }
+      ]
+    },
+    {
+      "id": "skill06",
+      "name": "ドロップ率増加【豪運】",
+      "desc": "HardGage【LV.3】イベントチケットのドロップ率が増加する。",
+      "gauge": 3,
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.25 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 1.50 }
+      ]
+    },
+    {
+      "id": "skill07",
+      "name": "共鳴",
+      "desc": "判定メーターを追加する。",
+      "mod": "judgeMeter",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.02 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.10 }
+      ]
+    },
+    {
+      "id": "skill08",
+      "name": "千里眼",
+      "desc": "現在のノーツの統計表示を追加する。",
       "mod": "statsPanel",
       "stats": [
-        { "star": 1, "curAdd": 0,  "curMul": 0.00, "ticketAdd": 0.00 },
-        { "star": 5, "curAdd": 50, "curMul": 0.10, "ticketAdd": 0.10 }
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.02 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.10 }
+      ]
+    },
+    {
+      "id": "skill09",
+      "name": "一貫",
+      "desc": "コンボ詳細を追加する。",
+      "mod": "comboDetail",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.02 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.10 }
+      ]
+    },
+    {
+      "id": "skill10",
+      "name": "威光",
+      "desc": "プレイ中に過去の最高スコアを確認できる。",
+      "mod": "showBest",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.02 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.10 }
       ]
     },
     {
@@ -21,6 +119,29 @@
       "stats": [
         { "star": 1, "curAdd": 30, "curMul": 0.05, "ticketAdd": 0.03 },
         { "star": 5, "curAdd": 30, "curMul": 0.05, "ticketAdd": 0.03 }
+      ]
+    },
+    {
+      "id": "skill_tarukan",
+      "name": "深海の共鳴",
+      "desc": "HardGage【LV.2】　判定メーターを追加する。　チケットドロップ率+100％",
+      "gauge": 2,
+      "unique": true,
+      "mod": "judgeMeter",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 1.00 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 1.00 }
+      ]
+    }
+    {
+      "id": "skill_myu",
+      "name": "キラキラれんしゅーもーど！",
+      "desc": "プレイ速度を80%に低下させるが、スコアが記録されなくなる。",
+      "unique": true,
+      "mod": "speed80",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 }
       ]
     }
   ]

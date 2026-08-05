@@ -184,6 +184,7 @@
 <section id="select" class="screen">
   <div class="topbar">
     <button class="back" data-go="home">←</button>
+    <div id="scoreViewTabs" style="display:flex;gap:6px;margin-left:16px"></div>
     <div class="grow"></div>
     <div class="userwrap">
       <div class="avatar"></div>
@@ -296,9 +297,11 @@
         <select id="m_score" class="cta" style="padding:6px 10px">
           <option value="add">加算(通常)</option><option value="sub">減算(1010000起点)</option><option value="ratio">割合(最大101.00%)</option>
         </select><span class="val"></span></div>
-      <div class="field"><label>ゲージ0で失敗</label><input id="m_fail" type="checkbox"><span class="val muted small" style="text-align:left">OFFなら削れても続行</span></div>
-      <div class="field"><label>速度80%</label><input id="m_spd80" type="checkbox"><span class="val muted small" style="text-align:left">ノーツ速度を80%に</span></div>
+      <div class="field"><label>速度80%</label><input id="m_spd80" type="checkbox"><span class="val muted small" style="text-align:left">Slow・記録なし</span></div>
+      <div class="field"><label>速度1.1倍</label><input id="m_spd110" type="checkbox"><span class="val muted small" style="text-align:left">スピードトライアル</span></div>
+      <div class="field"><label>速度1.3倍</label><input id="m_spd130" type="checkbox"><span class="val muted small" style="text-align:left">スピードトライアル【狂】</span></div>
       <div class="field"><label>ベストスコア表示(上部バー)</label><input id="m_best" type="checkbox"><span class="val"></span></div>
+      <div class="note">※HPゲージ Lv1以上で「ゲージ0失敗」は自動有効。ゲージLvはスキル/固有スキルからも加算されます。</div>
     </div>
 
     <div style="margin-top:24px;display:flex;gap:12px;align-items:center">
@@ -478,11 +481,14 @@ const DATA_BASE=(localStorage.getItem('rhythmDataBase')||'./');
 const SCKEY='rhythmScores';
 function loadScoreMap(){try{return JSON.parse(localStorage.getItem(SCKEY)||'{}');}catch(e){return {};}}
 function saveScoreMap(m){localStorage.setItem(SCKEY,JSON.stringify(m));}
-function scoreKey(id,diff){return id+'::'+diff;}
-function getBest(id,diff){return loadScoreMap()[scoreKey(id,diff)]||null;}
-function setBest(id,diff,best){const m=loadScoreMap();m[scoreKey(id,diff)]=best;saveScoreMap(m);}
-function applyBests(list){const m=loadScoreMap();for(const s of list)for(const k of ['Easy','Hard','Master']){const d=s.diffs[k];if(d)d.best=m[scoreKey(s.id,k)]||d.best||null;}}
+// スコアはモード別: normal(通常) / trial(1.1) / trialkyo(1.3)。normalは後方互換のため接尾辞なし
+let scoreView='normal';   // 選曲画面で表示中のスコアモード
+function scoreKey(id,diff,mode){ return id+'::'+diff+((mode&&mode!=='normal')?('::'+mode):''); }
+function getBest(id,diff,mode){return loadScoreMap()[scoreKey(id,diff,mode)]||null;}
+function setBest(id,diff,best,mode){const m=loadScoreMap();m[scoreKey(id,diff,mode)]=best;saveScoreMap(m);}
+function applyBests(list,mode){const m=loadScoreMap();for(const s of list)for(const k of ['Easy','Hard','Master']){const d=s.diffs[k];if(d)d.best=m[scoreKey(s.id,k,mode)]||null;}}
 function migrateBestsToMap(list){const m=loadScoreMap();let ch=false;for(const s of list)for(const k of ['Easy','Hard','Master']){const d=s.diffs[k];if(d&&d.best&&!m[scoreKey(s.id,k)]){m[scoreKey(s.id,k)]=d.best;ch=true;}}if(ch)saveScoreMap(m);}
+function hasScoresInMode(mode){ if(mode==='normal')return true; const m=loadScoreMap(); return Object.keys(m).some(k=>k.endsWith('::'+mode)); }
 
 /* ===== プレイヤープロファイル(セーブデータ基盤) =====
    通貨・解禁フラグ・装備を1つの器に集約。将来のショップ/パートナー/イベントはここを読む。
@@ -616,7 +622,7 @@ async function initSongs(){
   migrateBestsToMap(userSongs);
   const bundled=await loadManifestSongs();
   songs=(userSongs.length||bundled.length)?[...userSongs,...bundled]:ph;
-  applyBests(songs);
+  applyBests(songs,scoreView);
   await loadContentDB();
   if(!songById(selId))selId=songs.length?songs[0].id:null;
   if(current==='select')renderAll();
@@ -688,6 +694,28 @@ function equippedStats(){
     if(sk&&m)add(skillStatAt(m,sk.star)); }
   return {curAdd,curMul,ticketAdd};
 }
+// 装備スキル＋固有スキルが指定する体力ゲージレベル。最高値を採用、最高が同値2つ以上なら+1（上限5）
+function gaugeLevelsFromEquip(){
+  const prof=loadProfile(), eq=prof.equipped||{}; const arr=[];
+  for(const sid of (eq.skills||[])){ if(!sid)continue; const m=skillById(sid); if(m&&+m.gauge>0)arr.push(+m.gauge); }
+  if(eq.partner && uniqueActive(eq.partner)){ const pm=partnerMetaById(eq.partner); const um=pm&&skillById(partnerUniqueSkillId(pm)); if(um&&+um.gauge>0)arr.push(+um.gauge); }
+  return arr;
+}
+function effectiveGauge(){
+  const arr=gaugeLevelsFromEquip().sort((a,b)=>b-a);
+  if(!arr.length)return 0;
+  let top=arr[0]; if(arr.length>=2 && arr[1]===arr[0])top=top+1;   // 最高が同値2つ以上 → +1
+  return Math.min(5,top);
+}
+// 有効プレイ速度と記録モード。優先 0.8 < 1.1 < 1.3（高倍率が勝つ）
+function speedInfo(mods){
+  let mul=1, mode='normal';
+  if(mods.speed80){ mul=0.8; mode='slow'; }
+  if(mods.speed110){ mul=1.1; mode='trial'; }
+  if(mods.speed130){ mul=1.3; mode='trialkyo'; }
+  return {mul,mode};
+}
+const SPEED_LABEL={normal:'通常',slow:'Slow',trial:'スピードトライアル',trialkyo:'スピードトライアル【狂】'};
 function levelUpPartner(id){
   const meta=partnerMetaById(id); if(!meta||!ownsPartner(id))return false;
   if(partnerLevel(id)>=partnerMax())return false;
@@ -844,6 +872,7 @@ function renderPartnerDetail(){
       ((m.designer||m.illustrator)?`<div class="muted" style="font-size:12px">${m.designer?('キャラデザイン：'+esc(m.designer)):''}${(m.designer&&m.illustrator)?'　':''}${m.illustrator?('イラスト：'+esc(m.illustrator)):''}</div>`:'')+
       `<div class="pnstat">${stLine}</div>`+
       (eq?'<div class="muted" style="font-size:12px;margin-top:-4px">表示: 基礎値(レベル) ＋ スキル増加(固有・装備)</div>':'')+
+      ((eq && effectiveGauge()>=1)?`<div style="color:#ff9a5a;font-size:13px;margin-top:4px">体力ゲージ Lv${effectiveGauge()}（ゲージ0で失敗）</div>`:'')+
       uniqueHtml+
       `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">`+
         `<button class="cta" id="pnLvUp"${canLv?'':' disabled'} style="${canLv?'':'opacity:.45'}">${maxed?'最大レベル':('レベルアップ '+fmtCur(cost))}</button>`+
@@ -1104,7 +1133,17 @@ document.getElementById('delBtn').onclick=()=>{
   selId=songs.length?songs[0].id:null;
   renderAll();
 };
-function renderAll(){ applyTheme(); renderList(); renderSide(); syncSortBtns(); renderUserName(); renderCurrency(); renderAvatar(); }
+function renderScoreView(){
+  const box=document.getElementById('scoreViewTabs'); if(!box)return;
+  if(!hasScoresInMode(scoreView))scoreView='normal';
+  const modes=[['normal','通常']];
+  if(hasScoresInMode('trial'))modes.push(['trial','スピードトライアル']);
+  if(hasScoresInMode('trialkyo'))modes.push(['trialkyo','【狂】']);
+  if(modes.length<=1){ box.innerHTML=''; return; }   // トライアル記録が無ければ非表示
+  box.innerHTML=modes.map(([m,l])=>`<button class="sortbtn${m===scoreView?' on':''}" data-sv="${m}">${l}</button>`).join('');
+  box.querySelectorAll('[data-sv]').forEach(b=>b.onclick=()=>{ scoreView=b.dataset.sv; renderAll(); });
+}
+function renderAll(){ applyBests(songs,scoreView); applyTheme(); renderList(); renderSide(); syncSortBtns(); renderScoreView(); renderUserName(); renderCurrency(); renderAvatar(); }
 function syncSortBtns(){
   document.querySelectorAll('.sortbtn').forEach(b=>{
     const on=b.dataset.sort===sortKey; b.classList.toggle('on',on);
@@ -1189,6 +1228,12 @@ function startPlay(){
     { const eqp=loadProfile().equipped||{};
       for(const sid of (eqp.skills||[])){ if(!sid)continue; const sm=skillById(sid); if(sm&&sm.mod)mods[sm.mod]=true; }
       if(eqp.partner&&uniqueActive(eqp.partner)){ const pm=partnerMetaById(eqp.partner); const um=pm&&skillById(partnerUniqueSkillId(pm)); if(um&&um.mod)mods[um.mod]=true; } }
+    // HPゲージ: デバッグ値とスキル由来の高い方。1以上でゲージ0失敗を自動ON
+    const g=Math.min(5, Math.max(+mods.gauge||0, effectiveGauge()));
+    mods.gauge=g; mods.failAtZero=(g>=1);
+    // 速度と記録モード
+    const sp=speedInfo(mods); mods.speedMul=sp.mul;
+    if(playing)playing.speedMode=sp.mode;
     const payload={type:'load', settings:buildPlayerSettings(), mods};
     if(d&&d.chartText){ payload.chart=d.chartText; if(s.audioBuf)payload.audio=s.audioBuf; payload.song={title:s.title,diff:activeDiff}; }
     const st=loadSettings();
@@ -1218,17 +1263,19 @@ function trow(l,n,c){return `<tr><td style="color:${c};padding:2px 20px 2px 0">$
 function showResult(r){
   // ベスト更新(オートプレイは記録しない)
   let newBest=false;
-  if(!r.auto && playing){ const s=songById(playing.id); const dd=s&&s.diffs[playing.diff];
-    const prev=getBest(playing.id,playing.diff);
-    if(dd&&(!prev||r.score>prev.score)){ const b={rank:r.rank,score:r.score}; dd.best=b; setBest(playing.id,playing.diff,b); newBest=true; } }
+  const pmode=(playing&&playing.speedMode)||'normal';   // normal/slow/trial/trialkyo
+  if(!r.auto && !r.failed && pmode!=='slow' && playing){   // SlowとFAILは記録しない
+    const prev=getBest(playing.id,playing.diff,pmode);
+    if(!prev||r.score>prev.score){ const b={rank:r.rank,score:r.score}; setBest(playing.id,playing.diff,b,pmode); newBest=true;
+      if(pmode===scoreView){ const s=songById(playing.id); const dd=s&&s.diffs[playing.diff]; if(dd)dd.best=b; } } }
   // ジャケット(左)と相棒の立ち絵(右)
   { const s=playing?songById(playing.id):null; const jk=document.getElementById('rJacket');
     if(s&&s.jacketSrc){ jk.src=s.jacketSrc; jk.style.display=''; } else jk.style.display='none'; }
   { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null;
     const pn=document.getElementById('rPartner');
     if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; }
-  document.getElementById('rSong').textContent=(r.title||'')+(r.auto?'　（オートプレイ）':'');
-  document.getElementById('rRank').textContent=r.rank;                 // オート時は 'Auto'
+  document.getElementById('rSong').textContent=(r.title||'')+(r.auto?'　（オートプレイ）':'')+((pmode!=='normal')?('　['+SPEED_LABEL[pmode]+']'):'');
+  document.getElementById('rRank').textContent=(pmode==='slow'&&!r.auto)?'Slow':r.rank;   // オート時は 'Auto'
   document.getElementById('rScore').textContent=(r.score||0).toLocaleString('en-US');  // オート時は 0
   { const fcEl=document.getElementById('rFC'); const cc=r.counts||{};
     if(r.failed){ fcEl.textContent='☠ FAILED'; fcEl.style.color='#ff5a5a'; }
@@ -1263,8 +1310,11 @@ function showResult(r){
       `<br><span style="color:#7fd0ff">イベント券 ドロップ率 ${tkBaseRate.toFixed(1)}%`+
         (tkBonusRate>0?` <span style="color:#7fe38a">+${tkBonusRate.toFixed(1)}%</span>`:'')+
         ` → ${tkCapped?'所持上限のため無し':(tkDrop+'枚')}</span>`);
-  document.getElementById('rBest').textContent=r.auto?'記録なし（オートプレイ）':(newBest?'★ ベスト更新!':'');
-  document.getElementById('rBest').style.color=r.auto?'var(--muted)':diffColor(playing?playing.diff:activeDiff);
+  document.getElementById('rBest').textContent=
+    r.auto?'記録なし（オートプレイ）':
+    (pmode==='slow'?'Slow（記録なし）':
+    (r.failed?'':(newBest?'★ ベスト更新!':'')));
+  document.getElementById('rBest').style.color=(r.auto||pmode==='slow')?'var(--muted)':diffColor(playing?playing.diff:activeDiff);
   showScreen('results');
 }
 document.getElementById('rRetry').onclick=()=>{ if(playing){selId=playing.id;activeDiff=playing.diff;} showScreen('play'); };
@@ -1348,7 +1398,7 @@ document.getElementById('resetSettings').onclick=()=>{settings=JSON.parse(JSON.s
 
 /* ===== プレイ修飾子(開発用。将来はスキル/パートナーが供給) ===== */
 const MKEY='rhythmPlayMods';
-const MODS_DEFAULT={gauge:0,mirror:false,judgeMeter:false,statsPanel:false,comboDetail:false,scoreMode:'add',failAtZero:false,speed80:false,showBest:true};
+const MODS_DEFAULT={gauge:0,mirror:false,judgeMeter:false,statsPanel:false,comboDetail:false,scoreMode:'add',speed80:false,speed110:false,speed130:false,showBest:true};
 function loadMods(){try{return Object.assign({...MODS_DEFAULT},JSON.parse(localStorage.getItem(MKEY)||'{}'));}catch(e){return {...MODS_DEFAULT};}}
 function saveMods(m){localStorage.setItem(MKEY,JSON.stringify(m));}
 function loadModsUI(){
@@ -1360,8 +1410,9 @@ function loadModsUI(){
   document.getElementById('m_stats').checked=!!m.statsPanel;
   document.getElementById('m_combo').checked=!!m.comboDetail;
   document.getElementById('m_score').value=m.scoreMode||'add';
-  document.getElementById('m_fail').checked=!!m.failAtZero;
   document.getElementById('m_spd80').checked=!!m.speed80;
+  document.getElementById('m_spd110').checked=!!m.speed110;
+  document.getElementById('m_spd130').checked=!!m.speed130;
   document.getElementById('m_best').checked=m.showBest!==false;
 }
 function bindMods(){
@@ -1372,11 +1423,12 @@ function bindMods(){
     statsPanel:document.getElementById('m_stats').checked,
     comboDetail:document.getElementById('m_combo').checked,
     scoreMode:document.getElementById('m_score').value,
-    failAtZero:document.getElementById('m_fail').checked,
     speed80:document.getElementById('m_spd80').checked,
+    speed110:document.getElementById('m_spd110').checked,
+    speed130:document.getElementById('m_spd130').checked,
     showBest:document.getElementById('m_best').checked,
   });
-  ['m_gauge','m_mirror','m_meter','m_stats','m_combo','m_score','m_fail','m_spd80','m_best']
+  ['m_gauge','m_mirror','m_meter','m_stats','m_combo','m_score','m_spd80','m_spd110','m_spd130','m_best']
     .forEach(id=>document.getElementById(id).addEventListener('change',commit));
 }
 bindMods();

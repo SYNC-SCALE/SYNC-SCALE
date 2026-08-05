@@ -2715,7 +2715,8 @@ function frame(){
     if(e<Sync.min)Sync.min=e; if(e>Sync.max)Sync.max=e;
     if(Sync.n%30===0){Sync.samples.push({t:now,e});if(Sync.samples.length>600)Sync.samples.shift();}
   }
-  const mul=hispeedMultiplier(+hs.value);
+  let mul=hispeedMultiplier(+hs.value);
+  mul*=PMOD.speedMul;                          // プレイ速度倍率(0.8/1.1/1.3)
   Proj.set(CW,CH,+shape.value,+lw.value,JUDGE_LINE);
 
   // --- 打音の予約(0.4秒先読み)。速度倍率とは無関係に定刻で鳴る ---
@@ -2865,7 +2866,8 @@ const PMOD_DEFAULT={
   statsPanel:false, // 統計 CS/S/N/M(右下)
   comboDetail:false,// コンボ詳細(右下)
   scoreMode:'add',  // 'add' 加算 / 'sub' 減算(1010000起点) / 'ratio' 割合(最大101.00%)
-  failAtZero:false, // ゲージ0で失敗扱いにするか(将来のハード用。既定は削れても続行)
+  failAtZero:false, // ゲージ0で失敗扱いにするか(gauge>=1で自動ON)
+  speedMul:1,       // ノーツ速度倍率(0.8/1.1/1.3等)
 };
 let PMOD={...PMOD_DEFAULT};
 function applyMods(m){
@@ -2878,6 +2880,7 @@ function applyMods(m){
   PMOD.comboDetail=!!m.comboDetail;
   if(m.scoreMode==='add'||m.scoreMode==='sub'||m.scoreMode==='ratio')PMOD.scoreMode=m.scoreMode;
   PMOD.failAtZero=!!m.failAtZero;
+  PMOD.speedMul=(typeof m.speedMul==='number'&&m.speedMul>0)?m.speedMul:1;
 }
 // HPゲージのレベル別増減。white/gold は「Perfect以上」。
 function gaugeDelta(level,grade){

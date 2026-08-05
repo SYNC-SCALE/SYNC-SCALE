@@ -1,12 +1,13 @@
 {
   "formatVersion": 1,
   "_note": "レベル上昇幅・コストは一律固定(levelStep)。最大20。stats はキーLvのみ書けば線形補間。slotUnlocks はスキル枠が増えるレベル。",
-  "levelStep": { "cost": 200, "maxLevel": 20 },
+  "levelStep": {"base":200,  "cost": 140, "maxLevel": 20 },
   "slotUnlocks": [1, 5, 15],
   "partners": [
     {
       "id": "partner01",
       "name": "タルカン",
+      "unique": "skill_tarukan",
       "chara": "タルカン_chara.png",
       "icon": "タルカン_icon.png",
       "bg": "タルカン_bg.png",
