@@ -27,6 +27,19 @@
         "Master": { "level": 12, "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
         "Hard":   { "level": 8, "chart": "Maelstrom_h.json" }
       }
+    },
+    {
+      "id": "song03",
+      "title": "Abyssal turbine",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "partner",
+      "audio": "Abyssal turbine.ogg",
+      "jacket": "Abyssal turbine_jacket.png",
+      "diffs": {
+        "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
+        "Hard":   { "level": 7, "chart": "Abyssal turbine_h.json" }
+      }
     }
   ]
 }
