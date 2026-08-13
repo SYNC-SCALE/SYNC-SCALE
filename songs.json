@@ -40,6 +40,20 @@
         "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
         "Hard":   { "level": 7, "chart": "Abyssal turbine_h.json" }
       }
+    },
+    {
+      "id": "song1001",
+      "title": "シャイニングスター",
+      "artist": "魔王魂",
+      "charter": "やくるとちゃん",
+      "source": "partner",
+      "audio": "シャイニングスター.ogg",
+      "jacket": "シャイニングスター_jacket.png",
+      "diffs": {
+        "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } },
+        "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
+        "Hard":   { "level": 2, "chart": "シャイニングスター_e.json" }
+      }
     }
   ]
 }
