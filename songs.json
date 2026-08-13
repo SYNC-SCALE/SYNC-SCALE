@@ -52,7 +52,7 @@
       "diffs": {
         "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
-        "Hard":   { "level": 2, "chart": "シャイニングスター_e.json" }
+        "easy":   { "level": 2, "chart": "シャイニングスター_e.json" }
       }
     }
   ]
