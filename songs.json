@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "songs": [
     {
-      "id": "song01",
+      "id": "song0001",
       "title": "チュートリアル",
       "artist": "Nibiryu",
       "charter": "Nibiryu",
@@ -16,7 +16,7 @@
       }
     },
     {
-      "id": "song02",
+      "id": "song0002",
       "title": "Maelstrom",
       "artist": "Nibiryu",
       "charter": "Nibiryu",
@@ -29,7 +29,7 @@
       }
     },
     {
-      "id": "song03",
+      "id": "song0003",
       "title": "Abyssal turbine",
       "artist": "Nibiryu",
       "charter": "Nibiryu",
