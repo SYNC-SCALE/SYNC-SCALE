@@ -46,13 +46,13 @@
       "title": "シャイニングスター",
       "artist": "魔王魂",
       "charter": "やくるとちゃん",
-      "source": "partner",
+      "source": "shop",
       "audio": "シャイニングスター.ogg",
       "jacket": "シャイニングスター_jacket.png",
       "diffs": {
         "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
-        "easy":   { "level": 2, "chart": "シャイニングスター_e.json" }
+        "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" }
       }
     }
   ]
