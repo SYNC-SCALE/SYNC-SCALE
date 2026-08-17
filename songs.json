@@ -42,6 +42,18 @@
       }
     },
     {
+      "id": "song0004",
+      "title": "幽都第七遊興区",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "partner",
+      "audio": "幽都第七遊興区.ogg",
+      "jacket": "幽都第七遊興区_jacket.png",
+      "diffs": {
+        "Hard":   { "level": 6, "chart": "幽都第七遊興区_h.json" }
+      }
+    },
+    {
       "id": "song1001",
       "title": "シャイニングスター",
       "artist": "魔王魂",
