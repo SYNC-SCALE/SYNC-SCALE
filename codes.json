@@ -1,0 +1,8 @@
+{
+  "formatVersion": 1,
+  "_note": "シリアルコード。イベントから独立し、文字列(code)と報酬(reward)が1対1。入力すると reward を直接付与。使用済みはプロファイル(redeemedCodes)に記録され再取得不可。code は大文字小文字を区別しない。reward.type は shop/rewards と同じ(currency/diffTicket/eventTicket/icon/song/noteskin/bg など)。",
+  "codes": [
+    { "code": "SYNC2026",  "reward": { "type": "currency",    "id": 3000 } },
+    { "code": "DRAGON",    "reward": { "type": "eventTicket", "id": null } }
+  ]
+}
