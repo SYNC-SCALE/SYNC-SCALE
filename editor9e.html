@@ -151,7 +151,7 @@
           <span class="dim">タイトル</span><input id="m_title" type="text">
           <span class="dim">アーティスト</span><input id="m_artist" type="text">
           <span class="dim">譜面制作</span><input id="m_charter" type="text">
-          <span class="dim">難易度</span><select id="m_diff"><option value="EASY">EASY</option><option value="HARD">HARD</option><option value="MASTER">MASTER</option></select>
+          <span class="dim">難易度</span><select id="m_diff"><option value="EASY">EASY</option><option value="HARD">HARD</option><option value="MASTER">MASTER</option><option value="ARCANA">ARCANA</option></select>
           <span class="dim">レベル</span><input id="m_level" type="number" min="1" max="99">
           <span class="dim">音源offset(ms)</span><input id="m_offset" type="number" step="1">
           <span class="dim">試聴開始(ms)</span><input id="m_pvs" type="number" step="100" min="0">
@@ -2154,9 +2154,9 @@ document.getElementById('addSig').onclick=()=>{
 // ============================================================
 //  9-D: メタデータ編集
 // ============================================================
-// 難易度名を EASY/HARD/MASTER に正規化。ファイル接尾辞 _e/_h/_m を導出。
-function diffKey(name){const d=(name||'').toUpperCase();return d.includes('EASY')?'EASY':d.includes('HARD')?'HARD':'MASTER';}
-function diffSuffix(){return {EASY:'_e',HARD:'_h',MASTER:'_m'}[diffKey(chart.meta.difficultyName)];}
+// 難易度名を EASY/HARD/MASTER/ARCANA に正規化。ファイル接尾辞 _e/_h/_m/_a を導出。
+function diffKey(name){const d=(name||'').toUpperCase();return d.includes('EASY')?'EASY':d.includes('HARD')?'HARD':d.includes('ARCANA')?'ARCANA':'MASTER';}
+function diffSuffix(){return {EASY:'_e',HARD:'_h',MASTER:'_m',ARCANA:'_a'}[diffKey(chart.meta.difficultyName)];}
 function bindMeta(id,apply){document.getElementById(id).addEventListener('input',e=>apply(e.target.value));}
 bindMeta('m_title', v=>chart.meta.title=v);
 bindMeta('m_artist',v=>chart.meta.artist=v);
