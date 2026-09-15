@@ -24,9 +24,9 @@
       "audio": "Maelstrom.ogg",
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
-        "Arcana": { "level": 13, "chart": "Maelstrom_a.json" },
-        "Master": { "level": 9, "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
-        "Hard":   { "level": 8, "chart": "Maelstrom_h.json" }
+        "Hard":   { "level": 6,  "chart": "Maelstrom_h.json" },
+        "Master": { "level": 9,  "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
+        "Arcana": { "level": 13, "chart": "Maelstrom_a.json" }
       }
     },
     {
@@ -38,9 +38,9 @@
       "audio": "Abyssal turbine.ogg",
       "jacket": "Abyssal turbine_jacket.png",
       "diffs": {
-        "Arcana": { "level": 12, "chart": "Abyssal turbine_a.json" },
+        "Hard":   { "level": 7,  "chart": "Abyssal turbine_h.json" },
         "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
-        "Hard":   { "level": 7, "chart": "Abyssal turbine_h.json" }
+        "Arcana": { "level": 12, "chart": "Abyssal turbine_a.json" }
       }
     },
     {
@@ -52,8 +52,8 @@
       "audio": "幽都第七遊興区.ogg",
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
-        "Master": { "level": 10, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } },
-        "Hard":   { "level": 6, "chart": "幽都第七遊興区_h.json" }
+        "Hard":   { "level": 6,  "chart": "幽都第七遊興区_h.json" },
+        "Master": { "level": 10, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } }
       }
     },
     {
@@ -65,9 +65,9 @@
       "audio": "シャイニングスター.ogg",
       "jacket": "シャイニングスター_jacket.png",
       "diffs": {
-        "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } },
+        "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
-        "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" }
+        "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
