@@ -3366,6 +3366,9 @@ window.addEventListener('message',e=>{
       const m=document.getElementById('spMsg'); if(m&&TEST)m.textContent='\u300c\u958b\u59cb\u300d\u3067\u30c6\u30b9\u30c8\u30d7\u30ec\u30a4\u3002Esc\u3067\u96e2\u8131\u3001\u6700\u5f8c\u307e\u3067\u518d\u751f\u3067\u30a8\u30c7\u30a3\u30bf\u306b\u623b\u308a\u307e\u3059\u3002';
       const st=document.getElementById('startBtn'); if(st)st.textContent=TEST?'\u958b\u59cb':'\u6e96\u5099';
     }
+    // \u9078\u66f2\u753b\u9762\u304b\u3089\u306e\u8d77\u52d5(\u57cb\u3081\u8fbc\u307f\u30fb\u30c6\u30b9\u30c8\u4ee5\u5916)\u306f\u300c\u6e96\u5099\u300d\u30dc\u30bf\u30f3\u3092\u7701\u7565\u3057\u3001
+    // \u8b5c\u9762\u3092\u691c\u8a3c\u3057\u3066\u304b\u3089\u6307\u7f6e\u304d\u30c1\u30a7\u30c3\u30af\u3078\u76f4\u884c\u3002s/d/f/j/k/l \u62bc\u4e0b\u3067\u958b\u59cb\u3002
+    if(EMBEDDED && !TEST && pendingChart){ enterAutoStart(); }
   }
 });
 // --- 指置きチェック → 開始 ---
@@ -3394,20 +3397,69 @@ function finishStart(){
   cancelAnimationFrame(rafId); frame();
   Promise.resolve().then(async()=>{ if(pendingSkin)await applyPendingSkin(); if(pendingPlayBg)await applyPlayBackground(); });
 }
+// 親から渡された譜面を適用。成功で true(失敗時は既定へフォールバックしない)
+function applyPendingChart(){
+  if(!(typeof pendingChart==='string'&&pendingChart))return false;
+  try{ const r=loadChartJSON(JSON.parse(pendingChart));
+    if(!r.errors.length){ RD=r; if(PMOD.mirror)applyMirror(RD); chartName=pendingSongTitle||'読み込み譜面';
+      if(![...scen.options].some(o=>o.value==='REAL')){const o=document.createElement('option');o.value='REAL';o.textContent='◆ 読み込み譜面';scen.insertBefore(o,scen.firstChild);}
+      scen.value='REAL'; return true; }
+  }catch(e){}
+  return false;
+}
+function notifyPlayReady(){ if(EMBEDDED){ try{ window.parent.postMessage({type:'playReady'},'*'); }catch(_){} } }
+// 譜面読み込み失敗時: デフォルト譜面にせず再起動を促す
+function showLoadError(msg){
+  const sp=document.getElementById('splash'); if(!sp)return;
+  sp.style.display='flex';
+  sp.innerHTML='<h2 style="margin:0;color:#ff6b6b">読み込みエラー</h2>'
+    +'<div class="dim" style="max-width:340px;text-align:center;line-height:1.6">'+(msg||'譜面の読み込みに失敗しました。')+'<br>お手数ですが再起動してください。</div>'
+    +'<button id="errBack" class="primary" style="padding:9px 22px">選択に戻る</button>';
+  const b=document.getElementById('errBack');
+  if(b)b.onclick=()=>{ if(EMBEDDED){ try{window.parent.postMessage({type:'toSelect'},'*');}catch(_){} } else location.reload(); };
+}
+// 「準備」ボタンを省略した自動開始(選曲画面からの起動)
+let prepStarted=false, prepDone=false, prepFailed=false, wantFinish=false;
+function maybeFinish(){ if(prepDone && wantFinish && !started) finishStart(); }
+async function prepareOnly(){
+  try{
+    await Clock.init(); await Clock.calibrate(600);   // 初回キー押下(ユーザー操作)で音声を解禁
+    if(pendingAudioRaw){ try{ audioBuf=await Clock.ctx.decodeAudioData(pendingAudioRaw.slice(0)); audioName='(loaded)'; }catch(_){} }
+    loadScenario(scen.value);
+    prepDone=true;
+  }catch(err){ prepFailed=true; showLoadError('音声の初期化に失敗しました。'); }
+}
+function enterAutoStart(){
+  try{ window.focus(); }catch(_){}   // キー入力を受けられるようフォーカスを取得
+  const st=document.getElementById('startBtn'); if(st)st.style.display='none';
+  // 譜面を先に検証。失敗ならデフォルトにせず再起動を促す。
+  if(!applyPendingChart()){ showLoadError('譜面の読み込みに失敗しました。'); notifyPlayReady(); return; }
+  const auto=(document.getElementById('mode')&&document.getElementById('mode').value==='auto');
+  if(auto || !(KEYS||[]).filter(Boolean).length){
+    // オート/キー未設定は指置きチェック省略
+    notifyPlayReady();
+    prepStarted=true; wantFinish=true; prepareOnly().then(()=>{ if(!prepFailed)maybeFinish(); });
+    return;
+  }
+  // 指置きチェック: s/d/f/j/k/l を1回ずつ押すと開始。初回押下で音声を初期化。
+  buildKeyCheck(); updateKeyCheck();
+  checkKeyHandler=async (e)=>{
+    if(e.repeat)return;
+    const c=e.code;
+    if(fcNeed.has(c)&&!fcGot.has(c)){ fcGot.add(c); updateKeyCheck(); if(fcGot.size===fcNeed.size)wantFinish=true; }
+    if(!prepStarted){ prepStarted=true; await prepareOnly(); if(prepFailed)return; }
+    maybeFinish();
+  };
+  window.addEventListener('keydown',checkKeyHandler);
+  notifyPlayReady();
+}
 document.getElementById('startBtn').onclick=async()=>{
   const btn=document.getElementById('startBtn');
   btn.disabled=true; btn.style.display='none';
   const msg=document.getElementById('spMsg'); if(msg)msg.textContent='音声を準備しています…';
   await Clock.init();
   await Clock.calibrate(600);
-  // 親から渡された譜面/音源を適用(選曲画面からの自動ロード)
-  if(typeof pendingChart==='string'&&pendingChart){
-    try{ const r=loadChartJSON(JSON.parse(pendingChart));
-      if(!r.errors.length){ RD=r; if(PMOD.mirror)applyMirror(RD); chartName=pendingSongTitle||'読み込み譜面';
-        if(![...scen.options].some(o=>o.value==='REAL')){const o=document.createElement('option');o.value='REAL';o.textContent='◆ 読み込み譜面';scen.insertBefore(o,scen.firstChild);}
-        scen.value='REAL'; }
-    }catch(e){}
-  }
+  applyPendingChart();   // 親から渡された譜面/音源を適用(スタンドアロン/テスト経路)
   if(pendingAudioRaw){ try{ audioBuf=await Clock.ctx.decodeAudioData(pendingAudioRaw.slice(0)); audioName='(loaded)'; }catch(e){} }
   loadScenario(scen.value);
   // テストプレイ・オートプレイ・キー未設定なら指置きチェックを省略して即開始
