@@ -25,7 +25,7 @@
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
         "Hard":   { "level": 7,  "chart": "Maelstrom_h.json" },
-        "Master": { "level": 10,  "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
+        "Master": { "level": 9,  "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
         "Arcana": { "level": 13, "chart": "Maelstrom_a.json" }
       }
     },
@@ -39,8 +39,8 @@
       "jacket": "Abyssal turbine_jacket.png",
       "diffs": {
         "Hard":   { "level": 6,  "chart": "Abyssal turbine_h.json" },
-        "Master": { "level": 10, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
-        "Arcana": { "level": 12, "chart": "Abyssal turbine_a.json" }
+        "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
+        "Arcana": { "level": 13, "chart": "Abyssal turbine_a.json" }
       }
     },
     {
@@ -53,7 +53,7 @@
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
         "Hard":   { "level": 6,  "chart": "幽都第七遊興区_h.json" },
-        "Master": { "level": 10, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } }
+        "Master": { "level": 9, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } }
       }
     },
     {
