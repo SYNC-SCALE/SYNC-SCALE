@@ -100,6 +100,12 @@
     box-shadow:0 4px 16px rgba(0,0,0,.5)}
   .difftab .arctip b{color:var(--tc)}
   .difftab.arclocked:hover .arctip{display:block}
+  /* 汎用選択モーダル */
+  .choicebg{position:fixed;inset:0;z-index:4000;background:rgba(4,7,12,.66);display:none;align-items:center;justify-content:center}
+  .choicebox{background:#111c2e;border:1px solid #3a4d6b;border-radius:10px;padding:20px 22px;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.55)}
+  .choicetitle{font-size:14px;font-weight:700;margin-bottom:16px;text-align:center}
+  .choicebtns{display:flex;flex-direction:column;gap:8px}
+  .choicebtns .cta{width:100%;text-align:center}
   .props{flex:1;display:flex;flex-direction:column;min-height:0}
   .props .scoreline{display:flex;align-items:baseline;gap:12px;margin-top:8px}
   .props .badge{color:var(--acc);font-size:26px;font-weight:800;line-height:1}
@@ -288,7 +294,7 @@
 
 <!-- ============ ユーザー設定 ============ -->
 <section id="settings" class="screen">
-  <div class="topbar"><button class="back" data-go="home">←</button><div class="h-title">ユーザー設定</div></div>
+  <div class="topbar"><button class="back" id="settingsBack">←</button><div class="h-title">ユーザー設定</div></div>
   <div class="panel">
     <h2>プレイヤー</h2>
     <div class="field"><label>ユーザー名</label><input id="s_username" type="text" maxlength="32" placeholder="ゲスト" style="padding:7px 10px"><span class="val muted small" style="text-align:left">選曲画面の上部に表示（最大32文字）</span></div>
@@ -317,7 +323,7 @@
       <select id="s_skin" class="cta" style="padding:7px 10px"></select><span class="val muted small" style="text-align:left">解禁済みのノーツスキンから選択</span></div>
 
     <h2 id="dbgHead">デバッグ</h2>
-    <div class="field" id="dbgField"><label>デバッグモード</label><input id="s_debug" type="checkbox"><span class="val muted small" style="text-align:left">選曲の＋追加 / プレイ中の統計表示など</span></div>
+    <div class="field" id="dbgField"><label>デバッグモード</label><button class="cta" id="dbgExit">デバッグモードを終了</button><span class="val muted small" style="text-align:left">有効化はイベント画面のシリアルコード入力から。ここで終了できます。</span></div>
     <div class="field" id="dbgCurField"><label>通貨・アイテム(デバッグ)</label>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="dbgCur" style="min-width:110px">₡ 0</span>
@@ -736,8 +742,11 @@ function spendTicketToEvent(id, n){
   addEventProgress(id, gain); return gain;
 }
 // シリアルコードはイベントから独立(codes.json)。文字列↔報酬の1対1、入力で報酬付与。使用済みはプロファイルに記録。
+// デバッグモード有効化コード(変更可)。入力でデバッグモードON。
+const DEBUG_CODE='SYNCSCALE-DEV';
 function redeemEventCode(code){
   code=String(code||'').trim(); if(!code)return {notfound:true};
+  if(DEBUG_BUILD && code.toLowerCase()===DEBUG_CODE.toLowerCase()){ localStorage.setItem('rhythmDebug','1'); return {ok:true,debug:true}; }
   for(const c of (CONTENT.codes||[])){
     if(String(c.code).toLowerCase()===code.toLowerCase()){
       const p=loadProfile(); p.redeemedCodes=p.redeemedCodes||[];
@@ -966,7 +975,8 @@ function renderEvents(){
   cc.querySelector('#evCodeBtn').onclick=()=>{
     const r=redeemEventCode(cc.querySelector('#evCode').value);
     const msg=cc.querySelector('#evCodeMsg');
-    if(r.ok){ msg.textContent='受け取りました: '+rewardName2(r.reward); renderCurrency(); renderEvents(); }
+    if(r.debug){ msg.textContent='デバッグモードを有効化しました'; }
+    else if(r.ok){ msg.textContent='受け取りました: '+rewardName2(r.reward); renderCurrency(); renderEvents(); }
     else if(r.used)msg.textContent='使用済みのコードです';
     else msg.textContent='コードが見つかりません';
   };
@@ -1778,18 +1788,17 @@ function loadSettingsUI(){settings=loadSettings();
   renderBgPicker();
   renderIconPicker();
   loadModsUI();
-  // デバッグモード欄(リリースビルドでは非表示)
-  document.getElementById('dbgHead').style.display=DEBUG_BUILD?'':'none';
-  document.getElementById('dbgField').style.display=DEBUG_BUILD?'':'none';
-  document.getElementById('dbgCurField').style.display=DEBUG_BUILD?'':'none';
-  document.getElementById('dbgResetField').style.display=DEBUG_BUILD?'':'none';
+  // デバッグ欄はデバッグモードON時のみ表示(有効化はシリアルコード、終了はこの画面から)
+  const dbg=debugOn();
+  for(const id of ['dbgHead','dbgField','dbgCurField','dbgResetField'])document.getElementById(id).style.display=dbg?'':'none';
   renderCurrency();
-  document.getElementById('s_debug').checked=debugOn();
   document.getElementById('saveMsg').textContent='';
 }
-document.getElementById('s_debug').addEventListener('change',e=>{
-  localStorage.setItem('rhythmDebug', e.target.checked?'1':'0');
-});
+document.getElementById('dbgExit').onclick=()=>{
+  localStorage.setItem('rhythmDebug','0');
+  loadSettingsUI();                 // デバッグ欄を隠す
+  if(current==='select')renderAll();
+};
 document.getElementById('curAdd').onclick=()=>{ addCurrency(1000); renderCurrency(); };
 document.getElementById('curReset').onclick=()=>{ setCurrency(0); renderCurrency(); };
 document.getElementById('tkAdd').onclick=()=>{ addTickets(1); renderCurrency(); };
@@ -1802,13 +1811,37 @@ async function fullReset(){
   location.reload();
 }
 document.getElementById('fullReset').onclick=fullReset;
-document.getElementById('saveSettings').onclick=()=>{settings={hs:+s_hs.value,shape:+s_shape.value,lw:+s_lw.value,laneOpacity:+document.getElementById('s_laneop').value,latcomp:s_latcomp.checked,
-  vol:{master:+v_master.value,music:+v_music.value,click:+v_click.value,wipe:+v_wipe.value,hold:+v_hold.value,empty:+v_empty.value},
-  keys:settings.keys.slice(),offset:settings.offset,
-  skinId:document.getElementById('s_skin').value,
-  bgMode:document.getElementById('s_bg').value};saveSettings(settings);
+function collectSettingsFromUI(){
+  return {hs:+s_hs.value,shape:+s_shape.value,lw:+s_lw.value,laneOpacity:+document.getElementById('s_laneop').value,latcomp:s_latcomp.checked,
+    vol:{master:+v_master.value,music:+v_music.value,click:+v_click.value,wipe:+v_wipe.value,hold:+v_hold.value,empty:+v_empty.value},
+    keys:settings.keys.slice(),offset:settings.offset,
+    skinId:document.getElementById('s_skin').value,
+    bgMode:document.getElementById('s_bg').value};
+}
+function applySettingsSave(){ settings=collectSettingsFromUI(); saveSettings(settings); }
+document.getElementById('saveSettings').onclick=()=>{ applySettingsSave();
   document.getElementById('saveMsg').textContent='保存しました';setTimeout(()=>document.getElementById('saveMsg').textContent='',1500);};
 document.getElementById('resetSettings').onclick=()=>{settings=JSON.parse(JSON.stringify(DEFAULTS));saveSettings(settings);loadSettingsUI();};
+// 汎用の選択モーダル(タイトル＋ボタン群)
+function showChoiceModal(title, opts){
+  let bg=document.getElementById('choiceModal');
+  if(!bg){ bg=document.createElement('div'); bg.id='choiceModal'; bg.className='choicebg'; document.body.appendChild(bg); }
+  bg.innerHTML='';
+  const boxEl=document.createElement('div'); boxEl.className='choicebox';
+  const h=document.createElement('div'); h.className='choicetitle'; h.textContent=title; boxEl.appendChild(h);
+  const row=document.createElement('div'); row.className='choicebtns';
+  for(const o of opts){ const b=document.createElement('button'); b.className='cta'+(o.primary?' primary':'');
+    b.textContent=o.label; b.onclick=()=>{ bg.style.display='none'; if(o.onClick)o.onClick(); }; row.appendChild(b); }
+  boxEl.appendChild(row); bg.appendChild(boxEl); bg.style.display='flex';
+}
+// ユーザー設定の[←]: 保存/破棄/キャンセルを確認してから戻る
+document.getElementById('settingsBack').onclick=()=>{
+  showChoiceModal('設定を保存して戻りますか？', [
+    {label:'保存して戻る', primary:true, onClick:()=>{ applySettingsSave(); showScreen('home'); }},
+    {label:'保存せずに戻る', onClick:()=>{ settings=loadSettings(); showScreen('home'); }},
+    {label:'キャンセル', onClick:()=>{}},
+  ]);
+};
 
 /* ===== プレイ修飾子(開発用。将来はスキル/パートナーが供給) ===== */
 const MKEY='rhythmPlayMods';
