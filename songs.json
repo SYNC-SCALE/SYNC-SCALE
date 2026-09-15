@@ -24,7 +24,8 @@
       "audio": "Maelstrom.ogg",
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
-        "Master": { "level": 12, "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
+        "Arcana": { "level": 13, "chart": "Maelstrom_a.json" },
+        "Master": { "level": 9, "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
         "Hard":   { "level": 8, "chart": "Maelstrom_h.json" }
       }
     },
@@ -37,6 +38,7 @@
       "audio": "Abyssal turbine.ogg",
       "jacket": "Abyssal turbine_jacket.png",
       "diffs": {
+        "Arcana": { "level": 12, "chart": "Abyssal turbine_a.json" },
         "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
         "Hard":   { "level": 7, "chart": "Abyssal turbine_h.json" }
       }
@@ -50,6 +52,7 @@
       "audio": "幽都第七遊興区.ogg",
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
+        "Master": { "level": 10, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } },
         "Hard":   { "level": 6, "chart": "幽都第七遊興区_h.json" }
       }
     },
@@ -58,7 +61,7 @@
       "title": "シャイニングスター",
       "artist": "魔王魂",
       "charter": "やくるとちゃん",
-      "source": "shop",
+      "source": "free",
       "audio": "シャイニングスター.ogg",
       "jacket": "シャイニングスター_jacket.png",
       "diffs": {
