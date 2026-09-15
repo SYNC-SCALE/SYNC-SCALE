@@ -68,6 +68,10 @@
     border-radius:5px;font:12px/1.5 ui-monospace,Consolas,monospace;padding:10px;resize:none}
   #splash{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;gap:16px;
     align-items:center;justify-content:center;background:#0a0c10;text-align:center}
+  /* 開始トランジション: 上から降りて(閉じ)、上へ戻る(開く) */
+  #splash.slide{transform:translateY(-100%)}
+  #splash.slide.in{transform:translateY(0)}
+  #splash.anim{transition:transform .34s cubic-bezier(.4,0,.2,1)}
   #keyCheck{display:flex;gap:10px}
   #keyCheck .kc{width:54px;height:54px;display:flex;align-items:center;justify-content:center;
     font:700 20px ui-monospace,Consolas,monospace;color:#7d8ba3;background:#0e1219;border:2px solid #253048;
@@ -228,7 +232,13 @@
 </div>
 
 <div id="splash">
+  <button id="spEsc" style="position:absolute;top:18px;left:18px;padding:10px 20px;font-size:15px;display:none">ESC</button>
+  <img id="spJacket" alt="" style="display:none;width:296px;height:296px;object-fit:cover;box-shadow:0 8px 34px rgba(0,0,0,.55)">
   <h2 id="spTitle" style="margin:0">楽曲の準備</h2>
+  <div id="spMeta" style="display:none;line-height:1.7;margin-top:-6px">
+    <div class="dim" id="spArtist"></div>
+    <div class="dim" id="spCharter"></div>
+  </div>
   <div class="dim" id="spMsg">「準備」を押すと音声を初期化します。</div>
   <div id="keyCheck" style="display:none"></div>
   <button id="startBtn" class="primary" style="padding:10px 26px;font-size:15px">準備</button>
@@ -2649,6 +2659,7 @@ const FAIL_DELAY=850;                 // 暗転してからリザルト遷移ま
 const LEAD_IN=1.0;            // 曲開始前の助走(秒)
 let paused=false,pauseSong=0;
 let pendingChart=null,pendingAudioRaw=null,pendingSongTitle=null,pendingSkin=null,pendingPlayBg=null;
+let pendingJacket=null,pendingArtist='',pendingCharter='';
 let TEST=false,testStartSec=0;   // エディタからのテストプレイ(リザルト無し・ESC/終端で離脱・指定位置から)
 function postExit(){ try{ if(EMBEDDED)window.parent.postMessage({type:'editorExit'},'*'); }catch(_){} }
 // プレイ背景の合成設定(背景座標系 1280x720 / ジャケット固定位置)
@@ -3356,6 +3367,7 @@ window.addEventListener('message',e=>{
   if(d.type==='load'){
     pendingChart=d.chart||null; pendingAudioRaw=d.audio||null; pendingSongTitle=(d.song&&d.song.title)||null; pendingSkin=d.skin||null;
     pendingPlayBg=d.playBg||null;
+    pendingJacket=d.jacket||null; pendingArtist=d.artist||''; pendingCharter=d.charter||'';
     if(d.test){ TEST=true; testStartSec=+d.startSec||0; }
     if(d.settings){ try{ applySettings(d.settings); }catch(_){} }
     try{ applyMods(d.mods); }catch(_){}
@@ -3388,14 +3400,23 @@ function updateKeyCheck(){
   const msg=document.getElementById('spMsg');
   if(msg&&fcNeed)msg.textContent=`各レーンのキーに指を置いてください（${fcGot.size} / ${fcNeed.size}）`;
 }
+let finishing=false;
 function finishStart(){
-  if(started)return;
+  if(started||finishing)return;
+  finishing=true;
+  if(escHandler){ window.removeEventListener('keydown',escHandler); escHandler=null; }
   if(checkKeyHandler){ window.removeEventListener('keydown',checkKeyHandler); checkKeyHandler=null; }
-  document.getElementById('splash').style.display='none';
-  bindInput(); setupDrop(); syncSettingsUI();
-  resize(); restart(); started=true;
-  cancelAnimationFrame(rafId); frame();
-  Promise.resolve().then(async()=>{ if(pendingSkin)await applyPendingSkin(); if(pendingPlayBg)await applyPlayBackground(); });
+  const sp=document.getElementById('splash');
+  const beginGame=()=>{
+    finishing=false;
+    if(sp)sp.style.display='none';
+    bindInput(); setupDrop(); syncSettingsUI();
+    resize(); restart(); started=true;
+    cancelAnimationFrame(rafId); frame();
+    Promise.resolve().then(async()=>{ if(pendingSkin)await applyPendingSkin(); if(pendingPlayBg)await applyPlayBackground(); });
+  };
+  if(autoPanel && sp){ sp.classList.remove('in'); setTimeout(beginGame,340); }   // 上へ開いてから開始
+  else beginGame();
 }
 // 親から渡された譜面を適用。成功で true(失敗時は既定へフォールバックしない)
 function applyPendingChart(){
@@ -3429,11 +3450,35 @@ async function prepareOnly(){
     prepDone=true;
   }catch(err){ prepFailed=true; showLoadError('音声の初期化に失敗しました。'); }
 }
+let escHandler=null, autoPanel=false;
+// 開始トランジション(スプラッシュ)から選曲へ戻る
+function backToSelect(){
+  if(escHandler){ window.removeEventListener('keydown',escHandler); escHandler=null; }
+  if(checkKeyHandler){ window.removeEventListener('keydown',checkKeyHandler); checkKeyHandler=null; }
+  if(EMBEDDED){ try{ window.parent.postMessage({type:'toSelect'},'*'); }catch(_){} }
+  else location.reload();
+}
 function enterAutoStart(){
   try{ window.focus(); }catch(_){}   // キー入力を受けられるようフォーカスを取得
   const st=document.getElementById('startBtn'); if(st)st.style.display='none';
   // 譜面を先に検証。失敗ならデフォルトにせず再起動を促す。
   if(!applyPendingChart()){ showLoadError('譜面の読み込みに失敗しました。'); notifyPlayReady(); return; }
+  // スプラッシュを曲情報つきトランジション兼キー確認画面に仕立てる
+  autoPanel=true;
+  const sp=document.getElementById('splash');
+  { const h=document.getElementById('spTitle'); if(h)h.textContent=pendingSongTitle||'選択曲'; }
+  { const jk=document.getElementById('spJacket'); if(jk){ if(pendingJacket){ jk.src=pendingJacket; jk.style.display=''; jk.onerror=()=>{jk.style.display='none';}; } else jk.style.display='none'; } }
+  { const mt=document.getElementById('spMeta'); const ar=document.getElementById('spArtist'); const ch=document.getElementById('spCharter');
+    if(ar)ar.textContent=pendingArtist?('作曲：'+pendingArtist):''; if(ch)ch.textContent=pendingCharter?('譜面：'+pendingCharter):'';
+    if(mt)mt.style.display=(pendingArtist||pendingCharter)?'':'none'; }
+  { const m=document.getElementById('spMsg'); if(m)m.style.display='none'; }
+  { const eb=document.getElementById('spEsc'); if(eb){ eb.style.display=''; eb.onclick=backToSelect; } }
+  // ESCキーでも選曲へ戻れる(開始前のみ)
+  escHandler=(e)=>{ if(e.code==='Escape'){ e.preventDefault(); backToSelect(); } };
+  window.addEventListener('keydown',escHandler);
+  // 上から降ろすスライドイン(閉じる)
+  if(sp){ sp.classList.add('slide'); void sp.offsetHeight; sp.classList.add('anim'); requestAnimationFrame(()=>sp.classList.add('in')); }
+
   const auto=(document.getElementById('mode')&&document.getElementById('mode').value==='auto');
   if(auto || !(KEYS||[]).filter(Boolean).length){
     // オート/キー未設定は指置きチェック省略
@@ -3443,6 +3488,7 @@ function enterAutoStart(){
   }
   // 指置きチェック: s/d/f/j/k/l を1回ずつ押すと開始。初回押下で音声を初期化。
   buildKeyCheck(); updateKeyCheck();
+  { const m=document.getElementById('spMsg'); if(m)m.style.display='none'; }   // 案内文は隠す(キー枠の点灯で示す)
   checkKeyHandler=async (e)=>{
     if(e.repeat)return;
     const c=e.code;

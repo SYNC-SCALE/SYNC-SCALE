@@ -502,9 +502,10 @@ function showScreen(name){
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.go)));
 
-/* ===== 画面遷移トランジション(閉じる→開く) ===== */
+/* ===== 画面遷移トランジション ===== */
 const WIPE_MS=280;
 let wipeBusy=false, awaitingPlayReady=false;
+// リザルト用アニメ付きワイプ(上から閉じ→下へ開く。終了時は現状維持)
 function wipeClose(){ const el=document.getElementById('sceneWipe'); if(!el)return Promise.resolve();
   el.classList.add('on'); el.style.transition=`transform ${WIPE_MS}ms cubic-bezier(.4,0,.2,1)`;
   el.style.transformOrigin='top'; void el.offsetHeight; el.style.transform='scaleY(1)';
@@ -513,23 +514,30 @@ function wipeOpen(){ const el=document.getElementById('sceneWipe'); if(!el)retur
   el.style.transition=`transform ${WIPE_MS}ms cubic-bezier(.4,0,.2,1)`;
   el.style.transformOrigin='bottom'; void el.offsetHeight; el.style.transform='scaleY(0)';
   return new Promise(r=>setTimeout(()=>{ el.classList.remove('on'); r(); },WIPE_MS)); }
-// 選曲/イベント/リトライ → プレイ。閉じる→プレイ画面ロード→player準備完了(playReady)で開く
-async function goPlay(){
+// 開始トランジションはplayer側スプラッシュ(ジャケット+キー確認)が担うため、
+// iframeロード中のちらつきを消す“瞬間の暗幕”のみ担当(アニメなし)
+function coverShow(){ const el=document.getElementById('sceneWipe'); if(!el)return;
+  el.classList.remove('on'); el.style.transition='none'; el.style.transformOrigin='top'; void el.offsetHeight; el.style.transform='scaleY(1)'; }
+function coverHide(){ const el=document.getElementById('sceneWipe'); if(!el)return;
+  el.style.transition='none'; el.style.transform='scaleY(0)'; el.classList.remove('on'); }
+// 選曲/イベント/リトライ → プレイ。暗幕→プレイ画面ロード→playerがスプラッシュを上から降ろす
+function goPlay(){
   if(wipeBusy)return; wipeBusy=true;
-  await wipeClose();
+  coverShow();
   showScreen('play');           // iframe を読み込み、playerが譜面を準備
   awaitingPlayReady=true;
-  // 保険: 一定時間内にplayReadyが来なければ開く
-  setTimeout(()=>{ if(awaitingPlayReady){ awaitingPlayReady=false; wipeOpen().then(()=>wipeBusy=false); } }, 2200);
+  try{ document.getElementById('playFrame').focus(); }catch(_){}
+  // 保険: playReadyが来なければ暗幕を外す
+  setTimeout(()=>{ if(awaitingPlayReady){ awaitingPlayReady=false; coverHide(); wipeBusy=false; } }, 2500);
 }
 // プレイ(iframe)からの通知
 window.addEventListener('message',e=>{
   const d=e.data||{};
   if(d.type==='playReady'){
+    if(awaitingPlayReady){ awaitingPlayReady=false; coverHide(); wipeBusy=false; }
     try{ document.getElementById('playFrame').focus(); }catch(_){}   // キー入力をplayerへ
-    if(awaitingPlayReady){ awaitingPlayReady=false; wipeOpen().then(()=>{ wipeBusy=false; try{ document.getElementById('playFrame').focus(); }catch(_){} }); }
   }
-  else if(d.type==='toSelect')showScreen('select');
+  else if(d.type==='toSelect'){ wipeBusy=false; showScreen('select'); }
   else if(d.type==='result'){
     (async()=>{ await wipeClose(); showResult(d); await wipeOpen(); })();
   }
@@ -1540,6 +1548,8 @@ function startPlay(){
     const sp=speedInfo(mods); mods.speedMul=sp.mul;
     if(playing)playing.speedMode=sp.mode;
     const payload={type:'load', settings:buildPlayerSettings(), mods};
+    // 開始トランジション(playerのスプラッシュ)に出す曲情報
+    payload.jacket = s?s.jacketSrc:null; payload.artist = s?(s.artist||''):''; payload.charter = s?(s.charter||''):'';
     if(d&&d.chartText){ payload.chart=d.chartText; if(s.audioBuf)payload.audio=s.audioBuf; payload.song={title:s.title,diff:activeDiff}; }
     const st=loadSettings();
     // フェーズ上書き: ノーツスキンをプレイヤー設定にかかわらず強制(skin=ノーツスキンid / '' でスキンなし)
