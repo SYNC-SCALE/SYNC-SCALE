@@ -90,6 +90,16 @@
   .difftab.act{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent);
     box-shadow:0 0 0 1px var(--tc) inset}
   .difftab.act .dn,.difftab.act .dl{color:var(--tc)}
+  /* Arcana未解禁: シアンの[?]・選択不可・ホバーで解禁率 */
+  .difftab.arclocked{position:relative;cursor:default;border-color:var(--tc);border-style:dashed;color:var(--tc)}
+  .difftab.arclocked .dl,.difftab.arclocked .dn{color:var(--tc)}
+  .difftab.arclocked .dn{opacity:.9}
+  .difftab .arctip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:#0b1622;border:1px solid var(--tc);color:#dfe9f5;font-size:11px;font-weight:600;
+    padding:5px 9px;border-radius:6px;white-space:nowrap;display:none;z-index:20;pointer-events:none;
+    box-shadow:0 4px 16px rgba(0,0,0,.5)}
+  .difftab .arctip b{color:var(--tc)}
+  .difftab.arclocked:hover .arctip{display:block}
   .props{flex:1;display:flex;flex-direction:column;min-height:0}
   .props .scoreline{display:flex;align-items:baseline;gap:12px;margin-top:8px}
   .props .badge{color:var(--acc);font-size:26px;font-weight:800;line-height:1}
@@ -558,23 +568,34 @@ function applyTheme(){const c=diffColor(activeDiff);
   document.documentElement.style.setProperty('--acc',c);
   document.documentElement.style.setProperty('--acc-dim',c+'26');}
 function diffKeyFromName(n){n=(n||'').toUpperCase();if(n.includes('EASY'))return 'Easy';if(n.includes('HARD'))return 'Hard';if(n.includes('ARCANA'))return 'Arcana';return 'Master';}
-// Arcana解禁(曲ごと・内部状態)。譜面が存在し、かつ解禁済みのときだけ表示する
+// Arcana(曲ごと・解禁率制)。Arcana譜面がある曲は未解禁でも[?]として難易度スロットを表示する。
+function arcanaExists(song){ return !!(song && song.diffs && song.diffs.Arcana); }
 function arcanaUnlocked(id){ const a=loadProfile().arcana||{}; return !!(a[id]&&a[id].unlocked); }
-function arcanaVisible(song){ return !!(song && song.diffs && song.diffs.Arcana && arcanaUnlocked(song.id)); }
-// その曲で表示すべき難易度(未解禁ならE/H/Mの3つ、解禁済みでArcana譜面ありなら4つ)
-function visibleDiffs(song){ return DIFFS.filter(df=>df.key!=='Arcana' || arcanaVisible(song)); }
-// activeDiffがArcanaなのに現在曲で非表示なら Master に戻す
-function ensureDiffValid(){ const s=songById(selId); if(activeDiff==='Arcana' && !arcanaVisible(s)) activeDiff='Master'; }
-// Arcana解禁判定(曲ごと)。通常モードのMaster成績のみ。S≥990,000×1 または A+≥970,000×5。
-// 譜面(diffs.Arcana)が存在する曲だけカウントする(存在しなければ何もしない=存在秘匿)。
-const ARCANA_HI=990000, ARCANA_LO=970000, ARCANA_LO_NEED=5;
-function maybeUnlockArcana(songId, score){
+function arcanaRate(id){ const a=loadProfile().arcana||{}; return Math.max(0,Math.min(100,(a[id]&&+a[id].rate)||0)); }
+function arcanaSelectable(song){ return arcanaExists(song) && arcanaUnlocked(song.id); }   // 解禁済みのみ選択可
+// その曲で表示すべき難易度スロット(Arcana譜面がある曲は[?]でも枠を出す)
+function visibleDiffs(song){ return DIFFS.filter(df=>df.key!=='Arcana' || arcanaExists(song)); }
+// activeDiffがArcanaなのに選択不可(未解禁)なら Master に戻す
+function ensureDiffValid(){ const s=songById(selId); if(activeDiff==='Arcana' && !arcanaSelectable(s)) activeDiff='Master'; }
+// Arcana解禁率(曲ごと)。通常モードのMaster成績で加算し、100%で解禁。
+//  加算量: S≥990,000 → +100% / A+≥970,000 → +20% / それ未満 → +5% / Fail → +0%(失敗での最速解禁を防止)
+//  体力ゲージ有効(Lv1..5)でFailせず完走した場合、解禁値に +[5,10,15,20,25]% ボーナス
+const ARCANA_S=990000, ARCANA_A=970000;
+const ARCANA_GAUGE_BONUS=[5,10,15,20,25];
+function arcanaGainFor(score, failed, gaugeLevel){
+  if(failed)return 0;
+  let inc = score>=ARCANA_S?100 : score>=ARCANA_A?20 : 5;
+  const gl=Math.max(0,Math.min(5,gaugeLevel|0));
+  if(gl>=1)inc += ARCANA_GAUGE_BONUS[gl-1];
+  return inc;
+}
+function maybeUnlockArcana(songId, score, failed, gaugeLevel){
   const s=songById(songId); if(!s||!(s.diffs&&s.diffs.Arcana))return;   // Arcana譜面が無ければ無視
   const p=loadProfile(); p.arcana=p.arcana||{};
-  const a=p.arcana[songId]||{cnt:0,unlocked:false};
+  const a=p.arcana[songId]||{rate:0,unlocked:false};
   if(a.unlocked)return;
-  if(score>=ARCANA_HI){ a.unlocked=true; }
-  else if(score>=ARCANA_LO){ a.cnt=(a.cnt||0)+1; if(a.cnt>=ARCANA_LO_NEED)a.unlocked=true; }
+  a.rate=Math.max(0,(+a.rate||0))+arcanaGainFor(score, failed, gaugeLevel);
+  if(a.rate>=100){ a.unlocked=true; a.rate=100; }
   p.arcana[songId]=a; saveProfile(p);
 }
 
@@ -1007,6 +1028,7 @@ function renderEventPage(){
 // イベント内でその曲・難易度がプレイ可能か(所持＆解禁 または フェーズ一時解禁)
 function eventPlayable(s, diff, unlockSet){
   if(!s||!s.diffs[diff])return false;
+  if(diff==='Arcana' && !arcanaUnlocked(s.id))return false;   // Arcanaは解禁率100%まで選択不可
   const bare=s.id.replace(/^b:/,'');
   if(unlockSet && unlockSet[bare] && unlockSet[bare].includes(diff))return true;   // フェーズ一時解禁
   return ownedSong(s) && isDiffUnlocked(s,diff);
@@ -1029,9 +1051,15 @@ function renderEventList(ev, list, unlockSet){
 function renderEventSide(ev, list, unlockSet){
   const box=document.getElementById('epSide'); if(!box)return;
   const s=songById('b:'+(epSelId||'')); const d=s?s.diffs[epDiff]:null;
-  if(epDiff==='Arcana' && !arcanaVisible(s)) epDiff='Master';   // イベント側もArcana非表示ガード
+  if(epDiff==='Arcana' && !arcanaSelectable(s)) epDiff='Master';   // 未解禁Arcanaは選択不可
   const playable=eventPlayable(s,epDiff,unlockSet);
-  const tabs=visibleDiffs(s).map(df=>{const dd=s?s.diffs[df.key]:null; return `<button class="difftab${df.key===epDiff?' act':''}${dd?'':' dim'}" data-d="${df.key}" style="--tc:${df.color}"><div class="dl">${df.label}</div><div class="dn">${dd?dd.level:'-'}</div></button>`;}).join('');
+  const tabs=visibleDiffs(s).map(df=>{
+    const dd=s?s.diffs[df.key]:null;
+    if(df.key==='Arcana' && s && arcanaExists(s) && !arcanaUnlocked(s.id)){
+      return `<button class="difftab arclocked" style="--tc:${df.color}"><div class="dl">ARCANA</div><div class="dn">?</div><div class="arctip">解禁率 <b>${arcanaRate(s.id)}%</b></div></button>`;
+    }
+    return `<button class="difftab${df.key===epDiff?' act':''}${dd?'':' dim'}" data-d="${df.key}" style="--tc:${df.color}"><div class="dl">${df.label}</div><div class="dn">${dd?dd.level:'-'}</div></button>`;
+  }).join('');
   box.innerHTML=
     `<div class="difftabs-h">${tabs}</div>`+
     `<div class="props"><div class="scoreline"><span class="badge">${d?d.level:'-'}</span>`+
@@ -1227,8 +1255,11 @@ const SHOP_SECTIONS=[
 function shopCard(e){
   const info=resolveReward(e.reward);
   const card=document.createElement('div'); card.className='shop-card';
+  // ショップでは Arcana のレベルは[?]でマスク(存在は示すが実態は伏せる)
   const levelsHtml = info.levels
-    ? '<div class="lv">'+DIFFS.map(df=>{const d=info.levels[df.key];return d?`<span style="color:${df.color}">${d.level}</span>`:'';}).join('')+'</div>'
+    ? '<div class="lv">'+DIFFS.map(df=>{const d=info.levels[df.key]; if(!d)return '';
+        const txt=(df.key==='Arcana')?'?':d.level;
+        return `<span style="color:${df.color}">${txt}</span>`;}).join('')+'</div>'
     : '';
   const imgHtml = info.hasImg
     ? `<div class="card-img"><span class="ph">${esc(info.imgLabel)}</span>`+
@@ -1394,6 +1425,15 @@ function renderTabs(){
   for(const df of visibleDiffs(s)){
     const d=s?s.diffs[df.key]:null;
     const el=document.createElement('button');
+    // Arcana譜面があるが未解禁 → シアンの[?]。選択不可・ホバーで解禁率ポップアップ
+    if(df.key==='Arcana' && s && arcanaExists(s) && !arcanaUnlocked(s.id)){
+      el.className='difftab arclocked';
+      el.style.setProperty('--tc',df.color);
+      el.innerHTML=`<div class="dl">ARCANA</div><div class="dn">?</div>`+
+        `<div class="arctip">解禁率 <b>${arcanaRate(s.id)}%</b></div>`;
+      wrap.appendChild(el);   // onclick を付けない = 選択不可
+      continue;
+    }
     el.className='difftab'+(df.key===activeDiff?' act':'')+(d?'':' dim');
     el.style.setProperty('--tc',df.color);
     el.innerHTML=`<div class="dl">${df.label}</div><div class="dn">${d?d.level:'-'}</div>`;
@@ -1566,6 +1606,7 @@ function startPlay(){
     }
     g=Math.min(5,g);
     mods.gauge=g; mods.failAtZero=(g>=1);
+    if(playing)playing.gaugeLevel=g;   // Arcana解禁のゲージボーナス判定用
     // 速度と記録モード
     const sp=speedInfo(mods); mods.speedMul=sp.mul;
     if(playing)playing.speedMode=sp.mode;
@@ -1619,8 +1660,8 @@ function showResult(r){
     const prev=getBest(playing.id,playing.diff,pmode);
     if(!prev||r.score>prev.score){ const b={rank:r.rank,score:r.score}; setBest(playing.id,playing.diff,b,pmode); newBest=true;
       if(pmode===scoreView){ const s=songById(playing.id); const dd=s&&s.diffs[playing.diff]; if(dd)dd.best=b; } }
-    // Arcana解禁カウント: 通常モードのMasterのみ(内部・非表示)。ベスト更新有無に関係なく毎プレイ判定
-    if(pmode==='normal' && playing.diff==='Master'){ maybeUnlockArcana(playing.id, +r.score||0); } }
+    // Arcana解禁率: 通常モードのMasterのみ加算(ベスト更新有無に関係なく毎プレイ)。ここは非Fail・非Slowのみ到達
+    if(pmode==='normal' && playing.diff==='Master'){ maybeUnlockArcana(playing.id, +r.score||0, !!r.failed, playing.gaugeLevel||0); } }
   // ジャケット(左)と相棒の立ち絵(右)
   { const s=playing?songById(playing.id):null; const jk=document.getElementById('rJacket');
     if(s&&s.jacketSrc){ jk.src=s.jacketSrc; jk.style.display=''; } else jk.style.display='none'; }
