@@ -11,7 +11,7 @@
       "jacket": "チュートリアル_jacket.png",
       "diffs": {
         "Easy":   { "level": 1, "chart": "チュートリアル_e.json" },
-        "Hard":   { "level": 6, "chart": "チュートリアル_h.json" },
+        "Hard":   { "level": 5, "chart": "チュートリアル_h.json" },
         "Master": { "level": 7, "chart": "チュートリアル_m.json", "unlock": { "cost": 300 } }
       }
     },
@@ -24,7 +24,7 @@
       "audio": "Maelstrom.ogg",
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
-        "Hard":   { "level": 6,  "chart": "Maelstrom_h.json" },
+        "Hard":   { "level": 7,  "chart": "Maelstrom_h.json" },
         "Master": { "level": 10,  "chart": "Maelstrom_m.json", "unlock": { "cost": 800 } },
         "Arcana": { "level": 13, "chart": "Maelstrom_a.json" }
       }
@@ -38,7 +38,7 @@
       "audio": "Abyssal turbine.ogg",
       "jacket": "Abyssal turbine_jacket.png",
       "diffs": {
-        "Hard":   { "level": 7,  "chart": "Abyssal turbine_h.json" },
+        "Hard":   { "level": 6,  "chart": "Abyssal turbine_h.json" },
         "Master": { "level": 10, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 800 } },
         "Arcana": { "level": 12, "chart": "Abyssal turbine_a.json" }
       }
