@@ -2659,7 +2659,13 @@ const FAIL_DELAY=850;                 // 暗転してからリザルト遷移ま
 const LEAD_IN=1.0;            // 曲開始前の助走(秒)
 let paused=false,pauseSong=0;
 let pendingChart=null,pendingAudioRaw=null,pendingSongTitle=null,pendingSkin=null,pendingPlayBg=null;
-let pendingJacket=null,pendingArtist='',pendingCharter='';
+let pendingJacket=null,pendingArtist='',pendingCharter='',pendingTapSound=null;
+// sounds.json のデフォルトタップ音を click 判定音に適用(スキンが指定していれば優先)
+async function applyDefaultTap(){
+  if(pendingTapSound && Clock.ctx && !Assets.sounds.click){
+    try{ Assets.sounds.click=await Clock.ctx.decodeAudioData(pendingTapSound.slice(0)); }catch(_){}
+  }
+}
 let TEST=false,testStartSec=0;   // エディタからのテストプレイ(リザルト無し・ESC/終端で離脱・指定位置から)
 function postExit(){ try{ if(EMBEDDED)window.parent.postMessage({type:'editorExit'},'*'); }catch(_){} }
 // プレイ背景の合成設定(背景座標系 1280x720 / ジャケット固定位置)
@@ -3368,6 +3374,7 @@ window.addEventListener('message',e=>{
     pendingChart=d.chart||null; pendingAudioRaw=d.audio||null; pendingSongTitle=(d.song&&d.song.title)||null; pendingSkin=d.skin||null;
     pendingPlayBg=d.playBg||null;
     pendingJacket=d.jacket||null; pendingArtist=d.artist||''; pendingCharter=d.charter||'';
+    pendingTapSound=d.tapSound||null;
     if(d.test){ TEST=true; testStartSec=+d.startSec||0; }
     if(d.settings){ try{ applySettings(d.settings); }catch(_){} }
     try{ applyMods(d.mods); }catch(_){}
@@ -3445,12 +3452,24 @@ function maybeFinish(){ if(prepDone && wantFinish && !started) finishStart(); }
 async function prepareOnly(){
   try{
     await Clock.init(); await Clock.calibrate(600);   // 初回キー押下(ユーザー操作)で音声を解禁
+    await applyDefaultTap();
     if(pendingAudioRaw){ try{ audioBuf=await Clock.ctx.decodeAudioData(pendingAudioRaw.slice(0)); audioName='(loaded)'; }catch(_){} }
     loadScenario(scen.value);
     prepDone=true;
   }catch(err){ prepFailed=true; showLoadError('音声の初期化に失敗しました。'); }
 }
 let escHandler=null, autoPanel=false;
+// スプラッシュに曲情報(タイトル/ジャケット/作曲/譜面)を反映
+function populateSplashInfo(){
+  const h=document.getElementById('spTitle'); if(h)h.textContent=pendingSongTitle||'選択曲';
+  const jk=document.getElementById('spJacket');
+  if(jk){ if(pendingJacket){ jk.onerror=()=>{jk.style.display='none';}; jk.src=pendingJacket; jk.style.display='block'; } else jk.style.display='none'; }
+  const ar=document.getElementById('spArtist'), ch=document.getElementById('spCharter'), mt=document.getElementById('spMeta');
+  if(ar)ar.textContent=pendingArtist?('作曲：'+pendingArtist):'';
+  if(ch)ch.textContent=pendingCharter?('譜面：'+pendingCharter):'';
+  if(mt)mt.style.display=(pendingArtist||pendingCharter)?'block':'none';
+  const m=document.getElementById('spMsg'); if(m)m.style.display='none';
+}
 // 開始トランジション(スプラッシュ)から選曲へ戻る
 function backToSelect(){
   if(escHandler){ window.removeEventListener('keydown',escHandler); escHandler=null; }
@@ -3466,13 +3485,8 @@ function enterAutoStart(){
   // スプラッシュを曲情報つきトランジション兼キー確認画面に仕立てる
   autoPanel=true;
   const sp=document.getElementById('splash');
-  { const h=document.getElementById('spTitle'); if(h)h.textContent=pendingSongTitle||'選択曲'; }
-  { const jk=document.getElementById('spJacket'); if(jk){ if(pendingJacket){ jk.src=pendingJacket; jk.style.display=''; jk.onerror=()=>{jk.style.display='none';}; } else jk.style.display='none'; } }
-  { const mt=document.getElementById('spMeta'); const ar=document.getElementById('spArtist'); const ch=document.getElementById('spCharter');
-    if(ar)ar.textContent=pendingArtist?('作曲：'+pendingArtist):''; if(ch)ch.textContent=pendingCharter?('譜面：'+pendingCharter):'';
-    if(mt)mt.style.display=(pendingArtist||pendingCharter)?'':'none'; }
-  { const m=document.getElementById('spMsg'); if(m)m.style.display='none'; }
-  { const eb=document.getElementById('spEsc'); if(eb){ eb.style.display=''; eb.onclick=backToSelect; } }
+  populateSplashInfo();
+  { const eb=document.getElementById('spEsc'); if(eb){ eb.style.display='block'; eb.onclick=backToSelect; } }
   // ESCキーでも選曲へ戻れる(開始前のみ)
   escHandler=(e)=>{ if(e.code==='Escape'){ e.preventDefault(); backToSelect(); } };
   window.addEventListener('keydown',escHandler);
@@ -3505,6 +3519,7 @@ document.getElementById('startBtn').onclick=async()=>{
   const msg=document.getElementById('spMsg'); if(msg)msg.textContent='音声を準備しています…';
   await Clock.init();
   await Clock.calibrate(600);
+  await applyDefaultTap();
   applyPendingChart();   // 親から渡された譜面/音源を適用(スタンドアロン/テスト経路)
   if(pendingAudioRaw){ try{ audioBuf=await Clock.ctx.decodeAudioData(pendingAudioRaw.slice(0)); audioName='(loaded)'; }catch(e){} }
   loadScenario(scen.value);
