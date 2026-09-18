@@ -1052,8 +1052,12 @@ class Judge {
       if (n.type === 'click') this.clicks[n.lane].push(st);
       else if (n.type === 'wipe') { st.w0 = n.t; st.w1 = n.t + WIPE_REAR; this.wipes[n.lane].push(st); }
       else if (n.type === 'hold') {
-        // 猶予 = min(150ms, ホールド長)。短いホールドが無入力で成功するのを防ぐ。
+        // 猶予 = min(HOLD_GRACE, ホールド長)。短いホールドが無入力で成功するのを防ぐ。
         st.grace = Math.min(HOLD_GRACE, n.tEnd - n.t);
+        // 判定窓(W_MISS)より短いホールドはクリック相当に緩和(頭を±W_MISSで押せば成立)。
+        // 従来は「ホールド長=判定窓」となり、短ホールドがクリックより厳しく、
+        // クリックは取れているのにホールドだけ抜ける状況が起きていた。
+        st.short = (n.tEnd - n.t) <= W_MISS + EPS;
         st.relFrom = null; st.started = false;
         this.holds[n.lane].push(st);
       }
@@ -1175,6 +1179,10 @@ class Judge {
         if (st.done) continue;
         const n = st.note;
         if (n.t > t) break;
+        if (st.short) {   // クリック相当: 頭窓(±W_MISS)を過ぎたら未処理のままミス
+          if (t > n.t + W_MISS + EPS) this._resolve(pending, st, 'miss', n.t + W_MISS, W_MISS);
+          continue;
+        }
         if (!st.started) { st.started = true; st.relFrom = this.keyDown[l] ? null : n.t; }
         if (st.relFrom !== null) {
           const tm = this.visReach(n.layer, st.relFrom, st.grace);
@@ -1219,6 +1227,16 @@ class Judge {
           servedWipe = true; if (e < wipeErr) wipeErr = e;
         } else if (st.w0 > t) break;
       }
+      // 短ホールド(クリック相当): 頭窓(±W_MISS)内の押下で成立
+      let servedShortHold = false;
+      for (const st of this.holds[lane]) {
+        if (st.done || !st.short) continue;
+        if (Math.abs(t - st.note.t) <= W_MISS + EPS) {
+          const err = t - st.note.t;
+          this._apply({ st, grade: gradeOf(err) || 'miss', at: t, err, id: st.note.id });
+          servedShortHold = true;
+        } else if (st.note.t - W_MISS > t) break;
+      }
       // ホールド区間中かどうか(押下の意味づけに使う)
       let inHold = false;
       for (const st of this.holds[lane]) {
@@ -1247,7 +1265,7 @@ class Judge {
         const err = t - target.note.t;
         const g = gradeOf(err);
         this._apply({ st: target, grade: g || 'miss', at: t, err, id: target.note.id });
-      } else if (!servedWipe && !inHold) {
+      } else if (!servedWipe && !inHold && !servedShortHold) {
         this.emptyLog.push({ lane, t });
         this.empty++;         // どのノーツにも寄与しなかった押下のみを空打ちとする
       }
