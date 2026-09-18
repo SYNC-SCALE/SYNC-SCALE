@@ -1095,6 +1095,7 @@ class Judge {
     this.last = null;
     this.hp = 1000;      // HPゲージ(プレイ修飾子。既定OFFなら未使用)
     this.failed = false;
+    this.lastMissAt = null;   // 直近のMissの曲時刻(回復ロック用)
   }
 
   score() { return this.total ? 1000000 * this.sumCoef / this.total : 0; }
@@ -1141,7 +1142,11 @@ class Judge {
     else { this.combo++; if (this.combo > this.maxCombo) this.maxCombo = this.combo; }
     // HPゲージ(プレイ修飾子)。PMOD.gauge が 1〜5 のとき有効。
     if (typeof PMOD !== 'undefined' && PMOD.gauge > 0) {
-      this.hp = Math.max(0, Math.min(1000, this.hp + gaugeDelta(PMOD.gauge, r.grade)));
+      let dHp = gaugeDelta(PMOD.gauge, r.grade);
+      if (r.grade === 'miss') this.lastMissAt = r.at;
+      // 直近のMissから250ms以内は回復(正のdHp)を無効化。ダメージ(負)はそのまま。
+      else if (dHp > 0 && this.lastMissAt != null && (r.at - this.lastMissAt) < 0.250) dHp = 0;
+      this.hp = Math.max(0, Math.min(1000, this.hp + dHp));
       if (PMOD.failAtZero && this.hp <= 0) this.failed = true;
     }
     if (r.grade !== 'miss' || st.note.type === 'click') this.errsMs.push(r.err * 1000);
@@ -2349,7 +2354,7 @@ function bindInput(){
     }
     if(e.code==='Escape'){ e.preventDefault();
       if(TEST){ TEST=false; postExit(); return; }   // テストはEscで即離脱
-      if(!resultsShown&&started)togglePause(); return; }
+      if(!resultsShown&&started&&!failing)togglePause(); return; }   // 失敗シーケンス中はポーズさせない
     const lane=KEYMAP[e.code]; if(lane===undefined)return;
     e.preventDefault();
     if(!started||mode.value!=='manual'||!judge||judge.paused)return;
@@ -3047,6 +3052,8 @@ function startFail(jnow){
   try{ Clock.stopBuffer(); }catch(_){}
   const ff=document.getElementById('failfade');
   if(ff){ ff.style.display='flex'; requestAnimationFrame(()=>{ ff.style.opacity='1'; }); }
+  // 暗転後、フレームループやポーズ状態に依存せず自動でリザルトへ(ESC不要)
+  setTimeout(()=>{ if(failing && !resultsShown) showResults(); }, FAIL_DELAY);
 }
 // ===== [/MODULE] playmods =====
 
@@ -3085,7 +3092,7 @@ function updateHud(){
 // ---- リザルト画面 ----
 function resRow(label,n,col){return `<tr><td style="color:${col};padding:2px 16px 2px 0">${label}</td><td style="text-align:right">${n}</td></tr>`;}
 function showResults(){
-  if(!judge)return; resultsShown=true;
+  if(!judge||resultsShown)return; resultsShown=true;
   const isAuto=(document.getElementById('mode')&&document.getElementById('mode').value==='auto');
   const c=judge.counts, sc=Math.round(judge.score()), tot=judge.total;
   const acc=tot?(judge.sumCoef/tot*100):0, fc=(c.miss===0&&tot>0);
