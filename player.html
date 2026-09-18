@@ -2055,12 +2055,12 @@ function drawFx(now){
     const zc=f.z;
     if(!Proj.visible(zc))continue;
     const xL=Proj.x(zc,u0), xR=Proj.x(zc,u1), cx=(xL+xR)/2, cy=Proj.y(zc);
-    const base=Math.abs(xR-xL)*0.6;
+    const base=Math.abs(xR-xL)*0.69;   // 115%(0.6×1.15)
     const e=1-(1-age)*(1-age);                 // イーズアウト拡大
     const a=(1-age)*(1-age);                    // フェードアウト
     // 1) グロー
     const gsize=base*(0.35+e*0.95);
-    Gfx.quadPts([S(cx-gsize,cy+gsize),S(cx+gsize,cy+gsize),S(cx+gsize,cy-gsize),S(cx-gsize,cy-gsize)],'glow',col,a*0.7);
+    Gfx.quadPts([S(cx-gsize,cy+gsize),S(cx+gsize,cy+gsize),S(cx+gsize,cy-gsize),S(cx-gsize,cy-gsize)],'glow',col,a*0.55);
     // 2) 互い違いに回転する四角(輪郭)を2枚
     const sq=base*(0.5+e*0.75);
     const rot=age*Math.PI*0.85;
@@ -2085,7 +2085,7 @@ function showJudge(lane,grade){
   el.textContent=GRADE_LABEL[grade]||String(grade);
   el.style.color=(GRADE_COLOR[grade]||'#ffffff');
   el.style.left=(cv.offsetLeft+cx)+'px';
-  el.style.top=(cv.offsetTop+cy-Math.max(30,CH*0.06))+'px';   // 判定ラインより少し上
+  el.style.top=(cv.offsetTop+cy-Math.max(54,CH*0.11))+'px';   // 判定ラインより上
   layer.appendChild(el);
   setTimeout(()=>{ try{el.remove();}catch(_){} },640);
 }
@@ -2917,7 +2917,7 @@ function frame(){
       const[la,lb]=laneU(l);
       Gfx.quadPtsA(
         [S(Proj.x(0,la),Proj.y(0)),S(Proj.x(0,lb),Proj.y(0)),S(Proj.x(1,lb),Proj.y(1)),S(Proj.x(1,la),Proj.y(1))],
-        'white', C('#bfe3ff'), [0.30,0.30,0.05,0.05]);
+        'white', C('#bfe3ff'), [0.15,0.15,0.025,0.025]);
     }
     Gfx.setBlend(false);
   }
