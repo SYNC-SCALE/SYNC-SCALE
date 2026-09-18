@@ -1179,8 +1179,9 @@ class Judge {
         if (st.done) continue;
         const n = st.note;
         if (n.t > t) break;
-        if (st.short) {   // クリック相当: 頭窓(±W_MISS)を過ぎたら未処理のままミス
-          if (t > n.t + W_MISS + EPS) this._resolve(pending, st, 'miss', n.t + W_MISS, W_MISS);
+        if (st.short) {   // クリック相当。ただし始点レス仕様: キー押しっぱなしでも成立させる
+          if (this.keyDown[l]) { this._resolve(pending, st, 'gold', n.t, 0); continue; }   // 押しっぱなしで成立(頭到達時に押下中)
+          if (t > n.t + W_MISS + EPS) this._resolve(pending, st, 'miss', n.t + W_MISS, W_MISS);   // 未押下で頭窓超過→ミス
           continue;
         }
         if (!st.started) { st.started = true; st.relFrom = this.keyDown[l] ? null : n.t; }
