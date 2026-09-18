@@ -814,7 +814,10 @@ async function loadManifestSongs(){
       const diffs={Easy:null,Hard:null,Master:null,Arcana:null};
       for(const k of DIFF_KEYS){
         const dm=m.diffs&&m.diffs[k];
-        if(dm&&dm.chart)diffs[k]={level:(dm.level!=null?dm.level:'-'),chartText:null,chartSrc:dir+dm.chart,best:null,unlock:dm.unlock||null};
+        if(dm&&dm.chart)diffs[k]={level:(dm.level!=null?dm.level:'-'),chartText:null,chartSrc:dir+dm.chart,best:null,unlock:dm.unlock||null,
+          // 難易度ごとの上書き(未指定は曲共通にフォールバック)
+          title:(dm.title!=null?dm.title:null), artist:(dm.artist!=null?dm.artist:null), charter:(dm.charter!=null?dm.charter:null),
+          jacketSrc:(dm.jacket?dir+dm.jacket:null), audioSrc:(dm.audio?dir+dm.audio:null), audioBuf:null};
       }
       return {id:'b:'+m.id, source:'bundled', acquire:(m.source||'free'),
         title:m.title||m.id, artist:m.artist||'', charter:m.charter||'', illustrator:m.illustrator||'',
@@ -823,6 +826,24 @@ async function loadManifestSongs(){
         audioBuf:null, audioName:m.audio||null, diffs};
     });
   }catch(e){ console.warn('manifest 取得不可(ローカルHTTP未使用の可能性)',e); return []; }
+}
+// 難易度別メタの解決(難易度に指定があればそれ、無ければ曲共通にフォールバック)
+function diffMeta(s,diff){ return (s&&s.diffs&&s.diffs[diff])||null; }
+function songTitle(s,diff){ const d=diffMeta(s,diff); return (d&&d.title)||(s&&s.title)||''; }
+function songArtist(s,diff){ const d=diffMeta(s,diff); return (d&&d.artist)||(s&&s.artist)||''; }
+function songCharter(s,diff){ const d=diffMeta(s,diff); return (d&&d.charter)||(s&&s.charter)||''; }
+function songJacket(s,diff){ const d=diffMeta(s,diff); return (d&&d.jacketSrc)||(s&&s.jacketSrc)||null; }
+function songAudioSrc(s,diff){ const d=diffMeta(s,diff); return (d&&d.audioSrc)||(s&&s.audioSrc)||null; }
+// 難易度非依存の表示用ジャケット(ショップ等)。曲共通が無ければどれかの難易度から拾う
+function songAnyJacket(s){ if(!s)return null; if(s.jacketSrc)return s.jacketSrc;
+  for(const k of DIFF_KEYS){ const d=s.diffs&&s.diffs[k]; if(d&&d.jacketSrc)return d.jacketSrc; } return null; }
+// 難易度別音源を遅延取得・キャッシュ。難易度別srcがあれば d.audioBuf、無ければ曲共通 s.audioBuf
+async function ensureAudioBuf(s,diff){
+  if(!s)return null;
+  const d=diffMeta(s,diff);
+  if(d&&d.audioSrc){ if(!d.audioBuf){ try{ const r=await fetch(d.audioSrc,{cache:'no-cache'}); if(r.ok)d.audioBuf=await r.arrayBuffer(); }catch(e){console.warn('音源取得失敗',e);} } return d.audioBuf; }
+  if(!s.audioBuf && s.audioSrc){ try{ const r=await fetch(s.audioSrc,{cache:'no-cache'}); if(r.ok)s.audioBuf=await r.arrayBuffer(); }catch(e){console.warn('音源取得失敗',e);} }
+  return s.audioBuf;
 }
 
 let dbReady=false;
@@ -987,7 +1008,7 @@ function renderEvents(){
     const card=document.createElement('div'); card.className='ev-card';
     card.innerHTML=
       `<div class="ev-banner">${ev.banner?`<img src="${imageAsset2(ev.banner)}" onerror="this.style.display='none'">`:''}`+
-        `${s&&s.jacketSrc?`<img class="ev-jk" src="${s.jacketSrc}" onerror="this.style.display='none'">`:'<div class="ev-jk ph">ジャケット</div>'}`+
+        `${s&&songAnyJacket(s)?`<img class="ev-jk" src="${songAnyJacket(s)}" onerror="this.style.display='none'">`:'<div class="ev-jk ph">ジャケット</div>'}`+
         `<div class="ev-t">${esc(ev.title||ev.id)}</div></div>`+
       `<div class="ev-p"><div class="muted small">進捗 ${pct}%（${pr} / ${max}）</div><div class="ev-pbar"><div class="ev-pfill" style="width:${pct}%"></div></div></div>`;
     card.onclick=()=>{ epId=ev.id; showScreen('eventpage'); };
@@ -1002,8 +1023,8 @@ function renderEventPage(){
   if(!ev){ document.getElementById('epTitle').textContent='イベント'; return; }
   document.getElementById('epTitle').textContent=ev.title||ev.id;
   // ジャケット
-  { const s=ev.song?songById('b:'+ev.song):null; const jk=document.getElementById('epJacket');
-    if(s&&s.jacketSrc){ jk.src=s.jacketSrc; jk.style.display=''; } else jk.style.display='none'; }
+  { const s=ev.song?songById('b:'+ev.song):null; const jk=document.getElementById('epJacket'); const jsrc=songAnyJacket(s);
+    if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; }
   // パートナー立ち絵(現在の相棒)
   { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null; const pn=document.getElementById('epPartner');
     if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; }
@@ -1052,7 +1073,7 @@ function renderEventList(ev, list, unlockSet){
     row.className='song'+(sel?' sel':'')+(d?'':' dim');
     const rank=(d&&d.best)?d.best.rank:'-', score=(d&&d.best)?d.best.score:0;
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
-      `<div><div class="ti">${esc(s.title)}${tempUnlock?' <span style="color:#ffb14e;font-size:11px">[開放中]</span>':''}</div><div class="ar">${esc(s.artist)}</div></div>`+
+      `<div><div class="ti">${esc(songTitle(s,epDiff))}${tempUnlock?' <span style="color:#ffb14e;font-size:11px">[開放中]</span>':''}</div><div class="ar">${esc(songArtist(s,epDiff))}</div></div>`+
       `<div class="sc"><span class="rk" style="color:${rankColor(rank)}">${rank==='-'?'':rank}</span><span class="num">${score.toLocaleString('en-US')}</span></div>`;
     row.onclick=()=>{ epSelId=s.id.replace(/^b:/,''); renderEventPage(); };
     box.appendChild(row);
@@ -1074,7 +1095,7 @@ function renderEventSide(ev, list, unlockSet){
     `<div class="difftabs-h">${tabs}</div>`+
     `<div class="props"><div class="scoreline"><span class="badge">${d?d.level:'-'}</span>`+
       `<span class="bigscore">${d&&d.best?`<span style="color:${rankColor(d.best.rank)};font-weight:800">${d.best.rank}</span> ${d.best.score.toLocaleString('en-US')}`:'<span class="muted">未記録</span>'}</span></div>`+
-      `<div class="ptitle">${s?esc(s.title):'—'}</div><div class="pmeta">${s?('作曲：'+esc(s.artist||'')):''}</div>`+
+      `<div class="ptitle">${s?esc(songTitle(s,epDiff)):'—'}</div><div class="pmeta">${s?('作曲：'+esc(songArtist(s,epDiff)||'')):''}</div>`+
       `<div class="startrow"><div class="grow"></div><button class="startbtn" id="epStart" title="プレイ"${playable?'':' disabled style="opacity:.4"'}>▶</button></div></div>`;
   box.querySelectorAll('.difftab[data-d]').forEach(b=>b.onclick=()=>{ epDiff=b.dataset.d; renderEventPage(); });
   const st=document.getElementById('epStart'); if(st&&playable)st.onclick=()=>{
@@ -1239,7 +1260,7 @@ function hasUnlock(type,id){return !!loadProfile().unlocks[type+':'+id];}
 function resolveReward(rw){
   const info={img:null,imgLabel:'準備中',title:rw.id,sub:'',levels:null,owned:false,repeatable:false};
   if(rw.type==='song'){ const s=songById('b:'+rw.id); info.title=s?s.title:rw.id; info.sub=s?(s.artist||''):'';
-    info.img=s?s.jacketSrc:null; info.imgLabel='ジャケット'; info.owned=s?ownedSong(s):false; info.levels=s?s.diffs:null; }
+    info.img=s?songAnyJacket(s):null; info.imgLabel='ジャケット'; info.owned=s?ownedSong(s):false; info.levels=s?s.diffs:null; }
   else if(rw.type==='partner'){ const p=partnerById(rw.id); info.title=p?p.name:rw.id; info.img=p?partnerAsset(p.icon):null;
     info.imgLabel='キャラアイコン'; info.owned=hasUnlock('partner',rw.id); }
   else if(rw.type==='skill'){ const k=skillById(rw.id); info.title=k?k.name:rw.id; info.sub=k?(k.desc||''):'';
@@ -1365,7 +1386,8 @@ function startPreview(s){
   const vol=volMM();   // マスター×楽曲を反映
   if(vol<=0)return;   // 音量0なら試聴しない
   let url=null;
-  if(s.audioSrc)url=s.audioSrc;
+  const asrc=songAudioSrc(s,activeDiff);   // 難易度別音源(なければ曲共通)
+  if(asrc)url=asrc;
   else if(s.audioBuf){ try{ previewBlobUrl=URL.createObjectURL(new Blob([s.audioBuf])); url=previewBlobUrl; }catch(_){} }
   if(!url)return;
   const start=(s.previewStart||0)/1000, len=(s.previewLength||15000)/1000;
@@ -1421,7 +1443,7 @@ function renderList(){
       ? `<span class="num" style="color:var(--muted)">🔒 ${fmtCur(unlockCost(s,activeDiff))}</span>`
       : `<span class="rk" style="color:${rankColor(rank)}">${rank==='-'?'':rank}</span><span class="num">${score.toLocaleString('en-US')}</span>`;
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
-      `<div><div class="ti">${esc(s.title)}</div><div class="ar">${esc(s.artist)}</div></div>`+
+      `<div><div class="ti">${esc(songTitle(s,activeDiff))}</div><div class="ar">${esc(songArtist(s,activeDiff))}</div></div>`+
       `<div class="sc">${scHtml}</div>`;
     row.onclick=()=>{ selId=s.id; startPreview(s); renderSide(); renderList(); };
     box.appendChild(row);
@@ -1473,10 +1495,10 @@ function renderSide(){
       tb.onclick=()=>{ if(ticketUnlock(s,activeDiff))renderAll(); else alert('チケットがありません'); };
     }else box.style.display='none';
   }
-  document.getElementById('pTitle').textContent=s?s.title:'—';
-  document.getElementById('pMeta').textContent=s?('作曲：'+(s.artist||'')+'\n譜面：'+(s.charter||'')+(s.illustrator?('\n絵：'+s.illustrator):'')):'';
-  { const jk=document.getElementById('jacket');
-    if(s&&s.jacketSrc)jk.innerHTML=`<img src="${s.jacketSrc}" alt="">`;
+  document.getElementById('pTitle').textContent=s?songTitle(s,activeDiff):'—';
+  document.getElementById('pMeta').textContent=s?('作曲：'+(songArtist(s,activeDiff)||'')+'\n譜面：'+(songCharter(s,activeDiff)||'')+(s.illustrator?('\n絵：'+s.illustrator):'')):'';
+  { const jk=document.getElementById('jacket'); const jsrc=songJacket(s,activeDiff);
+    if(s&&jsrc)jk.innerHTML=`<img src="${jsrc}" alt="">`;
     else jk.innerHTML='<span>ジャケット準備中</span>'; }
   document.getElementById('startBtn').style.display=(d&&!locked)?'flex':'none';
   document.getElementById('delBtn').style.display=(debugOn()&&s&&s.source!=='bundled')?'inline-block':'none';
@@ -1591,7 +1613,7 @@ function startPlay(){
   const phaseOv=(evForPlay?(activePhase(evForPlay)||{}):{}).override||null;
   document.getElementById('pbDiff').textContent=activeDiff.toUpperCase();
   document.getElementById('pbDiff').style.color=diffColor(activeDiff);
-  document.getElementById('pbTitle').textContent=s?s.title:'';
+  document.getElementById('pbTitle').textContent=s?songTitle(s,activeDiff):'';
   { const showBest=loadMods().showBest!==false;
     const pbs=document.getElementById('pbScore');
     pbs.style.display=showBest?'':'none';
@@ -1601,8 +1623,8 @@ function startPlay(){
     // 同梱曲はここで譜面/音源を遅延取得しキャッシュする
     try{
       if(d && !d.chartText && d.chartSrc){ const r=await fetch(d.chartSrc,{cache:'no-cache'}); if(r.ok)d.chartText=await r.text(); }
-      if(s && !s.audioBuf && s.audioSrc){ const r=await fetch(s.audioSrc,{cache:'no-cache'}); if(r.ok)s.audioBuf=await r.arrayBuffer(); }
-    }catch(e){ console.warn('譜面/音源の取得に失敗',e); }
+    }catch(e){ console.warn('譜面の取得に失敗',e); }
+    const audioBuf = await ensureAudioBuf(s, activeDiff);   // 難易度別音源(なければ曲共通)
     const mods=loadMods();
     { const eqp=loadProfile().equipped||{};
       for(const sid of (eqp.skills||[])){ if(!sid)continue; const sm=skillById(sid); if(sm&&sm.mod)mods[sm.mod]=true; }
@@ -1621,11 +1643,11 @@ function startPlay(){
     const sp=speedInfo(mods); mods.speedMul=sp.mul;
     if(playing)playing.speedMode=sp.mode;
     const payload={type:'load', settings:buildPlayerSettings(), mods};
-    // 開始トランジション(playerのスプラッシュ)に出す曲情報
-    payload.jacket = s?s.jacketSrc:null; payload.artist = s?(s.artist||''):''; payload.charter = s?(s.charter||''):'';
+    // 開始トランジション(playerのスプラッシュ)に出す曲情報(難易度別に解決)
+    payload.jacket = songJacket(s,activeDiff); payload.artist = songArtist(s,activeDiff); payload.charter = songCharter(s,activeDiff);
     // デフォルトタップ音(sounds.json)。取得できれば player へ渡す
     try{ const tb=await getTapSound(); if(tb)payload.tapSound=tb.slice(0); }catch(_){}
-    if(d&&d.chartText){ payload.chart=d.chartText; if(s.audioBuf)payload.audio=s.audioBuf; payload.song={title:s.title,diff:activeDiff}; }
+    if(d&&d.chartText){ payload.chart=d.chartText; if(audioBuf)payload.audio=audioBuf; payload.song={title:songTitle(s,activeDiff),diff:activeDiff}; }
     const st=loadSettings();
     // フェーズ上書き: ノーツスキンをプレイヤー設定にかかわらず強制(skin=ノーツスキンid / '' でスキンなし)
     if(phaseOv && ('skin' in phaseOv)){ st.skinId = phaseOv.skin ? ('note:'+phaseOv.skin) : ''; }
@@ -1633,7 +1655,7 @@ function startPlay(){
       if(n&&n.image){ try{ const r=await fetch(skinAsset(n.image),{cache:'no-cache'}); if(r.ok){ const buf=await r.arrayBuffer();
         payload.skin={manifest:{kind:'rhythm-prototype-skin',name:n.name,atlas:n.image,colors:(n.colors||undefined),blend:(n.blend||undefined)}, files:{[n.image.toLowerCase()]:buf}}; } }catch(e){ console.warn('スキン取得失敗',e); } } }
     // プレイ背景(ジャケットは固定位置に合成)
-    { const jk=s?s.jacketSrc:null;
+    { const jk=songJacket(s,activeDiff);
       if(phaseOv && ('bg' in phaseOv)){
         // フェーズ上書き: bg=images/配下のファイル名を直接指定('' で黒背景)
         payload.playBg = phaseOv.bg
@@ -1674,11 +1696,13 @@ function showResult(r){
     if(pmode==='normal' && playing.diff==='Master'){ maybeUnlockArcana(playing.id, +r.score||0, !!r.failed, playing.gaugeLevel||0); } }
   // ジャケット(左)と相棒の立ち絵(右)
   { const s=playing?songById(playing.id):null; const jk=document.getElementById('rJacket');
-    if(s&&s.jacketSrc){ jk.src=s.jacketSrc; jk.style.display=''; } else jk.style.display='none'; }
+    const jsrc=s?songJacket(s,playing.diff):null;
+    if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; }
   { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null;
     const pn=document.getElementById('rPartner');
     if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; }
-  document.getElementById('rSong').textContent=(r.title||'')+(r.auto?'　（オートプレイ）':'')+((pmode!=='normal')?('　['+SPEED_LABEL[pmode]+']'):'');
+  { const rt=playing?songTitle(songById(playing.id),playing.diff):(r.title||'');
+    document.getElementById('rSong').textContent=(rt||'')+(r.auto?'　（オートプレイ）':'')+((pmode!=='normal')?('　['+SPEED_LABEL[pmode]+']'):''); }
   document.getElementById('rRank').textContent=(pmode==='slow'&&!r.auto)?'Slow':r.rank;   // オート時は 'Auto'
   document.getElementById('rScore').textContent=(r.score||0).toLocaleString('en-US');  // オート時は 0
   { const fcEl=document.getElementById('rFC'); const cc=r.counts||{};
