@@ -1135,7 +1135,7 @@ class Judge {
     }
     if (r.grade !== 'miss' || st.note.type === 'click') this.errsMs.push(r.err * 1000);
     this.last = { type: st.note.type, lane: st.note.lane, grade: r.grade, errMs: r.err * 1000, at: r.at };
-    this.log.push({ id: st.note.id, type: st.note.type, lane: st.note.lane,
+    this.log.push({ id: st.note.id, type: st.note.type, lane: st.note.lane, short: !!st.short,
                     layer: st.note.layer, grade: r.grade, errMs: +(r.err * 1000).toFixed(4) });
   }
 
@@ -2784,8 +2784,12 @@ function frame(){
       if(fx.checked&&r.type==='hold'&&r.grade==='miss')
         pushFx(r.lane,'miss',now,'hit',r.layer);
       // ヒット音はプレイヤーの入力に対する反応として鳴らす(仕様 14.5.1)。
-      // ミスは発音しない。ホールドは状態変化時のみ(連続発生には付けない)
-      if(hitsnd.checked&&r.grade!=='miss'&&r.type!=='hold')playHit(r.type);
+      // ミスは発音しない。長ホールドは activeHolds 側で開始時に発音するためここでは除外。
+      // 短ホールド(クリック相当)は区間が短く activeHolds に載らないため、解決時にここで発音する。
+      if(hitsnd.checked&&r.grade!=='miss'){
+        if(r.type!=='hold')playHit(r.type);
+        else if(r.short)playHit('hold');
+      }
     }
     if(PMOD.failAtZero&&judge.failed&&!failing)startFail(jnow);
     while(emptySeen<judge.emptyLog.length){
