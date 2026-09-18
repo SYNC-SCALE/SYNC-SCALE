@@ -2696,11 +2696,13 @@ function restart(){
   failing=false; { const ff=document.getElementById('failfade'); if(ff){ff.style.opacity='0';ff.style.display='none';} }
   paused=false; { const pm=document.getElementById('pausemenu'); if(pm)pm.style.display='none'; }
   const s0=(TEST&&testStartSec>0)?testStartSec:0;   // テストは指定位置から
-  Clock.start(0);
+  const aoff=(RD&&RD.audioOffsetMs)?RD.audioOffsetMs/1000:0;   // 譜面オフセット(秒)
+  // 音源あり時は offsetSec=譜面オフセット。規約: 音源位置 = 曲時刻 + audioOffset(editorと一致)
+  Clock.start((RD&&audioBuf)?aoff:0);
   syncReset();
   if(RD&&audioBuf){
-    // 曲時刻 s0 = 音源の該当位置。audioOffsetMs は譜面側のずれとして加味する。助走 LEAD_IN 秒。
-    Clock.playBuffer(audioBuf, s0-(RD.audioOffsetMs||0)/1000, LEAD_IN);
+    // 曲時刻 s0 のとき音源位置を s0+aoff に合わせる。助走 LEAD_IN 秒。
+    Clock.playBuffer(audioBuf, s0+aoff, LEAD_IN);
   }else{
     Clock.startRef += LEAD_IN - s0;   // 音源なしでも曲時刻を s0-LEAD から開始
   }
@@ -3042,9 +3044,9 @@ document.getElementById('resClose').onclick=()=>{ document.getElementById('resul
 
 // ---- ポーズ ----
 function reSync(songT){
-  Clock.start(0);
-  if(RD&&audioBuf&&songT<audioBuf.duration){ Clock.playBuffer(audioBuf, songT-(RD.audioOffsetMs||0)/1000); }
-  else { Clock.startRef -= songT; }
+  const aoff=(RD&&RD.audioOffsetMs)?RD.audioOffsetMs/1000:0;   // 譜面オフセット(秒)
+  if(RD&&audioBuf&&(songT+aoff)<audioBuf.duration){ Clock.start(aoff); Clock.playBuffer(audioBuf, songT+aoff); }
+  else { Clock.start(0); Clock.startRef -= songT; }
 }
 function pauseGame(){
   if(paused||!started||resultsShown)return;
