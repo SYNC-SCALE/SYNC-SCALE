@@ -93,9 +93,9 @@
       "audio": "Zephyrs.ogg",
       "jacket": "Zephyrs_jacket.png",
       "diffs": {
-        "Easy":   { "level": 2, "chart": "Zephyrs_e.json" },
-        "Hard":   { "level": 6, "chart": "Zephyrs_h.json" },
-        "Master": { "level": 8, "chart": "Zephyrs_m.json", "unlock": { "cost": 300 } }
+        "Easy":   { "level": 4, "chart": "Zephyrs_e.json" },
+        "Hard":   { "level": 7, "chart": "Zephyrs_h.json" },
+        "Master": { "level": 10, "chart": "Zephyrs_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
