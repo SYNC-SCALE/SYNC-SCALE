@@ -72,16 +72,16 @@
     },
     {
       "id": "song2001",
-      "title": "Swith",
+      "title": "Switch",
       "artist": "Getty",
       "charter": "Nibiryu",
       "source": "free",
-      "audio": "Swith.ogg",
-      "jacket": "Swith_jacket.png",
+      "audio": "Switch.ogg",
+      "jacket": "Switch_jacket.png",
       "diffs": {
-        "Easy":   { "level": 2, "chart": "Swith_e.json" },
-        "Hard":   { "level": 6, "chart": "Swith_h.json" },
-        "Master": { "level": 8, "chart": "Swith_m.json", "unlock": { "cost": 300 } }
+        "Easy":   { "level": 2, "chart": "Switch_e.json" },
+        "Hard":   { "level": 6, "chart": "Switch_h.json" },
+        "Master": { "level": 8, "chart": "Switch_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
