@@ -106,6 +106,19 @@
   .choicetitle{font-size:14px;font-weight:700;margin-bottom:16px;text-align:center}
   .choicebtns{display:flex;flex-direction:column;gap:8px}
   .choicebtns .cta{width:100%;text-align:center}
+  /* クレジット */
+  .credits-body{max-width:720px;margin:0 auto;padding:4px 2px 40px;line-height:1.6}
+  .credits-body .cr-title{font-size:18px;margin:6px 0 14px}
+  .credits-body .cr-sec{font-size:13px;color:var(--acc);border-bottom:1px solid var(--line2);padding-bottom:4px;margin:22px 0 10px;letter-spacing:1px}
+  .credits-body .cr-song{margin:0 0 14px;padding-left:10px;border-left:2px solid var(--line2)}
+  .credits-body .cr-name{font-weight:800;font-size:15px}
+  .credits-body .cr-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .credits-body .cr-lic{font-size:12px;margin-top:3px}
+  .credits-body .cr-links{font-size:12px;margin-top:3px;display:flex;gap:14px;flex-wrap:wrap}
+  .credits-body .cr-note{font-size:11px;color:var(--muted);margin-top:3px}
+  .credits-body .cr-item{font-size:13px;margin:4px 0}
+  .credits-body .cr-footer{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+  .credits-body a{color:var(--acc);text-decoration:underline;word-break:break-all}
   .props{flex:1;display:flex;flex-direction:column;min-height:0}
   .props .scoreline{display:flex;align-items:baseline;gap:12px;margin-top:8px}
   .props .badge{color:var(--acc);font-size:26px;font-weight:800;line-height:1}
@@ -483,7 +496,7 @@
 <!-- ============ クレジット ============ -->
 <section id="credits" class="screen">
   <div class="topbar"><button class="back" data-go="home">←</button><div class="h-title">クレジット</div></div>
-  <div class="center-msg">（準備中）</div>
+  <div class="panel"><div id="creditsBody" class="credits-body"></div></div>
 </section>
 
 <script>
@@ -512,6 +525,7 @@ function showScreen(name){
   if(name==='events')renderEvents();
   if(name==='eventpage')renderEventPage();
   if(name==='settings')loadSettingsUI();
+  if(name==='credits')renderCredits();
   if(name==='timing')loadTimingUI();
   if(name==='play')startPlay();
   updateMenuBgm(name);   // 選曲/プレイ以外でメニューBGM
@@ -864,7 +878,7 @@ async function initSongs(){
   if(current==='select')renderAll();
 }
 // コンテンツDB(読み取り専用。id参照でつながる拡張可能なJSON群)
-const CONTENT={shop:[],partners:[],skills:[],noteskins:[],images:[],events:[],sounds:{},partnerCfg:{cost:3000,maxLevel:20,slotUnlocks:[1]}};
+const CONTENT={shop:[],partners:[],skills:[],noteskins:[],images:[],events:[],sounds:{},credits:{},partnerCfg:{cost:3000,maxLevel:20,slotUnlocks:[1]}};
 async function fetchJsonObj(file){
   try{ const r=await fetch(DATA_BASE+file,{cache:'no-cache'}); if(!r.ok)return {}; return await r.json(); }
   catch(e){ return {}; }
@@ -883,6 +897,44 @@ async function loadContentDB(){
   CONTENT.events=await fetchDB('events.json','events');
   CONTENT.codes=await fetchDB('codes.json','codes');
   { const sj=await fetchJsonObj('sounds.json'); CONTENT.sounds=(sj&&typeof sj.sounds==='object'&&sj.sounds)?sj.sounds:(sj&&typeof sj==='object'?sj:{}); }
+  CONTENT.credits=await fetchJsonObj('credits.json');
+}
+/* ===== クレジット(credits.json から描画) ===== */
+function crLink(url,text){ if(!url)return esc(text||''); return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text||url)}</a>`; }
+function renderCredits(){
+  const box=document.getElementById('creditsBody'); if(!box)return;
+  const c=CONTENT.credits||{}; let h='';
+  if(c.title)h+=`<div class="cr-title">${esc(c.title)}</div>`;
+  if(c.intro)h+=`<div class="cr-item">${esc(c.intro)}</div>`;
+  if(Array.isArray(c.songs)&&c.songs.length){
+    h+='<div class="cr-sec">楽曲</div>';
+    for(const s of c.songs){
+      h+='<div class="cr-song">';
+      h+=`<div class="cr-name">${esc(s.title||'(無題)')}</div>`;
+      const meta=[];
+      if(s.artist)meta.push('作曲：'+esc(s.artist));
+      if(s.album)meta.push('アルバム：'+esc(s.album));
+      if(s.illustrator)meta.push('ジャケット：'+esc(s.illustrator));
+      if(s.charter)meta.push('譜面：'+esc(s.charter));
+      if(meta.length)h+=`<div class="cr-meta">${meta.join('　/　')}</div>`;
+      if(s.license)h+=`<div class="cr-lic">ライセンス：${s.licenseUrl?crLink(s.licenseUrl,s.license):esc(s.license)}</div>`;
+      const links=[];
+      if(s.sourceUrl)links.push(crLink(s.sourceUrl, s.source||'配布元'));
+      if(s.illustratorUrl)links.push(crLink(s.illustratorUrl, (s.illustrator||'絵')+'のページ'));
+      if(links.length)h+=`<div class="cr-links">${links.join('')}</div>`;
+      if(s.note)h+=`<div class="cr-note">${esc(s.note)}</div>`;
+      h+='</div>';
+    }
+  }
+  for(const sec of (Array.isArray(c.sections)?c.sections:[])){
+    h+=`<div class="cr-sec">${esc(sec.title||'')}</div>`;
+    for(const it of (Array.isArray(sec.items)?sec.items:[])){
+      const lbl=it.label?(esc(it.label)+'：'):'';
+      h+=`<div class="cr-item">${lbl}${it.url?crLink(it.url,it.value||it.url):esc(it.value||'')}</div>`;
+    }
+  }
+  if(c.footer)h+=`<div class="cr-footer">${esc(c.footer)}</div>`;
+  box.innerHTML=h||'<div class="center-msg">クレジット情報がありません（credits.json）</div>';
 }
 /* ===== パートナー(所持/レベル/ステータス補間/装備) ===== */
 function partnerMetaById(id){return CONTENT.partners.find(p=>p.id===id);}

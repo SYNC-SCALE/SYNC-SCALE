@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "_note": "クレジット表記。title=見出し / intro=前書き(任意)。songs=楽曲ごとの表記。各曲は title / artist(作曲) / album / charter(譜面制作) / illustrator(ジャケット絵) と、license(利用条件) / licenseUrl / source(配布元・入手先の名称) / sourceUrl / illustratorUrl / note(補足)。sections=その他のクレジット(効果音・フォント・ライブラリ・Special Thanks 等)。各 items は {label, value, url}。footer=末尾。空文字の項目は表示されません。※フリー音源・フリー素材は配布元の規約でクレジット文面やリンクが指定されている場合が多いので、その指定に従って記入してください。",
+  "title": "SYNC/SCALE — クレジット",
+  "intro": "本作で使用させていただいた楽曲・画像・素材の権利者の皆さまに感謝します。",
+  "songs": [
+    {
+      "title": "チュートリアル",
+      "artist": "Nibiryu",
+      "album": "",
+      "charter": "Nibiryu",
+      "illustrator": "Nibiryu",
+      "license": "（利用条件を記入：例 CC BY 4.0 / ロイヤリティフリー / 許諾を得て使用）",
+      "licenseUrl": "",
+      "source": "（配布元・入手先の名称）",
+      "sourceUrl": "",
+      "illustratorUrl": "",
+      "note": ""
+    },
+    {
+      "title": "Maelstrom",
+      "artist": "Nibiryu",
+      "album": "",
+      "charter": "Nibiryu",
+      "illustrator": "Nibiryu",
+      "license": "（利用条件を記入）",
+      "licenseUrl": "",
+      "source": "（配布元・入手先の名称）",
+      "sourceUrl": "",
+      "illustratorUrl": "",
+      "note": ""
+    }
+  ],
+  "sections": [
+    { "title": "効果音・SE", "items": [ { "label": "タップ音ほか", "value": "（作者 / 配布元）", "url": "" } ] },
+    { "title": "フォント", "items": [ { "label": "UIフォント", "value": "（フォント名 / 作者）", "url": "" } ] },
+    { "title": "Special Thanks", "items": [ { "value": "（謝辞・協力者など）" } ] }
+  ],
+  "footer": "© 2026 SYNC/SCALE"
+}
