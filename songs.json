@@ -83,6 +83,20 @@
         "Hard":   { "level": 6, "chart": "Switch_h.json" },
         "Master": { "level": 8, "chart": "Switch_m.json", "unlock": { "cost": 300 } }
       }
+    },
+    {
+      "id": "song2002",
+      "title": "Zephyrs",
+      "artist": "Frums",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "Zephyrs.ogg",
+      "jacket": "Zephyrs_jacket.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "Zephyrs_e.json" },
+        "Hard":   { "level": 6, "chart": "Zephyrs_h.json" },
+        "Master": { "level": 8, "chart": "Zephyrs_m.json", "unlock": { "cost": 300 } }
+      }
     }
   ]
 }
