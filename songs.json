@@ -53,7 +53,7 @@
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
         "Hard":   { "level": 6,  "chart": "幽都第七遊興区_h.json" },
-        "Master": { "level": 9, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } }
+        "Master": { "level": 8, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 800 } }
       }
     },
     {
@@ -68,6 +68,19 @@
         "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
         "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } }
+      },
+      {
+      "id": "song2001",
+      "title": "Swith",
+      "artist": "Getty",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "Swith.ogg",
+      "jacket": "Swith_jacket.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "Swith_e.json" },
+        "Hard":   { "level": 6, "chart": "Swith_h.json" },
+        "Master": { "level": 8, "chart": "Swith_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
