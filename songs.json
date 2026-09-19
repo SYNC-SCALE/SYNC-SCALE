@@ -68,8 +68,9 @@
         "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
         "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } }
-      },
-      {
+      }
+    },
+    {
       "id": "song2001",
       "title": "Swith",
       "artist": "Getty",
