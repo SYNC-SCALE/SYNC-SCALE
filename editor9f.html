@@ -2501,14 +2501,23 @@ document.getElementById('snap').addEventListener('change',draw);
     }
     snapSel.value=String(n); draw();
   }
-  function openSnapInput(){ snapInput.value=snapSel.value; snapSel.style.display='none'; snapInput.style.display='';
-    snapInput.focus(); snapInput.select(); }
+  function openSnapInput(initial){
+    snapInput.value=(initial!=null?String(initial):snapSel.value);
+    snapSel.style.display='none'; snapInput.style.display=''; snapInput.focus();
+    if(initial!=null){ const L=snapInput.value.length; try{snapInput.setSelectionRange(L,L);}catch(_){} }
+    else snapInput.select();
+  }
   function closeSnapInput(){ snapInput.style.display='none'; snapSel.style.display=''; }
   function commitSnapInput(){
     const raw=snapInput.value.trim(); closeSnapInput();
     if(/^[0-9]+$/.test(raw)) setSnap(parseInt(raw,10));   // 半角数字のみ採用(1〜64にクランプ)。それ以外はキャンセル
   }
   snapSel.addEventListener('dblclick',e=>{ e.preventDefault(); snapSel.blur(); openSnapInput(); });
+  // プルダウン展開中/セレクトにフォーカス中に半角数字を押したら、その数字を初期値に数値入力モードへ
+  snapSel.addEventListener('keydown',e=>{
+    if(e.altKey||e.ctrlKey||e.metaKey)return;
+    if(/^[0-9]$/.test(e.key)){ e.preventDefault(); openSnapInput(e.key); }
+  });
   snapInput.addEventListener('keydown',e=>{
     if(e.key==='Enter'){ e.preventDefault(); commitSnapInput(); }
     else if(e.key==='Escape'){ e.preventDefault(); closeSnapInput(); }
