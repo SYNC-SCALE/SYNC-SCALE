@@ -4,7 +4,7 @@
   "events": [
     {
       "id": "ev01",
-      "title": "はじまりの嵐",
+      "title": "SYNC/SCALEへようこそ！",
       "banner": "ev01_banner.png",
       "unlockSongs": ["song03"],
       "multiplier": 0
