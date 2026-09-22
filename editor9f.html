@@ -115,12 +115,13 @@
     <button class="lyr" data-layer="7">8</button>
   </div>
   <div class="sep"></div>
-  <label>分母
+  <label title="クリック=プルダウン / ダブルクリック=任意の整数入力(1〜64)">分母
     <select id="snap">
       <option>1</option><option>2</option><option>3</option><option selected>4</option>
       <option>6</option><option>8</option><option>12</option><option>16</option>
       <option>24</option><option>32</option><option>48</option><option>64</option>
-    </select>
+    </select><input id="snapCustom" type="text" inputmode="numeric" maxlength="3"
+      style="display:none;width:46px" title="任意の整数(1〜64)。Enterで確定・Escで取消">
   </label>
   <label>横軸
     <select id="tgrid" title="トレース頂点の横軸スナップ細分率">
@@ -2486,6 +2487,34 @@ function drawPreview(){
 
 // ---- タイミング設定 & 表示 UI 配線 ----
 document.getElementById('snap').addEventListener('change',draw);
+// 分母: 任意の整数等分。ダブルクリックで数値入力(1〜64にクランプ・半角数字以外はキャンセル)。
+{
+  const snapSel=document.getElementById('snap'), snapInput=document.getElementById('snapCustom');
+  // 指定の分母を採用。既存optionに無ければ昇順の位置に追加してから選択。1〜64にクランプ。
+  function setSnap(n){
+    n=Math.max(1,Math.min(64,Math.round(n)));
+    if(![...snapSel.options].some(o=>+o.value===n)){
+      const o=document.createElement('option'); o.value=String(n); o.textContent=String(n);
+      let placed=false;
+      for(const opt of snapSel.options){ if(+opt.value>n){ snapSel.insertBefore(o,opt); placed=true; break; } }
+      if(!placed)snapSel.appendChild(o);
+    }
+    snapSel.value=String(n); draw();
+  }
+  function openSnapInput(){ snapInput.value=snapSel.value; snapSel.style.display='none'; snapInput.style.display='';
+    snapInput.focus(); snapInput.select(); }
+  function closeSnapInput(){ snapInput.style.display='none'; snapSel.style.display=''; }
+  function commitSnapInput(){
+    const raw=snapInput.value.trim(); closeSnapInput();
+    if(/^[0-9]+$/.test(raw)) setSnap(parseInt(raw,10));   // 半角数字のみ採用(1〜64にクランプ)。それ以外はキャンセル
+  }
+  snapSel.addEventListener('dblclick',e=>{ e.preventDefault(); snapSel.blur(); openSnapInput(); });
+  snapInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); commitSnapInput(); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeSnapInput(); }
+  });
+  snapInput.addEventListener('blur',()=>{ if(snapInput.style.display!=='none')commitSnapInput(); });
+}
 document.getElementById('zoom').addEventListener('input',e=>{pxPerSec=+e.target.value;draw();});
 document.getElementById('tracktoggle').onclick=()=>{
   showTracks=!showTracks;
