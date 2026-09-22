@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "_note": "各種サウンド指定。src は DATA_BASE 配下の相対パス(bgm/ や sfx/ 想定)。vol は 0..1 の相対倍率で、設定画面のマスター×楽曲音量に乗算される(tap を除く)。menuBgm=タイトル/ショップ等メニューのループBGM、clear=楽曲クリア時、fail=楽曲失敗時、transition=画面遷移音(開始トランジション・リザルト遷移で再生)、tap=デフォルトのタップ判定音(プレイ中に鳴る。音量は設定の『タップ(click)』に従う。ノーツスキンが音を指定していればそちらが優先)。不要な項目は削除してよい。ファイルが無ければ無音(menuBgmは従来の bgm/menu.ogg にフォールバック)。",
   "sounds": {
-    "menuBgm":    { "src": "sfx/menu.ogg",       "vol": 0.5 },
+    "menuBgm":    { "src": "bgm/menu.ogg",       "vol": 0.5 },
     "clear":      { "src": "sfx/clear.ogg",      "vol": 0.9 },
     "fail":       { "src": "sfx/fail.ogg",       "vol": 0.9 },
     "transition": { "src": "sfx/transition.ogg", "vol": 0.7 },
