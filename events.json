@@ -1,47 +1,13 @@
 {
-  "formatVersion": 1,
-  "_note": "イベント定義。banner/画像は images/ 配下。song=代表曲id(ジャケット表示)、songs=対象曲id配列、multiplier=進捗倍率(進捗獲得に (1+multiplier) を掛ける、表示は n%)。ticketProgress=イベント券1枚投入あたりの基礎進捗。rewards=進捗しきい値(at)ごとの報酬(到達で1回付与)。進捗はイベント曲クリア(達成率基準)＋券投入で増加。イベント曲は songs.json 側で source:\"event\" 必須(解禁までフリープレイ選曲に非表示)。シリアルコードはイベントから独立(codes.json)。",
-  "_note_phases": "phases=進捗の区間(from<=進捗<to、to省略で上限なし)ごとの上書き。イベントページの選曲リスト限定で有効。songs=その区間で表示する曲id(省略時はev.songs全体)。unlock=未解禁でも一時的に選択可にする曲と難易度(diffs省略で全難易度)。override.mods=プレイ修飾子のON/OFF強制(true=ON,false=OFF)。override.skin=ノーツスキンid(noteskins.jsonのid、空文字でスキンなし)。override.bg=images/配下の背景画像ファイル名(空文字で黒背景)。進捗が範囲内の最初の1件が適用。override内の各キーは記載したものだけ上書き(省略した項目はプレイヤー設定のまま)。",
+  "formatVersion": 2,
+  "_note": "イベント定義(簡素版)。id / title / banner(images/配下) / unlockSongs=解禁対象曲id(1〜3、解禁順)。ゲージ最大=200×曲数、解禁ポイントは200間隔。進捗は所持曲を通常プレイして達成率(acc%)ぶん加算。ポイント到達でゲージが止まり超過分はスタック。その曲の『解禁チャレンジ』(体力ゲージLv3固定・任意難易度をFailせず完走)に成功すると曲が解禁され、スタックがゲージに反映される。イベントページの選曲=所持する全楽曲＋現在のチャレンジ曲。multiplier(任意,既定0)で進捗=acc×(1+multiplier)。解禁対象曲は songs.json 側で source:\"event\" にしておくと解禁までフリープレイ選曲に出ない。",
   "events": [
     {
       "id": "ev01",
       "title": "はじまりの嵐",
       "banner": "ev01_banner.png",
-      "song": "song02",
-      "songs": ["song02"],
-      "multiplier": 0.2,
-      "ticketProgress": 50,
-      "rewards": [
-        { "at": 100, "type": "currency",   "id": 1000 },
-        { "at": 300, "type": "diffTicket", "id": null },
-        { "at": 600, "type": "icon",       "id": "タルカン_icon" },
-        { "at": 1000,"type": "song",       "id": "song03" }
-      ],
-      "phases": [
-        {
-          "from": 0,
-          "to": 300,
-          "songs": ["song02"],
-          "unlock": [
-            { "song": "song02", "diffs": ["Easy", "Hard"] }
-          ],
-          "override": {
-            "mods": { "judgeMeter": true, "mirror": false }
-          }
-        },
-        {
-          "from": 300,
-          "songs": ["song02", "song03"],
-          "unlock": [
-            { "song": "song03" }
-          ],
-          "override": {
-            "mods": { "judgeMeter": true },
-            "skin": "skin01_blue",
-            "bg": "ev01_bg.png"
-          }
-        }
-      ]
+      "unlockSongs": ["song03"],
+      "multiplier": 0
     }
   ]
 }

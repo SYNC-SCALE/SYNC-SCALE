@@ -119,6 +119,8 @@
   .credits-body .cr-item{font-size:13px;margin:4px 0}
   .credits-body .cr-footer{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
   .credits-body a{color:var(--acc);text-decoration:underline;word-break:break-all}
+  /* イベント解禁チャレンジ曲(選曲リスト強調) */
+  .song.ev-challenge{border:1px solid #ffb14e;background:color-mix(in srgb,#ffb14e 12%,transparent)}
   .props{flex:1;display:flex;flex-direction:column;min-height:0}
   .props .scoreline{display:flex;align-items:baseline;gap:12px;margin-top:8px}
   .props .badge{color:var(--acc);font-size:26px;font-weight:800;line-height:1}
@@ -509,9 +511,9 @@ function debugOn(){ return DEBUG_BUILD && localStorage.getItem('rhythmDebug')===
 const SCREENS=['home','select','partner','shop','events','eventpage','settings','timing','play','credits','results'];
 let current='home';
 let playing=null;   // {id,diff} 現在プレイ中の曲
-let playFromEvent=null;   // イベントページから起動した場合のイベントid
-let epTicketMode=0;       // 選択中の券モード(TICKET_MODES index)
-let playTicketMode=null;  // プレイに適用する券モード
+let playFromEvent=null;         // イベントページから起動した場合のイベントid
+let playFromEventChallenge=false; // 解禁チャレンジとして起動したか
+let epIsChallenge=false;        // イベントページで解禁チャレンジ曲を選択中か
 function showScreen(name){
   if(!SCREENS.includes(name))return;
   if(current==='play'&&name!=='play')document.getElementById('playFrame').src='about:blank';
@@ -733,27 +735,39 @@ function grantReward(rw){
 }
 /* ===== イベント ===== */
 function eventMetaById(id){return CONTENT.events.find(e=>e.id===id);}
-function eventState(id){const p=loadProfile();return p.events[id]||{progress:0,claimed:[],codes:[]};}
-function eventProgress(id){return eventState(id).progress||0;}
-function eventMax(ev){ const arr=(ev&&ev.rewards||[]).map(r=>+r.at||0); return arr.length?Math.max(...arr):1000; }
-function eventMultiplier(ev){ return +ev.multiplier||0; }
+// 解禁対象曲(最大3)。ゲージ最大=200×曲数、解禁ポイントは200間隔。
+function eventUnlockSongs(ev){ return (ev&&Array.isArray(ev.unlockSongs)?ev.unlockSongs:[]).slice(0,3); }
+function eventMax(ev){ return 200*eventUnlockSongs(ev).length; }
+function eventMultiplier(ev){ return +((ev&&ev.multiplier))||0; }   // 進捗=達成率×(1+multiplier)。既定0=達成率ぶん
+function eventState(id){ const p=loadProfile(); const s=p.events[id]||{}; return {progress:+s.progress||0, unlockedCount:+s.unlockedCount||0, stack:+s.stack||0}; }
+function eventSaveState(id,st){ const p=loadProfile(); p.events[id]={progress:st.progress,unlockedCount:st.unlockedCount,stack:st.stack}; saveProfile(p); }
+function eventProgress(id){ return eventState(id).progress; }
+// 現在のゲージ上限=次の解禁ポイント(未解禁が残る間)。全解禁なら max。
+function eventCap(ev,st){ const n=eventUnlockSongs(ev).length; return Math.min(200*(Math.min(st.unlockedCount,n)+1), eventMax(ev)); }
+// 解禁チャレンジが選べる状態か(ポイント到達＆未解禁が残る)
+function eventChallengeReady(ev,st){ const n=eventUnlockSongs(ev).length; return n>0 && st.unlockedCount<n && st.progress>=eventCap(ev,st); }
+// 現在のチャレンジ対象曲(bare id / 無ければ null)
+function eventChallengeSong(ev,st){ const n=eventUnlockSongs(ev).length; return st.unlockedCount<n ? eventUnlockSongs(ev)[st.unlockedCount] : null; }
+// 通常プレイの進捗獲得。ポイントでゲージを止め、超過分はスタック(未解禁が残る時のみ)。
 function addEventProgress(id, amt){
-  const ev=eventMetaById(id); if(!ev||!(amt>0))return [];
-  { const p=loadProfile(); const st=p.events[id]||{progress:0,claimed:[],codes:[]};
-    st.progress=(st.progress||0)+amt; st.claimed=st.claimed||[]; p.events[id]=st; saveProfile(p); }
-  // しきい値到達で未受取の報酬を付与
-  const granted=[]; const st2=eventState(id);
-  for(const rw of (ev.rewards||[])){ if(st2.progress>=rw.at && !(st2.claimed||[]).includes(rw.at)){
-    const p=loadProfile(); p.events[id].claimed=p.events[id].claimed||[]; p.events[id].claimed.push(rw.at); saveProfile(p);
-    grantReward(rw); granted.push(rw); } }
-  return granted;
+  const ev=eventMetaById(id); if(!ev||!(amt>0))return;
+  const st=eventState(id); const n=eventUnlockSongs(ev).length; const cap=eventCap(ev,st);
+  const room=Math.max(0, cap - st.progress); const add=Math.min(amt, room);
+  st.progress += add;
+  if(st.unlockedCount < n) st.stack += (amt - add);   // 超過はスタック(全解禁後は破棄)
+  eventSaveState(id, st);
 }
 function eventGainFromPlay(ev, acc){ return Math.round(Math.max(0,acc)*(1+eventMultiplier(ev))); }
-function spendTicketToEvent(id, n){
-  const ev=eventMetaById(id); if(!ev)return 0; n=Math.min(n, getEventTickets()); if(n<=0)return 0;
-  addEventTickets(-n);
-  const gain=Math.round((+ev.ticketProgress||0)*n*(1+eventMultiplier(ev)));
-  addEventProgress(id, gain); return gain;
+// 解禁チャレンジ成功: 対象曲を解禁し、スタックをゲージへ反映(新capで再キャップ)。解禁したbare idを返す。
+function eventChallengeCleared(id){
+  const ev=eventMetaById(id); if(!ev)return null;
+  const st=eventState(id); const songs=eventUnlockSongs(ev); const n=songs.length;
+  if(st.unlockedCount>=n) return null;
+  const bare=songs[st.unlockedCount];
+  setSongOwned('b:'+bare);                 // 曲を所持化(フリープレイに出る)
+  st.unlockedCount += 1; const s=st.stack; st.stack=0; eventSaveState(id, st);
+  if(s>0) addEventProgress(id, s);         // スタック解放
+  return bare;
 }
 // シリアルコードはイベントから独立(codes.json)。文字列↔報酬の1対1、入力で報酬付与。使用済みはプロファイルに記録。
 // デバッグモード有効化コード(変更可)。入力でデバッグモードON。
@@ -771,22 +785,6 @@ function redeemEventCode(code){
   }
   return {notfound:true};
 }
-// イベント券まとめ使いモード: n枚消費 / 進捗倍率+mul / 体力ゲージ下限floor
-const TICKET_MODES=[
-  {n:0,  mul:0,   floor:0, label:'券なし'},
-  {n:1,  mul:0,   floor:1, label:'1枚'},
-  {n:3,  mul:2.1, floor:2, label:'3枚'},
-  {n:10, mul:10,  floor:4, label:'10枚'},
-];
-const DIFF_PROGRESS_MUL={Easy:0, Hard:0.1, Master:0.5, Arcana:0.7};   // 難易度による進捗倍率(Arcanaは暫定+70%)
-// ゲージ合成: 高い方を採用、同値なら+1、上限5
-function combineGauge(a,b){ a=a||0;b=b||0; if(a===0&&b===0)return 0; let hi=Math.max(a,b); if(a>0&&b>0&&a===b)hi+=1; return Math.min(5,hi); }
-// 現在の進捗が入るフェーズ [from,to)
-function activePhase(ev){ if(!ev)return null; const pr=eventProgress(ev.id);
-  return (ev.phases||[]).find(ph=>pr>=(+ph.from||0) && pr<((ph.to!=null)?+ph.to:Infinity)) || null; }
-function phaseUnlockSet(ph){ const s={}; for(const u of (ph&&ph.unlock||[])){ s[u.song]=(u.diffs&&u.diffs.length)?u.diffs:['Easy','Hard','Master','Arcana']; } return s; }
-function eventProgressMul(ev, diff, modeMul){ return eventMultiplier(ev)+(DIFF_PROGRESS_MUL[diff]||0)+(+modeMul||0); }
-function eventGainFromPlay2(ev, acc, diff, modeMul){ return Math.round(Math.max(0,acc)*(1+eventProgressMul(ev,diff,modeMul))); }
 
 // --- ショップ購入(通貨払い または チケット払い=換金) ---
 function canAfford(entry){ if(entry.pay)return itemCount(entry.pay.type)>=(entry.pay.amount||1); return getCurrency()>=(+entry.cost||0); }
@@ -1055,14 +1053,15 @@ function renderEvents(){
   };
   // イベントカード
   for(const ev of CONTENT.events){
-    const s=ev.song?songById('b:'+ev.song):null; const max=eventMax(ev); const pr=eventProgress(ev.id);
+    const st=eventState(ev.id); const usongs=eventUnlockSongs(ev); const max=eventMax(ev)||1; const pr=st.progress;
+    const jb=eventChallengeSong(ev,st)||usongs[usongs.length-1]; const s=jb?songById('b:'+jb):null;
     const pct=Math.min(100,Math.round(pr/max*100));
     const card=document.createElement('div'); card.className='ev-card';
     card.innerHTML=
       `<div class="ev-banner">${ev.banner?`<img src="${imageAsset2(ev.banner)}" onerror="this.style.display='none'">`:''}`+
         `${s&&songAnyJacket(s)?`<img class="ev-jk" src="${songAnyJacket(s)}" onerror="this.style.display='none'">`:'<div class="ev-jk ph">ジャケット</div>'}`+
         `<div class="ev-t">${esc(ev.title||ev.id)}</div></div>`+
-      `<div class="ev-p"><div class="muted small">進捗 ${pct}%（${pr} / ${max}）</div><div class="ev-pbar"><div class="ev-pfill" style="width:${pct}%"></div></div></div>`;
+      `<div class="ev-p"><div class="muted small">進捗 ${pct}%（解禁 ${st.unlockedCount} / ${usongs.length}）</div><div class="ev-pbar"><div class="ev-pfill" style="width:${pct}%"></div></div></div>`;
     card.onclick=()=>{ epId=ev.id; showScreen('eventpage'); };
     box.appendChild(card);
   }
@@ -1071,71 +1070,75 @@ function renderEvents(){
 function imageAsset2(f){ return DATA_BASE+'images/'+f; }   // バナーも images/ 配下
 function renderEventPage(){
   const ev=eventMetaById(epId);
-  document.getElementById('epTk').textContent=getEventTickets();
   if(!ev){ document.getElementById('epTitle').textContent='イベント'; return; }
   document.getElementById('epTitle').textContent=ev.title||ev.id;
-  // ジャケット
-  { const s=ev.song?songById('b:'+ev.song):null; const jk=document.getElementById('epJacket'); const jsrc=songAnyJacket(s);
-    if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; }
-  // パートナー立ち絵(現在の相棒)
-  { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null; const pn=document.getElementById('epPartner');
-    if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; }
-  // 報酬一覧
-  { const pr=eventProgress(ev.id);
-    document.getElementById('epRewards').innerHTML=(ev.rewards||[]).slice().sort((a,b)=>a.at-b.at)
-      .map(rw=>{ const done=pr>=rw.at; return `<div class="r${done?' done':''}">${done?'✓':'・'} ${rw.at}: ${esc(rewardName2(rw))}</div>`; }).join('')||'<span class="muted">報酬なし</span>'; }
-  // 倍率
-  document.getElementById('epMult').textContent='イベント倍率: +'+Math.round(eventMultiplier(ev)*100)+'%';
-  // 進捗バー
-  { const max=eventMax(ev), pr=eventProgress(ev.id), pct=Math.min(100,pr/max*100);
+  const st=eventState(ev.id);
+  const usongs=eventUnlockSongs(ev), n=usongs.length, max=eventMax(ev);
+  const chReady=eventChallengeReady(ev,st), chBare=eventChallengeSong(ev,st);
+  // ジャケット(次のチャレンジ曲、無ければ最後の解禁曲)
+  { const jb=chBare||usongs[n-1]; const jso=jb?songById('b:'+jb):null; const jk=document.getElementById('epJacket'); const jsrc=songAnyJacket(jso);
+    if(jk){ if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; } }
+  { const pn=document.getElementById('epPartner'); if(pn)pn.style.display='none'; }   // 相棒立ち絵は簡素化のため非表示
+  // 解禁曲の一覧とポイント状況
+  document.getElementById('epRewards').innerHTML=usongs.map((bare,i)=>{
+    const done=i<st.unlockedCount, isNext=(i===st.unlockedCount);
+    const so=songById('b:'+bare), nm=so?songTitle(so,'Master'):bare;
+    const mark=done?'✓':(isNext&&chReady?'★':'・'), tag=done?'（解禁済）':(isNext&&chReady?'（チャレンジ可）':'');
+    return `<div class="r${done?' done':''}">${mark} ${(i+1)*200}: ${esc(nm)}${tag}</div>`;
+  }).join('')||'<span class="muted">解禁曲なし</span>';
+  document.getElementById('epMult').textContent = n?(`解禁 ${st.unlockedCount} / ${n}`+(st.stack>0?`　保留中 +${st.stack}`:'')):'';
+  // 進捗バー(200間隔のポイントマーカー)
+  { const pr=st.progress, pct=max?Math.min(100,pr/max*100):0;
     document.getElementById('epFill').style.width=pct+'%';
-    document.getElementById('epMarks').innerHTML=(ev.rewards||[]).map(rw=>`<span class="mk" style="left:${Math.min(100,rw.at/max*100)}%">▼</span>`).join('');
-    document.getElementById('epProg').textContent='進捗 '+pr+' / '+max; }
-  // 券まとめ使いモードの選択
-  { const box=document.getElementById('epUseTicket').parentElement;
-    box.innerHTML='<span class="muted small">券まとめ使い:</span>'+
-      TICKET_MODES.map((m,i)=>{const afford=m.n<=getEventTickets();
-        return `<button class="sortbtn${i===epTicketMode?' on':''}" data-tm="${i}"${afford?'':' disabled style="opacity:.4"'}>${m.label}${m.n?` (進捗+${Math.round(m.mul*100)}% / ゲージ下限${m.floor})`:''}</button>`;}).join('');
-    box.querySelectorAll('[data-tm]').forEach(b=>b.onclick=()=>{ epTicketMode=+b.dataset.tm; renderEventPage(); });
-  }
-  // フェーズ(進捗帯)による曲リスト制限・一時解禁
-  const ph=activePhase(ev);
-  const listIds=(ph&&ph.songs&&ph.songs.length)?ph.songs:(ev.songs||[]);
-  const unlockSet=phaseUnlockSet(ph);
-  const songsInEv=listIds.map(sid=>songById('b:'+sid)).filter(Boolean)
-    .filter(s=>{ const bare=s.id.replace(/^b:/,''); return ownedSong(s) || (bare in unlockSet); });   // 所持 or フェーズ一時解禁
-  if(!songsInEv.some(s=>('b:'+(epSelId))===s.id)){ epSelId=songsInEv.length?songsInEv[0].id.replace(/^b:/,''):null; }
-  renderEventList(ev, songsInEv, unlockSet);
-  renderEventSide(ev, songsInEv, unlockSet);
+    document.getElementById('epMarks').innerHTML=usongs.map((_,i)=>`<span class="mk" style="left:${max?Math.min(100,(i+1)*200/max*100):0}%">▼</span>`).join('');
+    document.getElementById('epProg').textContent='進捗 '+pr+' / '+max+(chReady?'（ポイント到達）':''); }
+  // 券UIは廃止(進捗テキスト epProg は同じ枠内なのでボタンだけ隠す)
+  { const tk=document.getElementById('epUseTicket'); if(tk)tk.style.display='none'; }
+  { const tk=document.getElementById('epTk'); if(tk&&tk.parentElement)tk.parentElement.style.display='none'; }
+  // 選曲: 所持する全楽曲 + チャレンジ曲(選択可能時)
+  const ownedList=songs.filter(x=>ownedSong(x));
+  const challengeEntry=(chReady && chBare)?{bare:chBare}:null;
+  const validBares=ownedList.map(x=>x.id.replace(/^b:/,'')).concat(challengeEntry?[chBare]:[]);
+  if(!validBares.includes(epSelId)){ epSelId=validBares.length?validBares[0]:null; }
+  epIsChallenge=!!(challengeEntry && epSelId===chBare);
+  renderEventList(ev, ownedList, challengeEntry);
+  renderEventSide(ev, challengeEntry);
 }
-// イベント内でその曲・難易度がプレイ可能か(所持＆解禁 または フェーズ一時解禁)
-function eventPlayable(s, diff, unlockSet){
+// イベント内でその曲・難易度が(通常プレイとして)可能か
+function eventPlayable(s, diff){
   if(!s||!s.diffs[diff])return false;
-  if(diff==='Arcana' && !arcanaUnlocked(s.id))return false;   // Arcanaは解禁率100%まで選択不可
-  const bare=s.id.replace(/^b:/,'');
-  if(unlockSet && unlockSet[bare] && unlockSet[bare].includes(diff))return true;   // フェーズ一時解禁
+  if(diff==='Arcana' && !arcanaUnlocked(s.id))return false;
   return ownedSong(s) && isDiffUnlocked(s,diff);
 }
-function renderEventList(ev, list, unlockSet){
+function renderEventList(ev, ownedList, challengeEntry){
   const box=document.getElementById('epList'); if(!box)return; box.innerHTML='';
-  if(!list.length){ box.innerHTML='<div class="muted" style="padding:8px">プレイ可能なイベント曲がありません</div>'; return; }
-  for(const s of list){ const d=s.diffs[epDiff]; const bare=s.id.replace(/^b:/,'');
-    const tempUnlock=unlockSet&&unlockSet[bare];
-    const row=document.createElement('button'); const sel=('b:'+(epSelId))===s.id;
+  if(challengeEntry){
+    const bare=challengeEntry.bare, so=songById('b:'+bare);
+    const row=document.createElement('button'); const sel=(epSelId===bare&&epIsChallenge);
+    row.className='song ev-challenge'+(sel?' sel':'');
+    row.innerHTML=`<div class="lv" style="color:#ffb14e">解禁</div>`+
+      `<div><div class="ti">${esc(so?songTitle(so,'Master'):bare)} <span style="color:#ffb14e;font-size:11px">[解禁チャレンジ]</span></div><div class="ar">Lv3ゲージ固定・完走で解禁</div></div>`+
+      `<div class="sc"></div>`;
+    row.onclick=()=>{ epSelId=bare; epIsChallenge=true; renderEventPage(); };
+    box.appendChild(row);
+  }
+  if(!ownedList.length && !challengeEntry){ box.innerHTML='<div class="muted" style="padding:8px">プレイ可能な曲がありません</div>'; return; }
+  for(const s of ownedList){ const d=s.diffs[epDiff]; const bare=s.id.replace(/^b:/,'');
+    const row=document.createElement('button'); const sel=(epSelId===bare&&!epIsChallenge);
     row.className='song'+(sel?' sel':'')+(d?'':' dim');
     const rank=(d&&d.best)?d.best.rank:'-', score=(d&&d.best)?d.best.score:0;
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
-      `<div><div class="ti">${esc(songTitle(s,epDiff))}${tempUnlock?' <span style="color:#ffb14e;font-size:11px">[開放中]</span>':''}</div><div class="ar">${esc(songArtist(s,epDiff))}</div></div>`+
+      `<div><div class="ti">${esc(songTitle(s,epDiff))}</div><div class="ar">${esc(songArtist(s,epDiff))}</div></div>`+
       `<div class="sc"><span class="rk" style="color:${rankColor(rank)}">${rank==='-'?'':rank}</span><span class="num">${score.toLocaleString('en-US')}</span></div>`;
-    row.onclick=()=>{ epSelId=s.id.replace(/^b:/,''); renderEventPage(); };
+    row.onclick=()=>{ epSelId=bare; epIsChallenge=false; renderEventPage(); };
     box.appendChild(row);
   }
 }
-function renderEventSide(ev, list, unlockSet){
+function renderEventSide(ev, challengeEntry){
   const box=document.getElementById('epSide'); if(!box)return;
-  const s=songById('b:'+(epSelId||'')); const d=s?s.diffs[epDiff]:null;
-  if(epDiff==='Arcana' && !arcanaSelectable(s)) epDiff='Master';   // 未解禁Arcanaは選択不可
-  const playable=eventPlayable(s,epDiff,unlockSet);
+  const s=songById('b:'+(epSelId||''));
+  const isCh=!!(epIsChallenge && challengeEntry && epSelId===challengeEntry.bare);
+  if(epDiff==='Arcana' && !arcanaSelectable(s)) epDiff='Master';
   const tabs=visibleDiffs(s).map(df=>{
     const dd=s?s.diffs[df.key]:null;
     if(df.key==='Arcana' && s && arcanaExists(s) && !arcanaUnlocked(s.id)){
@@ -1143,18 +1146,20 @@ function renderEventSide(ev, list, unlockSet){
     }
     return `<button class="difftab${df.key===epDiff?' act':''}${dd?'':' dim'}" data-d="${df.key}" style="--tc:${df.color}"><div class="dl">${df.label}</div><div class="dn">${dd?dd.level:'-'}</div></button>`;
   }).join('');
+  const d=s?s.diffs[epDiff]:null;
+  const playable = isCh ? !!(s && d) : eventPlayable(s, epDiff);   // チャレンジは所持不問(譜面があればOK)
+  const note = isCh
+    ? '<div class="pmeta" style="color:#ffb14e">解禁チャレンジ：体力ゲージLv3固定・Failせず完走で解禁</div>'
+    : `<div class="pmeta">${s?('作曲：'+esc(songArtist(s,epDiff)||'')):''}</div>`;
   box.innerHTML=
     `<div class="difftabs-h">${tabs}</div>`+
     `<div class="props"><div class="scoreline"><span class="badge">${d?d.level:'-'}</span>`+
       `<span class="bigscore">${d&&d.best?`<span style="color:${rankColor(d.best.rank)};font-weight:800">${d.best.rank}</span> ${d.best.score.toLocaleString('en-US')}`:'<span class="muted">未記録</span>'}</span></div>`+
-      `<div class="ptitle">${s?esc(songTitle(s,epDiff)):'—'}</div><div class="pmeta">${s?('作曲：'+esc(songArtist(s,epDiff)||'')):''}</div>`+
+      `<div class="ptitle">${s?esc(songTitle(s,epDiff)):'—'}</div>${note}`+
       `<div class="startrow"><div class="grow"></div><button class="startbtn" id="epStart" title="プレイ"${playable?'':' disabled style="opacity:.4"'}>▶</button></div></div>`;
   box.querySelectorAll('.difftab[data-d]').forEach(b=>b.onclick=()=>{ epDiff=b.dataset.d; renderEventPage(); });
-  const st=document.getElementById('epStart'); if(st&&playable)st.onclick=()=>{
-    const md=TICKET_MODES[epTicketMode]||TICKET_MODES[0];
-    if(md.n>getEventTickets()){ alert('イベント券が足りません'); return; }
-    if(md.n>0)addEventTickets(-md.n);
-    playTicketMode=md; selId='b:'+epSelId; activeDiff=epDiff; playFromEvent=epId; goPlay();
+  const stbtn=document.getElementById('epStart'); if(stbtn&&playable)stbtn.onclick=()=>{
+    selId='b:'+epSelId; activeDiff=epDiff; playFromEvent=epId; playFromEventChallenge=isCh; goPlay();
   };
 }
 /* ===== パートナー画面 ===== */
@@ -1657,12 +1662,11 @@ function buildPlayerSettings(){
 }
 function startPlay(){
   const s=songById(selId), d=activeData(s);
-  if(d && d.unlock && !isDiffUnlocked(s,activeDiff)){ showScreen('select'); return; }  // 未解禁は再生不可
-  playing={id:selId, diff:activeDiff, eventId:(playFromEvent||null), ticketMode:(playTicketMode||TICKET_MODES[0])};
-  playFromEvent=null; playTicketMode=null;
-  // イベントプレイ時: 現在フェーズの上書き設定(スキン/背景/修飾子)
-  const evForPlay=playing.eventId?eventMetaById(playing.eventId):null;
-  const phaseOv=(evForPlay?(activePhase(evForPlay)||{}):{}).override||null;
+  const isChallenge=!!playFromEventChallenge;
+  if(!isChallenge && d && d.unlock && !isDiffUnlocked(s,activeDiff)){ showScreen('select'); return; }  // 未解禁は再生不可(解禁チャレンジは例外)
+  playing={id:selId, diff:activeDiff, eventId:(playFromEvent||null), challenge:isChallenge};
+  playFromEvent=null; playFromEventChallenge=false;
+  const phaseOv=null;   // フェーズ上書きは廃止
   document.getElementById('pbDiff').textContent=activeDiff.toUpperCase();
   document.getElementById('pbDiff').style.color=diffColor(activeDiff);
   document.getElementById('pbTitle').textContent=s?songTitle(s,activeDiff):'';
@@ -1683,11 +1687,9 @@ function startPlay(){
       if(eqp.partner&&uniqueActive(eqp.partner)){ const pm=partnerMetaById(eqp.partner); const um=pm&&skillById(partnerUniqueSkillId(pm)); if(um&&um.mod)mods[um.mod]=true; } }
     // フェーズ上書き: プレイ修飾子のON/OFFをプレイヤー設定にかかわらず強制
     if(phaseOv&&phaseOv.mods){ for(const k in phaseOv.mods){ mods[k]=!!phaseOv.mods[k]; } }
-    // HPゲージ: デバッグ値とスキル由来の高い方。券まとめ使いの下限をパートナー効果と合成
+    // HPゲージ: デバッグ値とスキル由来の高い方。解禁チャレンジはLv3固定。
     let g=Math.max(+mods.gauge||0, effectiveGauge());
-    if(playing&&playing.eventId&&playing.ticketMode&&playing.ticketMode.floor>0){
-      g=Math.max(g, combineGauge(effectiveGauge(), playing.ticketMode.floor));
-    }
+    if(playing && playing.challenge){ g=3; }   // 解禁チャレンジは体力ゲージLv3固定
     g=Math.min(5,g);
     mods.gauge=g; mods.failAtZero=(g>=1);
     if(playing)playing.gaugeLevel=g;   // Arcana解禁のゲージボーナス判定用
@@ -1778,12 +1780,14 @@ function showResult(r){
       if(tkDrop>0)addEventTickets(tkDrop);
     }
   }
-  // イベント進捗(イベントページから起動し、クリア時)
-  let evGain=0;
+  // イベント: 解禁チャレンジ成功→曲解禁(+スタック反映)、通常プレイ→進捗を達成率ぶん加算
+  let evGain=0, evUnlockedName=null;
   if(!r.auto && !r.failed && playing && playing.eventId){
     const ev=eventMetaById(playing.eventId);
-    const tm=playing.ticketMode||TICKET_MODES[0];
-    if(ev){ evGain=eventGainFromPlay2(ev, Math.max(0,(+r.acc||0)), playing.diff, tm.mul); if(evGain>0)addEventProgress(playing.eventId, evGain); }
+    if(ev){
+      if(playing.challenge){ const bare=eventChallengeCleared(playing.eventId); if(bare){ const so=songById('b:'+bare); evUnlockedName=so?songTitle(so,'Master'):bare; } }
+      else { evGain=eventGainFromPlay(ev, Math.max(0,(+r.acc||0))); if(evGain>0)addEventProgress(playing.eventId, evGain); }
+    }
   }
   const c=r.counts||{};
   document.getElementById('rTable').innerHTML=
@@ -1794,9 +1798,7 @@ function showResult(r){
       `<br><span style="color:#ffe082">通貨 ₡${curBase.toLocaleString('en-US')}`+
         (curBonus>0?` <span style="color:#7fe38a">+${curBonus.toLocaleString('en-US')}</span>`:'')+
         `</span>　所持 ${fmtCur(getCurrency())}`+
-      `<br><span style="color:#7fd0ff">イベント券 ドロップ率 ${tkBaseRate.toFixed(1)}%`+
-        (tkBonusRate>0?` <span style="color:#7fe38a">+${tkBonusRate.toFixed(1)}%</span>`:'')+
-        ` → ${tkCapped?'所持上限のため無し':(tkDrop+'枚')}</span>`+
+      (evUnlockedName?`<br><span style="color:#ffb14e">★ 「${esc(evUnlockedName)}」を解禁しました！</span>`:'')+
       (evGain>0?`<br><span style="color:#ffb14e">イベント進捗 +${evGain}</span>`:''));
   document.getElementById('rBest').textContent=
     r.auto?'記録なし（オートプレイ）':
@@ -1806,12 +1808,8 @@ function showResult(r){
   showScreen('results');
 }
 document.getElementById('rRetry').onclick=()=>{ if(playing){selId=playing.id;activeDiff=playing.diff;
-  if(playing.eventId){ playFromEvent=playing.eventId;
-    // 券まとめ使いを再消費(足りなければ券なしへ)
-    const tm=playing.ticketMode||TICKET_MODES[0];
-    if(tm.n>0 && tm.n<=getEventTickets()){ addEventTickets(-tm.n); playTicketMode=tm; }
-    else playTicketMode=TICKET_MODES[0];
-  } } goPlay(); };
+  if(playing.eventId){ playFromEvent=playing.eventId; playFromEventChallenge=!!playing.challenge; }
+} goPlay(); };
 document.getElementById('rSelect').onclick=()=>showScreen((playing&&playing.eventId)?'eventpage':'select');
 document.getElementById('rHome').onclick=()=>showScreen('home');
 
