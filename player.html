@@ -1066,12 +1066,12 @@ class Judge {
       if (n.type === 'click') this.clicks[n.lane].push(st);
       else if (n.type === 'wipe') { st.w0 = n.t; st.w1 = n.t + WIPE_REAR; this.wipes[n.lane].push(st); }
       else if (n.type === 'hold') {
-        // 猶予 = min(HOLD_GRACE, ホールド長)。短いホールドが無入力で成功するのを防ぐ。
-        st.grace = Math.min(HOLD_GRACE, n.tEnd - n.t);
-        // 判定窓(W_MISS)より短いホールドはクリック相当に緩和(頭を±W_MISSで押せば成立)。
-        // 従来は「ホールド長=判定窓」となり、短ホールドがクリックより厳しく、
-        // クリックは取れているのにホールドだけ抜ける状況が起きていた。
-        st.short = (n.tEnd - n.t) <= W_MISS + EPS;
+        // 判定上の長さは W_MISS(150ms)を下限とする。見た目より短いホールドも
+        // 内部的には長さ150msのホールドとして扱い、判定の信頼性を確保する(見た目は不変)。
+        const jlen = Math.max(n.tEnd - n.t, W_MISS);
+        st.jEnd = n.t + jlen;
+        // 猶予 = min(HOLD_GRACE, 判定長)。無入力で成功するのを防ぐ。
+        st.grace = Math.min(HOLD_GRACE, jlen);
         st.relFrom = null; st.started = false;
         this.holds[n.lane].push(st);
       }
@@ -1154,7 +1154,7 @@ class Judge {
     }
     if (r.grade !== 'miss' || st.note.type === 'click') this.errsMs.push(r.err * 1000);
     this.last = { type: st.note.type, lane: st.note.lane, grade: r.grade, errMs: r.err * 1000, at: r.at };
-    this.log.push({ id: st.note.id, type: st.note.type, lane: st.note.lane, short: !!st.short,
+    this.log.push({ id: st.note.id, type: st.note.type, lane: st.note.lane,
                     layer: st.note.layer, grade: r.grade, errMs: +(r.err * 1000).toFixed(4) });
   }
 
@@ -1193,22 +1193,31 @@ class Judge {
           this._resolve(pending, st, 'miss', st.w1, WIPE_REAR);
         } else if (st.w0 > t) break;
       }
-      // --- ホールド: 連続離鍵が猶予に達したらミス、終端まで残れば成功 ---
+      // --- ホールド(始点レス・長短共通): キーが押されている状態で判定を迎えたら必ずSC。
+      //     終端に到達した時点で押下中(または一度も離していない)なら gold。
+      //     終端前に離鍵が猶予を超えた場合、または未入力のまま猶予を超えた場合のみ miss。 ---
       for (const st of this.holds[l]) {
         if (st.done) continue;
         const n = st.note;
         if (n.t > t) break;
-        if (st.short) {   // クリック相当。ただし始点レス仕様: キー押しっぱなしでも成立させる
-          if (this.keyDown[l]) { this._resolve(pending, st, 'gold', n.t, 0); continue; }   // 押しっぱなしで成立(頭到達時に押下中)
-          if (t > n.t + W_MISS + EPS) this._resolve(pending, st, 'miss', n.t + W_MISS, W_MISS);   // 未押下で頭窓超過→ミス
+        if (!st.started) { st.started = true; st.relFrom = this.keyDown[l] ? null : n.t; }
+        // 視覚終端に到達し、かつ押下中 → 即SC。短ホールドも見た目の終端で反応する(演出遅延を防ぐ)。
+        if (t >= n.tEnd && this.keyDown[l]) { this._resolve(pending, st, 'gold', n.tEnd, 0); continue; }
+        // 判定終端(150ms下限)に到達。
+        if (t >= st.jEnd) {
+          // 押下中、または一度も離していなければ SC。
+          if (this.keyDown[l] || st.relFrom === null) { this._resolve(pending, st, 'gold', n.tEnd, 0); continue; }
+          // 離鍵中: 離鍵開始から猶予を超えていれば miss、猶予内なら gold。
+          const tm = this.visReach(n.layer, st.relFrom, st.grace);
+          if (t >= tm) this._resolve(pending, st, 'miss', Math.min(tm, st.jEnd), 0);
+          else this._resolve(pending, st, 'gold', n.tEnd, 0);
           continue;
         }
-        if (!st.started) { st.started = true; st.relFrom = this.keyDown[l] ? null : n.t; }
-        if (st.relFrom !== null) {
+        // 判定終端前: 押下中はミスしない。離鍵が猶予を超えたらミス(確定前にキー状態を確認済み)。
+        if (!this.keyDown[l] && st.relFrom !== null) {
           const tm = this.visReach(n.layer, st.relFrom, st.grace);
-          if (tm <= Math.min(t, n.tEnd)) { this._resolve(pending, st, 'miss', tm, 0); continue; }
+          if (tm <= t) { this._resolve(pending, st, 'miss', tm, 0); continue; }
         }
-        if (t >= n.tEnd) this._resolve(pending, st, 'gold', n.tEnd, 0);
       }
     }
     pending.sort((a, b) => a.at - b.at || a.id - b.id);
@@ -1228,7 +1237,7 @@ class Judge {
       for (const st of this.holds[lane]) {
         if (st.done || !st.started) continue;
         const n = st.note;
-        if (t < n.t || t > n.tEnd) continue;
+        if (t < n.t || t > st.jEnd) continue;
         if (st.relFrom !== null) {
           const tm = this.visReach(n.layer, st.relFrom, st.grace);
           if (tm <= t) { this._apply({ st, grade: 'miss', at: tm, err: 0, id: n.id }); continue; }
@@ -1247,21 +1256,13 @@ class Judge {
           servedWipe = true; if (e < wipeErr) wipeErr = e;
         } else if (st.w0 > t) break;
       }
-      // 短ホールド(クリック相当): 頭窓(±W_MISS)内の押下で成立
-      let servedShortHold = false;
-      for (const st of this.holds[lane]) {
-        if (st.done || !st.short) continue;
-        if (Math.abs(t - st.note.t) <= W_MISS + EPS) {
-          const err = t - st.note.t;
-          this._apply({ st, grade: gradeOf(err) || 'miss', at: t, err, id: st.note.id });
-          servedShortHold = true;
-        } else if (st.note.t - W_MISS > t) break;
-      }
-      // ホールド区間中かどうか(押下の意味づけに使う)
+      // ホールド区間中(または頭の直前 W_MISS 以内)かどうか。
+      // 始点レス仕様のため、ホールドに関わる押下は空打ちにしない。
       let inHold = false;
       for (const st of this.holds[lane]) {
-        if (st.note.t <= t && t <= st.note.tEnd) { inHold = true; break; }
-        if (st.note.t > t) break;
+        if (st.done) continue;
+        if (st.note.t - W_MISS - EPS <= t && t <= st.jEnd) { inHold = true; break; }
+        if (st.note.t - W_MISS > t) break;
       }
 
       // クリック: 窓内の未判定ノーツのうち最も古いものへ割り当てる(案B)
@@ -1285,7 +1286,7 @@ class Judge {
         const err = t - target.note.t;
         const g = gradeOf(err);
         this._apply({ st: target, grade: g || 'miss', at: t, err, id: target.note.id });
-      } else if (!servedWipe && !inHold && !servedShortHold) {
+      } else if (!servedWipe && !inHold) {
         this.emptyLog.push({ lane, t });
         this.empty++;         // どのノーツにも寄与しなかった押下のみを空打ちとする
       }
@@ -1294,7 +1295,7 @@ class Judge {
       for (const st of this.holds[lane]) {
         if (st.done || !st.started) continue;
         const n = st.note;
-        if (t < n.t || t > n.tEnd) continue;
+        if (t < n.t || t > st.jEnd) continue;
         if (st.relFrom === null) st.relFrom = Math.max(t, n.t);
       }
     }
@@ -2832,18 +2833,19 @@ function frame(){
     judge.advanceTo(jnow);
     while(logSeen<judge.log.length){
       const r=judge.log[logSeen++];
-      if(fx.checked&&r.type!=='hold')pushFx(r.lane,r.grade,now,'hit',r.layer);
-      if(fx.checked&&r.type==='hold'&&r.grade==='miss')
-        pushFx(r.lane,'miss',now,'hit',r.layer);
-      // ヒット音はプレイヤーの入力に対する反応として鳴らす(仕様 14.5.1)。
-      // ミスは発音しない。長ホールドは activeHolds 側で開始時に発音するためここでは除外。
-      // 短ホールド(クリック相当)は区間が短く activeHolds に載らないため、解決時にここで発音する。
-      if(hitsnd.checked&&r.grade!=='miss'){
-        if(r.type!=='hold')playHit(r.type);
-        else if(r.short)playHit('hold');
+      if(r.type==='hold'){
+        if(r.grade==='miss'){
+          if(fx.checked){ pushFx(r.lane,'miss',now,'hit',r.layer); showJudge(r.lane,'miss'); }
+        } else if(!holdFxAt.has(r.id)){
+          // activeHolds に載らなかった(短い)ホールド: 掴み演出が出ていないので解決時にFX/音/判定を出す。
+          // 長ホールドは activeHolds 側で掴んだ瞬間に出済み(holdFxAt に記録あり)のためここでは出さない。
+          if(fx.checked){ pushFx(r.lane,r.grade,now,'hit',r.layer); showJudge(r.lane,r.grade); }
+          if(hitsnd.checked)playHit('hold');
+        }
+      } else {
+        if(fx.checked){ pushFx(r.lane,r.grade,now,'hit',r.layer); showJudge(r.lane,r.grade); }
+        if(hitsnd.checked&&r.grade!=='miss')playHit(r.type);
       }
-      // 判定表示(ヒット位置の少し上)。長ホールドの成功は掴んだ瞬間(activeHolds側)に出すためここでは除外。
-      if(fx.checked && !(r.type==='hold'&&!r.short&&r.grade!=='miss')) showJudge(r.lane, r.grade);
     }
     if(PMOD.failAtZero&&judge.failed&&!failing)startFail(jnow);
     while(emptySeen<judge.emptyLog.length){
