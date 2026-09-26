@@ -125,6 +125,20 @@
         "Hard":   { "level": 6, "chart": "Total Eclipse of the Sun_h.json" },
         "Master": { "level": 9, "chart": "Total Eclipse of the Sun_m.json", "unlock": { "cost": 300 } }
       }
+    },
+    {
+      "id": "song2005",
+      "title": "G e n g a o z o",
+      "artist": "-45",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "G e n g a o z o.ogg",
+      "jacket": "G e n g a o z o_jacket.png",
+      "diffs": {
+        "Easy":   { "level": 4, "chart": "G e n g a o z o_e.json" },
+        "Hard":   { "level": 5, "chart": "G e n g a o z o_h.json" },
+        "Master": { "level": 9, "chart": "G e n g a o z o_m.json", "unlock": { "cost": 300 } }
+      }
     }
   ]
 }
