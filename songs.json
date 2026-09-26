@@ -111,6 +111,20 @@
         "Hard":   { "level": 5, "chart": "Magik Motion_h.json" },
         "Master": { "level": 8, "chart": "Magik Motion_m.json", "unlock": { "cost": 300 } }
       }
+    },
+    {
+      "id": "song2004",
+      "title": "Total Eclipse of the Sun",
+      "artist": "-45",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "Total Eclipse of the Sun.ogg",
+      "jacket": "Total Eclipse of the Sun_jacket.png",
+      "diffs": {
+        "Easy":   { "level": 4, "chart": "Total Eclipse of the Sun_e.json" },
+        "Hard":   { "level": 6, "chart": "Total Eclipse of the Sun_h.json" },
+        "Master": { "level": 9, "chart": "Total Eclipse of the Sun_m.json", "unlock": { "cost": 300 } }
+      }
     }
   ]
 }
