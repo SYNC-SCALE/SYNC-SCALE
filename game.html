@@ -319,6 +319,7 @@
     <div class="field"><label>ノートスピード</label><input id="s_hs" type="range" min="1" max="11" step="0.1"><span class="val" id="s_hsV"></span></div>
     <div class="field"><label>レーン形状(台形)</label><input id="s_shape" type="range" min="0" max="9" step="1"><span class="val" id="s_shapeV"></span></div>
     <div class="field"><label>レーン幅</label><input id="s_lw" type="range" min="10" max="100" step="5"><span class="val" id="s_lwV"></span></div>
+    <div class="field"><label>判定ライン位置</label><input id="s_jline" type="range" min="0" max="60" step="1"><span class="val" id="s_jlineV"></span></div>
     <div class="field"><label>レーン透明度</label><input id="s_laneop" type="range" min="0" max="100" step="5"><span class="val" id="s_laneopV"></span></div>
     <div class="field"><label>出力遅延補正</label><input id="s_latcomp" type="checkbox"><span class="val"></span></div>
     <div class="field"><label>プレイ背景</label><select id="s_bg" class="cta" style="padding:7px 10px"></select><span class="val muted small" style="text-align:left">曲プレイ中の背景（ジャケットは固定位置に重ねて表示）</span></div>
@@ -517,7 +518,7 @@ let epIsChallenge=false;        // イベントページで解禁チャレンジ
 function showScreen(name){
   if(!SCREENS.includes(name))return;
   if(current==='play'&&name!=='play')document.getElementById('playFrame').src='about:blank';
-  if(current==='select'&&name!=='select')stopPreview();   // 選曲を離れたら試聴停止
+  if((current==='select'||current==='eventpage')&&name!=='select'&&name!=='eventpage')stopPreview();   // 選曲/イベント選曲を離れたら試聴停止
   if(current==='timing'&&name!=='timing'){ if(typeof calStop==='function')calStop(); if(metroTimer){clearInterval(metroTimer);metroTimer=null;} }
   current=name;
   for(const s of SCREENS)document.getElementById(s).classList.toggle('on',s===name);
@@ -525,7 +526,7 @@ function showScreen(name){
   if(name==='partner')renderPartner();
   if(name==='shop')renderShop();
   if(name==='events')renderEvents();
-  if(name==='eventpage')renderEventPage();
+  if(name==='eventpage'){ renderEventPage(); const es=songById('b:'+(epSelId||'')); if(es)startPreview(es, epDiff); }
   if(name==='settings')loadSettingsUI();
   if(name==='credits')renderCredits();
   if(name==='timing')loadTimingUI();
@@ -730,7 +731,7 @@ function grantReward(rw){
   else if(rw.type==='eventTicket')addEventTickets(1);
   else if(rw.type==='skill')grantSkill(rw.id);
   else if(rw.type==='currency')addCurrency(+rw.id||0);
-  else if(rw.type==='partner'){ const p=loadProfile(); if(!p.partners[rw.id])p.partners[rw.id]={level:1}; p.unlocks['partner:'+rw.id]=true; saveProfile(p); }
+  else if(rw.type==='partner'){ const p=loadProfile(); if(!p.partners[rw.id])p.partners[rw.id]={level:1,exp:0}; p.unlocks['partner:'+rw.id]=true; saveProfile(p); }
   else { const p=loadProfile(); p.unlocks[rw.type+':'+rw.id]=true; saveProfile(p); }  // skin/icon等
 }
 /* ===== イベント ===== */
@@ -939,8 +940,21 @@ function partnerMetaById(id){return CONTENT.partners.find(p=>p.id===id);}
 function ownsPartner(id){return !!loadProfile().partners[id];}
 function partnerLevel(id){const p=loadProfile().partners[id];return p?p.level:0;}
 function partnerMax(){return CONTENT.partnerCfg.maxLevel||20;}
-// レベルアップコスト = 切片(base) + 傾き(cost) × 現在Lv。Lv1→2 は base+cost、Lv2→3 は base+cost×2…
+// 次レベルまでに必要な経験値 = 切片(base) + 傾き(cost) × 現在Lv。1 EXP = 1ゴールド相当。
 function partnerLevelCost(lv){return (CONTENT.partnerCfg.base||0) + (CONTENT.partnerCfg.cost||3000)*Math.max(1,lv|0);}
+function partnerExp(id){ const pd=loadProfile().partners[id]; return pd?(+pd.exp||0):0; }
+// パートナー経験値を加算。必要分たまればレベルアップ(最大まで)。レベル報酬も付与。
+function addPartnerExp(id, amt){
+  const meta=partnerMetaById(id); if(!meta||!ownsPartner(id)||!(amt>0))return 0;
+  const prof=loadProfile(); const pd=prof.partners[id]; if(!pd)return 0;
+  pd.exp=(+pd.exp||0)+amt; const leveled=[];
+  while((pd.level||1)<partnerMax()){ const c=partnerLevelCost(pd.level||1);
+    if((pd.exp||0)>=c){ pd.exp-=c; pd.level=(pd.level||1)+1; leveled.push(pd.level||1); } else break; }
+  if((pd.level||1)>=partnerMax())pd.exp=0;   // 最大レベルは余剰破棄
+  saveProfile(prof);
+  for(const nl of leveled){ for(const rw of (meta.levelRewards||[])) if(rw.level===nl) grantReward(rw); }
+  return amt;
+}
 function slotCount(level){return (CONTENT.partnerCfg.slotUnlocks||[1]).filter(l=>level>=l).length;}
 function lerp(a,b,t){return a+(b-a)*t;}
 function partnerStatAt(meta,level){
@@ -1005,12 +1019,14 @@ function speedInfo(mods){
   return {mul,mode};
 }
 const SPEED_LABEL={normal:'通常',slow:'Slow',trial:'スピードトライアル',trialkyo:'スピードトライアル【狂】'};
+// 次レベルまでに足りない経験値ぶんだけゴールドで補填(1EXP=1ゴールド)して即レベル+1。
+function partnerLevelUpGold(id){ const lv=partnerLevel(id); return Math.max(0, partnerLevelCost(lv)-partnerExp(id)); }
 function levelUpPartner(id){
   const meta=partnerMetaById(id); if(!meta||!ownsPartner(id))return false;
   if(partnerLevel(id)>=partnerMax())return false;
-  const cost=partnerLevelCost(partnerLevel(id)); if(getCurrency()<cost)return false;
-  addCurrency(-cost);
-  { const prof=loadProfile(); prof.partners[id].level++; saveProfile(prof); }
+  const need=partnerLevelUpGold(id); if(getCurrency()<need)return false;
+  if(need>0)addCurrency(-need);
+  { const prof=loadProfile(); const pd=prof.partners[id]; pd.level=(pd.level||1)+1; pd.exp=0; saveProfile(prof); }
   const lv=partnerLevel(id);
   for(const rw of (meta.levelRewards||[])) if(rw.level===lv) grantReward(rw);
   return true;
@@ -1078,7 +1094,9 @@ function renderEventPage(){
   // ジャケット(次のチャレンジ曲、無ければ最後の解禁曲)
   { const jb=chBare||usongs[n-1]; const jso=jb?songById('b:'+jb):null; const jk=document.getElementById('epJacket'); const jsrc=songAnyJacket(jso);
     if(jk){ if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; } }
-  { const pn=document.getElementById('epPartner'); if(pn)pn.style.display='none'; }   // 相棒立ち絵は簡素化のため非表示
+  // 現在の相棒(立ち絵)を表示
+  { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null; const pn=document.getElementById('epPartner');
+    if(pn){ if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; } }
   // 解禁曲の一覧とポイント状況
   document.getElementById('epRewards').innerHTML=usongs.map((bare,i)=>{
     const done=i<st.unlockedCount, isNext=(i===st.unlockedCount);
@@ -1092,9 +1110,9 @@ function renderEventPage(){
     document.getElementById('epFill').style.width=pct+'%';
     document.getElementById('epMarks').innerHTML=usongs.map((_,i)=>`<span class="mk" style="left:${max?Math.min(100,(i+1)*200/max*100):0}%">▼</span>`).join('');
     document.getElementById('epProg').textContent='進捗 '+pr+' / '+max+(chReady?'（ポイント到達）':''); }
-  // 券UIは廃止(進捗テキスト epProg は同じ枠内なのでボタンだけ隠す)
+  // 券投入ボタンは廃止。所持枚数を表示(通常プレイで1枚消費・チャレンジは無消費)
   { const tk=document.getElementById('epUseTicket'); if(tk)tk.style.display='none'; }
-  { const tk=document.getElementById('epTk'); if(tk&&tk.parentElement)tk.parentElement.style.display='none'; }
+  { const tk=document.getElementById('epTk'); if(tk){ tk.textContent=getEventTickets(); if(tk.parentElement)tk.parentElement.style.display=''; } }
   // 選曲: 所持する全楽曲 + チャレンジ曲(選択可能時)
   const ownedList=songs.filter(x=>ownedSong(x));
   const challengeEntry=(chReady && chBare)?{bare:chBare}:null;
@@ -1119,7 +1137,7 @@ function renderEventList(ev, ownedList, challengeEntry){
     row.innerHTML=`<div class="lv" style="color:#ffb14e">解禁</div>`+
       `<div><div class="ti">${esc(so?songTitle(so,'Master'):bare)} <span style="color:#ffb14e;font-size:11px">[解禁チャレンジ]</span></div><div class="ar">Lv3ゲージ固定・完走で解禁</div></div>`+
       `<div class="sc"></div>`;
-    row.onclick=()=>{ epSelId=bare; epIsChallenge=true; renderEventPage(); };
+    row.onclick=()=>{ epSelId=bare; epIsChallenge=true; startPreview(songById('b:'+bare), epDiff); renderEventPage(); };
     box.appendChild(row);
   }
   if(!ownedList.length && !challengeEntry){ box.innerHTML='<div class="muted" style="padding:8px">プレイ可能な曲がありません</div>'; return; }
@@ -1130,7 +1148,7 @@ function renderEventList(ev, ownedList, challengeEntry){
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
       `<div><div class="ti">${esc(songTitle(s,epDiff))}</div><div class="ar">${esc(songArtist(s,epDiff))}</div></div>`+
       `<div class="sc"><span class="rk" style="color:${rankColor(rank)}">${rank==='-'?'':rank}</span><span class="num">${score.toLocaleString('en-US')}</span></div>`;
-    row.onclick=()=>{ epSelId=bare; epIsChallenge=false; renderEventPage(); };
+    row.onclick=()=>{ epSelId=bare; epIsChallenge=false; startPreview(songById('b:'+bare), epDiff); renderEventPage(); };
     box.appendChild(row);
   }
 }
@@ -1159,6 +1177,7 @@ function renderEventSide(ev, challengeEntry){
       `<div class="startrow"><div class="grow"></div><button class="startbtn" id="epStart" title="プレイ"${playable?'':' disabled style="opacity:.4"'}>▶</button></div></div>`;
   box.querySelectorAll('.difftab[data-d]').forEach(b=>b.onclick=()=>{ epDiff=b.dataset.d; renderEventPage(); });
   const stbtn=document.getElementById('epStart'); if(stbtn&&playable)stbtn.onclick=()=>{
+    if(!isCh){ if(getEventTickets()<1){ alert('イベント券が足りません（通常プレイに1枚必要）'); return; } addEventTickets(-1); }   // 通常プレイは1枚消費・チャレンジは無消費
     selId='b:'+epSelId; activeDiff=epDiff; playFromEvent=epId; playFromEventChallenge=isCh; goPlay();
   };
 }
@@ -1262,7 +1281,8 @@ function renderPartnerDetail(){
   const m=partnerMetaById(id);
   if(!m){ box.innerHTML='<div class="muted">partners.json に未定義のパートナーです</div>'; return; }
   const prof=loadProfile(), lv=partnerLevel(id), base=partnerStatAt(m,lv);
-  const eq=prof.equipped.partner===id, maxed=lv>=partnerMax(), cost=partnerLevelCost(lv), canLv=!maxed&&getCurrency()>=cost;
+  const eq=prof.equipped.partner===id, maxed=lv>=partnerMax();
+  const expCost=partnerLevelCost(lv), exp=partnerExp(id), need=partnerLevelUpGold(id), canLv=!maxed&&getCurrency()>=need;
   // 相棒時は 基礎値(レベル) + スキル増加(固有＋装備) を分けて表示
   const es=eq?equippedStats():base;
   const bonus={curAdd:es.curAdd-base.curAdd, curMul:es.curMul-base.curMul, ticketAdd:es.ticketAdd-base.ticketAdd};
@@ -1288,14 +1308,14 @@ function renderPartnerDetail(){
       `<div class="muted" style="font-size:12px;margin-top:4px">${esc(um.desc||'')}<br>${skillStatsText(um,5)}${um.mod?(' ／ 効果: '+modLabel(um.mod)):''}</div></div>`; }
   box.innerHTML=
     `<div class="chara">${m.chara?`<img src="${partnerAsset(m.chara)}" onerror="this.style.display='none'">`:'立ち絵'}</div>`+
-    `<div class="pninfo"><h2>${esc(m.name)}${eq?' <span style="color:var(--acc);font-size:14px">★相棒</span>':''}</h2><div class="muted">Lv ${lv} / ${partnerMax()}</div>`+
+    `<div class="pninfo"><h2>${esc(m.name)}${eq?' <span style="color:var(--acc);font-size:14px">★相棒</span>':''}</h2><div class="muted">Lv ${lv} / ${partnerMax()}${maxed?'':`　EXP ${Math.floor(exp).toLocaleString('en-US')} / ${expCost.toLocaleString('en-US')}`}</div>`+
       ((m.designer||m.illustrator)?`<div class="muted" style="font-size:12px">${m.designer?('キャラデザイン：'+esc(m.designer)):''}${(m.designer&&m.illustrator)?'　':''}${m.illustrator?('イラスト：'+esc(m.illustrator)):''}</div>`:'')+
       `<div class="pnstat">${stLine}</div>`+
       (eq?'<div class="muted" style="font-size:12px;margin-top:-4px">表示: 基礎値(レベル) ＋ スキル増加(固有・装備)</div>':'')+
       ((eq && effectiveGauge()>=1)?`<div style="color:#ff9a5a;font-size:13px;margin-top:4px">体力ゲージ Lv${effectiveGauge()}（ゲージ0で失敗）</div>`:'')+
       uniqueHtml+
       `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">`+
-        `<button class="cta" id="pnLvUp"${canLv?'':' disabled'} style="${canLv?'':'opacity:.45'}">${maxed?'最大レベル':('レベルアップ '+fmtCur(cost))}</button>`+
+        `<button class="cta" id="pnLvUp"${canLv?'':' disabled'} style="${canLv?'':'opacity:.45'}">${maxed?'最大レベル':('レベルアップ '+fmtCur(need))}</button>`+
         `<button class="cta" id="pnEquip"${eq?' disabled':''}>${eq?'相棒に設定中':'相棒にする'}</button></div>`+
       `<h3 style="margin:10px 0 4px;font-size:14px">スキルスロット</h3><div class="slotrow">${slotHtml}</div>`+
       `<div class="pnrew"><h3 style="margin:12px 0 4px;font-size:14px">レベル報酬</h3>${rew||'<span class="muted">なし</span>'}</div></div>`;
@@ -1437,13 +1457,13 @@ function stopPreview(){
   if(previewBlobUrl){ try{ URL.revokeObjectURL(previewBlobUrl); }catch(_){} previewBlobUrl=null; }
   previewId=null;
 }
-function startPreview(s){
+function startPreview(s, diff){
   stopPreview();
   if(!s)return;
   const vol=volMM();   // マスター×楽曲を反映
   if(vol<=0)return;   // 音量0なら試聴しない
   let url=null;
-  const asrc=songAudioSrc(s,activeDiff);   // 難易度別音源(なければ曲共通)
+  const asrc=songAudioSrc(s,diff||activeDiff);   // 難易度別音源(なければ曲共通)
   if(asrc)url=asrc;
   else if(s.audioBuf){ try{ previewBlobUrl=URL.createObjectURL(new Blob([s.audioBuf])); url=previewBlobUrl; }catch(_){} }
   if(!url)return;
@@ -1461,7 +1481,7 @@ function bgmVolume(){ const c=soundCfg('menuBgm'); const rel=(c&&c.vol!=null)?+c
 function ensureBgm(){ const path=menuBgmPath();
   if(!menuBgm || menuBgmSrc!==path){ if(menuBgm){ try{menuBgm.pause();}catch(_){} } menuBgm=new Audio(path); menuBgm.loop=true; menuBgmSrc=path; }
   menuBgm.volume=bgmVolume(); return menuBgm; }
-function isMenuScreen(name){ return name!=='select' && name!=='play'; }   // 選曲(試聴)とプレイ以外でBGM
+function isMenuScreen(name){ return name!=='select' && name!=='play' && name!=='eventpage'; }   // 選曲・イベント選曲(試聴)とプレイ以外でBGM
 function updateMenuBgm(name){
   const el=ensureBgm();
   if(isMenuScreen(name) && bgmVolume()>0){ const p=el.play(); if(p&&p.catch)p.catch(()=>armBgm()); }
@@ -1658,6 +1678,7 @@ function buildPlayerSettings(){
   const s=loadSettings();
   return { kind:'rhythm-prototype-settings', version:1, judgeOffsetMs:s.offset, keys:s.keys,
     shapeStep:s.shape, laneWidth:s.lw, hispeed:s.hs, latencyComp:s.latcomp, volumes:s.vol,
+    judgeLine:(s.judgeLine!=null?s.judgeLine:0),
     laneOpacity:(s.laneOpacity!=null?s.laneOpacity:90) };
 }
 function startPlay(){
@@ -1789,6 +1810,12 @@ function showResult(r){
       else { evGain=eventGainFromPlay(ev, Math.max(0,(+r.acc||0))); if(evGain>0)addEventProgress(playing.eventId, evGain); }
     }
   }
+  // イベントモードのプレイで、現在の相棒に経験値(=達成率ぶん)を付与
+  let evExp=0;
+  if(!r.auto && playing && playing.eventId){
+    const pid=(loadProfile().equipped||{}).partner;
+    if(pid){ evExp=Math.floor(Math.max(0,(+r.acc||0))); if(evExp>0)addPartnerExp(pid, evExp); }
+  }
   const c=r.counts||{};
   document.getElementById('rTable').innerHTML=
     trow('Critical SYNC',c.gold,'#7fd8ff')+trow('SYNC',c.white,'#ffffff')+trow('Near',c.great,'#ffb14e')+trow('Miss',c.miss,'#ff6b6b');
@@ -1799,7 +1826,8 @@ function showResult(r){
         (curBonus>0?` <span style="color:#7fe38a">+${curBonus.toLocaleString('en-US')}</span>`:'')+
         `</span>　所持 ${fmtCur(getCurrency())}`+
       (evUnlockedName?`<br><span style="color:#ffb14e">★ 「${esc(evUnlockedName)}」を解禁しました！</span>`:'')+
-      (evGain>0?`<br><span style="color:#ffb14e">イベント進捗 +${evGain}</span>`:''));
+      (evGain>0?`<br><span style="color:#ffb14e">イベント進捗 +${evGain}</span>`:'')+
+      (evExp>0?`<br><span style="color:#8fd0ff">相棒 EXP +${evExp}</span>`:''));
   document.getElementById('rBest').textContent=
     r.auto?'記録なし（オートプレイ）':
     (pmode==='slow'?'Slow（記録なし）':
@@ -1807,7 +1835,12 @@ function showResult(r){
   document.getElementById('rBest').style.color=(r.auto||pmode==='slow')?'var(--muted)':diffColor(playing?playing.diff:activeDiff);
   showScreen('results');
 }
-document.getElementById('rRetry').onclick=()=>{ if(playing){selId=playing.id;activeDiff=playing.diff;
+document.getElementById('rRetry').onclick=()=>{ if(playing){
+  if(playing.eventId && !playing.challenge){   // イベント通常プレイの再挑戦も1枚消費
+    if(getEventTickets()<1){ alert('イベント券が足りません（1枚必要）'); showScreen('eventpage'); return; }
+    addEventTickets(-1);
+  }
+  selId=playing.id; activeDiff=playing.diff;
   if(playing.eventId){ playFromEvent=playing.eventId; playFromEventChallenge=!!playing.challenge; }
 } goPlay(); };
 document.getElementById('rSelect').onclick=()=>showScreen((playing&&playing.eventId)?'eventpage':'select');
@@ -1823,7 +1856,7 @@ function renderUserName(){const el=document.getElementById('userName');if(el)el.
 
 /* ===== 設定(localStorage) ===== */
 const SKEY='rhythmGameSettings';
-const DEFAULTS={hs:6,shape:5,lw:60,latcomp:true,
+const DEFAULTS={hs:6,shape:5,lw:60,judgeLine:0,latcomp:true,
   vol:{master:80,music:80,click:70,wipe:70,hold:70,empty:35},
   keys:['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'],offset:0,skinId:'builtin',bgMode:'jacket',laneOpacity:90};
 function loadSettings(){try{return Object.assign(JSON.parse(JSON.stringify(DEFAULTS)),JSON.parse(localStorage.getItem(SKEY)||'{}'));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
@@ -1832,6 +1865,7 @@ let settings=loadSettings();
 function bindRange(id,valId,fmt){const el=document.getElementById(id),v=document.getElementById(valId);
   if(el)el.addEventListener('input',()=>{if(v)v.textContent=fmt?fmt(el.value):el.value;});}
 bindRange('s_hs','s_hsV',x=>(+x).toFixed(1)); bindRange('s_shape','s_shapeV'); bindRange('s_lw','s_lwV',x=>x+'%');
+bindRange('s_jline','s_jlineV',x=>x+'%');
 bindRange('s_laneop','s_laneopV',x=>x+'%');
 for(const k of ['master','music','click','wipe','hold','empty'])bindRange('v_'+k,'v_'+k+'V');
 // マスター/楽曲スライダーはメニューBGMへ即時反映
@@ -1853,6 +1887,8 @@ function loadSettingsUI(){settings=loadSettings();
   document.getElementById('s_hs').value=settings.hs;document.getElementById('s_hsV').textContent=(+settings.hs).toFixed(1);
   document.getElementById('s_shape').value=settings.shape;document.getElementById('s_shapeV').textContent=settings.shape;
   document.getElementById('s_lw').value=settings.lw;document.getElementById('s_lwV').textContent=settings.lw+'%';
+  { const jl=(settings.judgeLine!=null?settings.judgeLine:0);
+    document.getElementById('s_jline').value=jl; document.getElementById('s_jlineV').textContent=jl+'%'; }
   { const lo=(settings.laneOpacity!=null?settings.laneOpacity:90);
     document.getElementById('s_laneop').value=lo; document.getElementById('s_laneopV').textContent=lo+'%'; }
   document.getElementById('s_latcomp').checked=!!settings.latcomp;
@@ -1886,7 +1922,7 @@ async function fullReset(){
 }
 document.getElementById('fullReset').onclick=fullReset;
 function collectSettingsFromUI(){
-  return {hs:+s_hs.value,shape:+s_shape.value,lw:+s_lw.value,laneOpacity:+document.getElementById('s_laneop').value,latcomp:s_latcomp.checked,
+  return {hs:+s_hs.value,shape:+s_shape.value,lw:+s_lw.value,judgeLine:+document.getElementById('s_jline').value,laneOpacity:+document.getElementById('s_laneop').value,latcomp:s_latcomp.checked,
     vol:{master:+v_master.value,music:+v_music.value,click:+v_click.value,wipe:+v_wipe.value,hold:+v_hold.value,empty:+v_empty.value},
     keys:settings.keys.slice(),offset:settings.offset,
     skinId:document.getElementById('s_skin').value,

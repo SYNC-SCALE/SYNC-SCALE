@@ -141,7 +141,7 @@
       <label>見かけ速度 <input id="pvSpeed" type="range" min="0.5" max="6" step="0.1" value="2"></label>
       <label>形状 <input id="pvShape" type="range" min="0" max="9" step="1" value="6"></label>
       <label>幅 <input id="pvWidth" type="range" min="40" max="100" step="1" value="85"></label>
-      <label>判定線 <input id="pvJudge" type="range" min="0" max="60" step="1" value="12"></label>
+      <label>判定線 <input id="pvJudge" type="range" min="0" max="60" step="1" value="0"></label>
       <label>拍線 <input id="pvGrid" type="checkbox" checked></label>
       <label>白単色 <input id="pvWhite" type="checkbox"></label>
     </div>
@@ -2330,15 +2330,15 @@ pvGrid.addEventListener('change',drawPreview);
 // ゲーム本体のユーザー設定(レーン形状・幅・ノートスピード)をプレビュー/テストプレイへ反映。
 // 同一オリジンの localStorage 'rhythmGameSettings' を読み、各スライダーを初期化する。
 // 起動後は charter が自由にスライダーを動かせる(この関数は初期値の同期のみ)。
-// 判定線(pvJudge)はゲーム設定に無い譜面編集側の項目なので触らない。
 function syncPreviewFromGameSettings(){
   let s=null; try{ s=JSON.parse(localStorage.getItem('rhythmGameSettings')||'null'); }catch(_){ s=null; }
   if(!s||typeof s!=='object')return false;
   const setClamped=(el,v,step)=>{ let x=(step>=1)?Math.round(v):Math.round(v/step)*step;
     x=Math.max(+el.min,Math.min(+el.max,x)); el.value=x; };
-  if(typeof s.shape==='number')setClamped(pvShape,s.shape,1);            // レーン形状 0..9(共通スケール)
-  if(typeof s.lw==='number')   setClamped(pvWidth,s.lw,1);              // レーン幅 %
-  if(typeof s.hs==='number')   setClamped(pvSpeed,hispeedMultiplier(s.hs),0.1); // hs → 見かけ速度(mul)
+  if(typeof s.shape==='number')    setClamped(pvShape,s.shape,1);            // レーン形状 0..9(共通スケール)
+  if(typeof s.lw==='number')       setClamped(pvWidth,s.lw,1);              // レーン幅 %
+  if(typeof s.hs==='number')       setClamped(pvSpeed,hispeedMultiplier(s.hs),0.1); // hs → 見かけ速度(mul)
+  if(typeof s.judgeLine==='number')setClamped(pvJudge,s.judgeLine,1);       // 判定ライン位置 %
   return true;
 }
 
