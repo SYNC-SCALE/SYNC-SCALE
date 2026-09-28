@@ -22,7 +22,7 @@
       "image": "skin01.png",
       "blend": "add",
       "colors": {
-        "note": "#ffffff",
+        "note": "#f0f0f0",
         "trace": "#d0d0d0",
         "gold": "#5cc0e0",
         "white": "#d8e6ff",
