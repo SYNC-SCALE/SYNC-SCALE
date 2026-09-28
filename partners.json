@@ -17,7 +17,7 @@
       ],
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
-        { "level": 5, "type": "song",        "id": "song0004" },
+        { "level": 5, "type": "song",        "id": "song0005" },
         { "level": 10, "type": "noteskin",       "id": "skin00_white" },
         { "level": 15, "type": "icon",       "id": "ミュー_icon.png" },
         { "level": 20, "type": "bg",         "id": "ミュー_bg.png" }
