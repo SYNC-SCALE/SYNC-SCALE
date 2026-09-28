@@ -474,6 +474,8 @@ const Clock={
   rspan(){return this.rn?this.lastPerf-this.rt0:0;},
   calib:{mean:0,n:0,spread:0},
   MAX_RATE:0.0005,  // 0.5ms/s
+  rate:1,          // 再生レート(1=等速, 0.8=80%低速 等)。曲時刻の進行と音源再生速度に等しく適用。
+  setRate(r){ this.rate=(typeof r==='number'&&r>0)?r:1; },
 
   init(){
     this.ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -532,7 +534,8 @@ const Clock={
     const lim=this.MAX_RATE*dt;
     const diff=oRaw-this.oSmooth;
     this.oSmooth+=Math.max(-lim,Math.min(lim,diff));
-    const song=(p+this.oSmooth)-this.startRef-this.offsetSec;
+    // 曲時刻はレート倍で進む(音源再生速度と一致)。
+    const song=this.rate*((p+this.oSmooth)-this.startRef)-this.offsetSec;
     this.driftSamples.push(diff*1000);
     if(this.driftSamples.length>900)this.driftSamples.shift();
     // 音声クロックと performance.now() のレート差を実測する。
@@ -540,7 +543,7 @@ const Clock={
     if(this.rn===0)this.rt0=p;
     this.rn++;this.rx+=p;this.ry+=oRaw;this.rxx+=p*p;this.rxy+=p*oRaw;
     if(dt>0){
-      this.jumpSamples.push(((song-this.lastSong)-dt)*1000);
+      this.jumpSamples.push(((song-this.lastSong)-this.rate*dt)*1000);
       if(this.jumpSamples.length>900)this.jumpSamples.shift();
     }
     this.lastPerf=p;this.lastSong=song;this.t=song;
@@ -548,7 +551,7 @@ const Clock={
   },
 
   // performance.now() のタイムスタンプ(入力イベント等)を曲時刻へ
-  fromPerf(pms){return (pms/1000+this.oSmooth)-this.startRef-this.offsetSec;},
+  fromPerf(pms){return this.rate*((pms/1000+this.oSmooth)-this.startRef)-this.offsetSec;},
 
   // 実音源を指定した曲時刻から再生する。
   // 音源と ctx.currentTime は同じデバイスクロックで進むため、
@@ -559,6 +562,7 @@ const Clock={
     this.stopBuffer();
     const src=this.ctx.createBufferSource();
     src.buffer=buf;
+    src.playbackRate.value=this.rate;   // 音源再生速度をレートに合わせる(曲時刻の進行と一致)
     const g=this.ctx.createGain();
     g.gain.value=(typeof VOL!=='undefined')?(Math.pow(VOL.master/100,2)*Math.pow(VOL.music/100,2)):0.8;
     this.musicGain=g;
@@ -568,17 +572,17 @@ const Clock={
     const bufOff=Math.max(0,atSongTime);
     src.start(when,bufOff);
     this.src=src; this.srcWhen=when; this.srcOff=bufOff;
-    // 曲時刻 0 に対応する ctx 時刻。ここを基準に曲時刻を作り直す
-    this.startRef = when - bufOff;
+    // 曲時刻 = rate*(X - startRef) - offset。ctx=when で曲時刻が bufOff-offset(=s0) になるよう startRef を決める。
+    this.startRef = when - bufOff/this.rate;
     this.lastPerf = performance.now()/1000;
     this.lastSong = this.audioPos();
     return when;
   },
   stopBuffer(){ if(this.src){ try{this.src.stop();}catch(e){} this.src=null; } },
-  // 音源の再生位置(秒)。出力遅延は含めない
+  // 音源の再生位置(曲時刻・秒)。出力遅延は含めない。再生速度(rate)を反映。
   audioPos(){
     if(!this.src)return null;
-    return this.ctx.currentTime - this.startRef - this.offsetSec;
+    return this.rate*(this.ctx.currentTime - this.startRef) - this.offsetSec;
   },
   // 出力遅延。実際に耳へ届くまでの遅れ
   outLatency(){
@@ -587,7 +591,7 @@ const Clock={
   },
 
   blip(t,freq=1400){
-    const when=this.startRef+this.offsetSec+t;
+    const when=this.startRef+(t+this.offsetSec)/this.rate;
     if(when<=this.ctx.currentTime+0.005)return;
     const o=this.ctx.createOscillator(),g=this.ctx.createGain();
     o.frequency.value=freq;o.type='square';
@@ -2788,6 +2792,7 @@ function restart(){
   paused=false; { const pm=document.getElementById('pausemenu'); if(pm)pm.style.display='none'; }
   const s0=(TEST&&testStartSec>0)?testStartSec:0;   // テストは指定位置から
   const aoff=(RD&&RD.audioOffsetMs)?RD.audioOffsetMs/1000:0;   // 譜面オフセット(秒)
+  Clock.setRate(PMOD.speedMul);   // プレイ速度倍率(0.8/1.1/1.3)を曲・譜面の実速度に適用
   // 音源あり時は offsetSec=譜面オフセット。規約: 音源位置 = 曲時刻 + audioOffset(editorと一致)
   Clock.start((RD&&audioBuf)?aoff:0);
   syncReset();
@@ -2795,7 +2800,7 @@ function restart(){
     // 曲時刻 s0 のとき音源位置を s0+aoff に合わせる。助走 LEAD_IN 秒。
     Clock.playBuffer(audioBuf, s0+aoff, LEAD_IN);
   }else{
-    Clock.startRef += LEAD_IN - s0;   // 音源なしでも曲時刻を s0-LEAD から開始
+    Clock.startRef += (LEAD_IN - s0)/Clock.rate;   // 音源なしでも曲時刻を s0-LEAD から開始(レート補正)
   }
   scheduledUpTo=s0-0.001;fxs.length=0;inputLat.length=0;
   judge=new Judge(chartNotes,chartVis);
@@ -2826,7 +2831,7 @@ function frame(){
     if(Sync.n%30===0){Sync.samples.push({t:now,e});if(Sync.samples.length>600)Sync.samples.shift();}
   }
   let mul=hispeedMultiplier(+hs.value);
-  mul*=PMOD.speedMul;                          // プレイ速度倍率(0.8/1.1/1.3)
+  // 速度修飾子(0.8/1.1/1.3)は曲・譜面の実速度(Clock.rate)で表現し、見かけ速度(hispeed)は変えない。
   Proj.set(CW,CH,+shape.value,+lw.value,JUDGE_LINE);
 
   // --- 打音の予約(0.4秒先読み)。速度倍率とは無関係に定刻で鳴る ---
@@ -3152,7 +3157,7 @@ document.getElementById('resClose').onclick=()=>{ document.getElementById('resul
 function reSync(songT){
   const aoff=(RD&&RD.audioOffsetMs)?RD.audioOffsetMs/1000:0;   // 譜面オフセット(秒)
   if(RD&&audioBuf&&(songT+aoff)<audioBuf.duration){ Clock.start(aoff); Clock.playBuffer(audioBuf, songT+aoff); }
-  else { Clock.start(0); Clock.startRef -= songT; }
+  else { Clock.start(0); Clock.startRef -= songT/Clock.rate; }
 }
 function pauseGame(){
   if(paused||!started||resultsShown)return;
