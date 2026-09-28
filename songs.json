@@ -85,6 +85,20 @@
       }
     },
     {
+      "id": "song1004",
+      "title": "動き出す歯車",
+      "artist": "Tak_mfk",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "動き出す歯車.ogg",
+      "jacket": "動き出す歯車.png",
+      "diffs": {
+        "Easy":   { "level": 3, "chart": "動き出す歯車_e.json" },
+        "Hard":   { "level": 6, "chart": "動き出す歯車_h.json" },
+        "Master": { "level": 10, "chart": "動き出す歯車_m.json", "unlock": { "cost": 300 } }
+      }
+    },
+    {
       "id": "song2001",
       "title": "Switch",
       "artist": "Getty",
