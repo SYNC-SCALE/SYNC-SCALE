@@ -1704,8 +1704,15 @@ function startPlay(){
     const audioBuf = await ensureAudioBuf(s, activeDiff);   // 難易度別音源(なければ曲共通)
     const mods=loadMods();
     { const eqp=loadProfile().equipped||{};
-      for(const sid of (eqp.skills||[])){ if(!sid)continue; const sm=skillById(sid); if(sm&&sm.mod)mods[sm.mod]=true; }
-      if(eqp.partner&&uniqueActive(eqp.partner)){ const pm=partnerMetaById(eqp.partner); const um=pm&&skillById(partnerUniqueSkillId(pm)); if(um&&um.mod)mods[um.mod]=true; } }
+      const validSM=v=>(v==='add'||v==='sub'||v==='ratio');
+      let smPick=null;   // スコア表示方式。スキル枠先頭>2枠目>3枠目>パートナー固有スキル の順で最初の指定を採用
+      for(const sid of (eqp.skills||[])){ if(!sid)continue; const sm=skillById(sid); if(!sm)continue;
+        if(sm.mod)mods[sm.mod]=true;
+        if(smPick===null&&validSM(sm.scoreMode))smPick=sm.scoreMode; }
+      if(eqp.partner&&uniqueActive(eqp.partner)){ const pm=partnerMetaById(eqp.partner); const um=pm&&skillById(partnerUniqueSkillId(pm)); if(um){
+        if(um.mod)mods[um.mod]=true;
+        if(smPick===null&&validSM(um.scoreMode))smPick=um.scoreMode; } }
+      if(smPick!==null)mods.scoreMode=smPick; }
     // フェーズ上書き: プレイ修飾子のON/OFFをプレイヤー設定にかかわらず強制
     if(phaseOv&&phaseOv.mods){ for(const k in phaseOv.mods){ mods[k]=!!phaseOv.mods[k]; } }
     // HPゲージ: デバッグ値とスキル由来の高い方。解禁チャレンジはLv3固定。
