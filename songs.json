@@ -71,6 +71,20 @@
       }
     },
     {
+      "id": "song1002",
+      "title": "Crystal brilliance",
+      "artist": "Tak_mfk",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "Crystal brilliance.ogg",
+      "jacket": "Crystal brilliance.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "Crystal brilliance_e.json" },
+        "Hard":   { "level": 6, "chart": "Crystal brilliance_h.json" },
+        "Master": { "level": 9, "chart": "Crystal brilliance_m.json", "unlock": { "cost": 300 } }
+      }
+    },
+    {
       "id": "song2001",
       "title": "Switch",
       "artist": "Getty",
