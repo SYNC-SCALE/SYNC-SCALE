@@ -688,8 +688,18 @@ function ensureFirstRunDefaults(){
   p.unlocks['noteskin:'+DEFAULT_SKIN_ID]=true;
   p.unlocks['partner:'+DEFAULT_PARTNER_ID]=true;
   p.partners[DEFAULT_PARTNER_ID]={level:1,exp:0};
-  p.equipped={partner:DEFAULT_PARTNER_ID,skills:[]};
+  p.equipped={partner:DEFAULT_PARTNER_ID,skills:[]};   // 自動装備は初回起動時のみ
   saveProfile(p);
+}
+// デフォルトの skin00 / partner00 は「常に解禁」を保証する。プレイ途中の既存データや
+// アップデート後の起動でも、未解禁なら解禁を付与する(装備・自動選択は変更しない)。
+// partner00 の所持レコード(Lv1)も無ければ用意する。既存の進捗は上書きしない。
+function ensureDefaultUnlocks(){
+  const p=loadProfile(); let changed=false;
+  if(!p.unlocks['noteskin:'+DEFAULT_SKIN_ID]){ p.unlocks['noteskin:'+DEFAULT_SKIN_ID]=true; changed=true; }
+  if(!p.unlocks['partner:'+DEFAULT_PARTNER_ID]){ p.unlocks['partner:'+DEFAULT_PARTNER_ID]=true; changed=true; }
+  if(!p.partners[DEFAULT_PARTNER_ID]){ p.partners[DEFAULT_PARTNER_ID]={level:1,exp:0}; changed=true; }
+  if(changed)saveProfile(p);
 }
 function getCurrency(){return loadProfile().currency||0;}
 function addCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round((p.currency||0)+n));saveProfile(p);return p.currency;}
@@ -1931,7 +1941,7 @@ document.getElementById('dbgExit').onclick=()=>{
 document.getElementById('curAdd').onclick=()=>{ addCurrency(1000); renderCurrency(); };
 document.getElementById('curReset').onclick=()=>{ setCurrency(0); renderCurrency(); };
 document.getElementById('tkAdd').onclick=()=>{ addTickets(1); renderCurrency(); };
-document.getElementById('unlockReset').onclick=()=>{ const p=loadProfile(); p.unlocks={}; saveProfile(p); renderCurrency(); if(current==='select')renderAll(); };
+document.getElementById('unlockReset').onclick=()=>{ const p=loadProfile(); p.unlocks={}; saveProfile(p); ensureDefaultUnlocks(); renderCurrency(); if(current==='select')renderAll(); };
 async function fullReset(){
   if(!confirm('全データをリセットします。\nプロファイル(通貨/解禁/パートナー/スキル)・スコア・ユーザー名・設定・追加曲・追加スキンを初期化します。よろしいですか？'))return;
   ['rhythmProfile','rhythmScores','rhythmUserName','rhythmGameSettings','rhythmPlayMods'].forEach(k=>localStorage.removeItem(k));
@@ -2100,7 +2110,8 @@ window.addEventListener('keydown',e=>{ if(current==='timing'&&CAL.on&&e.code==='
 /* ===== util ===== */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 applyTheme();
-ensureFirstRunDefaults();   // 初回起動時にデフォルトスキン/パートナーを解禁・装備
+ensureFirstRunDefaults();   // 初回起動時にデフォルトスキン/パートナーを解禁・装備(自動装備は初回のみ)
+ensureDefaultUnlocks();     // 既存データ/アップデート後も skin00・partner00 の解禁を常に保証
 initSongs();   // 保存済みの曲・記録を読み込む
 updateMenuBgm(current);   // 起動時にメニューBGM開始(自動再生が弾かれたら最初のクリックで開始)
 </script>
