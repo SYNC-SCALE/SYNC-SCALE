@@ -3,8 +3,22 @@
   "_note": "解禁対象のノーツスキン定義。image はアトラス画像(skins/ 配下、基本は無彩色/グレースケール)。colors で乗算着色。指定キー: note(クリック/ワイプ/ホールド), trace(トレース線・頂点), gold=CS/white=SYNC/great=Near/miss=Miss(判定色。スキンごとに上書き可、省略時は固定パレット)。トレースは透明度50%固定。blend: 省略/'normal'=通常合成, 'add'=加算合成(グロー)。※ヒットエフェクトはスキンによらず常に加算合成なので、加算スキンでは判定色をやや暗めにすると綺麗。",
   "noteskins": [
     {
+      "id": "skin00",
+      "name": "デフォルト",
+      "image": "skin01.png",
+      "blend": "add",
+      "colors": {
+        "note": "#4fa3ff",
+        "trace": "#7fd0ff",
+        "gold": "#5cc0e0",
+        "white": "#d8e6ff",
+        "great": "#e0903c",
+        "miss": "#e05a5a"
+      }
+    },
+    {
       "id": "skin01_blue",
-      "name": "海",
+      "name": "薄型ー青",
       "image": "skin02.png",
       "blend": "add",
       "colors": {
