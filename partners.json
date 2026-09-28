@@ -5,6 +5,24 @@
   "slotUnlocks": [1, 5, 15],
   "partners": [
     {
+      "id": "partner00",
+      "name": "ミュー",
+      "unique": "skill_tarukan",
+      "chara": "ミュー_chara.png",
+      "icon": "ミュー_icon.png",
+      "bg": "ミュー_bg.png",
+      "stats": [
+        { "level": 1,  "curAdd": 0,   "curMul": 0.00, "ticketAdd": 0.00 },
+        { "level": 20, "curAdd": 10, "curMul": 0.50, "ticketAdd": 0.00 }
+      ],
+      "levelRewards": [
+        { "level": 3, "type": "diffTicket",  "id": null },
+        { "level": 5, "type": "song",        "id": "song0004" },
+        { "level": 15, "type": "icon",       "id": "ミュー_icon.png" },
+        { "level": 20, "type": "bg",         "id": "ミュー_bg.png" }
+      ]
+    },
+    {
       "id": "partner01",
       "name": "タルカン",
       "unique": "skill_tarukan",
