@@ -38,6 +38,7 @@
       "audio": "Abyssal turbine.ogg",
       "jacket": "Abyssal turbine_jacket.png",
       "diffs": {
+        "Easy":   { "level": 4,  "chart": "Abyssal turbine_e.json" },
         "Hard":   { "level": 6,  "chart": "Abyssal turbine_h.json" },
         "Master": { "level": 11, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 500 } },
         "Arcana": { "level": 13, "chart": "Abyssal turbine_a.json" }
