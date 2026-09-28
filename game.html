@@ -679,6 +679,18 @@ function loadProfile(){
   catch(e){ return JSON.parse(JSON.stringify(PROFILE_DEFAULT)); }
 }
 function saveProfile(p){localStorage.setItem(PROFKEY,JSON.stringify(p));}
+// 初回起動(プロファイル未保存)のみ、デフォルトのノーツスキン(skin00)とパートナー(partner00)を
+// 解禁・装備した状態でプロファイルを作成する。既存プレイヤーのデータには一切手を加えない。
+const DEFAULT_SKIN_ID='skin00', DEFAULT_PARTNER_ID='partner00';
+function ensureFirstRunDefaults(){
+  if(localStorage.getItem(PROFKEY))return;   // 既存プロファイルは触らない
+  const p=JSON.parse(JSON.stringify(PROFILE_DEFAULT));
+  p.unlocks['noteskin:'+DEFAULT_SKIN_ID]=true;
+  p.unlocks['partner:'+DEFAULT_PARTNER_ID]=true;
+  p.partners[DEFAULT_PARTNER_ID]={level:1,exp:0};
+  p.equipped={partner:DEFAULT_PARTNER_ID,skills:[]};
+  saveProfile(p);
+}
 function getCurrency(){return loadProfile().currency||0;}
 function addCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round((p.currency||0)+n));saveProfile(p);return p.currency;}
 function setCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round(n)||0);saveProfile(p);}
@@ -1865,7 +1877,7 @@ function renderUserName(){const el=document.getElementById('userName');if(el)el.
 const SKEY='rhythmGameSettings';
 const DEFAULTS={hs:6,shape:5,lw:60,judgeLine:0,latcomp:true,
   vol:{master:80,music:80,click:70,wipe:70,hold:70,empty:35},
-  keys:['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'],offset:0,skinId:'builtin',bgMode:'jacket',laneOpacity:90};
+  keys:['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'],offset:0,skinId:'note:skin00',bgMode:'jacket',laneOpacity:90};
 function loadSettings(){try{return Object.assign(JSON.parse(JSON.stringify(DEFAULTS)),JSON.parse(localStorage.getItem(SKEY)||'{}'));}catch(e){return JSON.parse(JSON.stringify(DEFAULTS));}}
 function saveSettings(s){localStorage.setItem(SKEY,JSON.stringify(s));}
 let settings=loadSettings();
@@ -2016,7 +2028,7 @@ function renderBgPicker(){
 function renderSkinPicker(){
   const sel=document.getElementById('s_skin'); if(!sel)return;
   const cur=String(loadSettings().skinId);
-  let html='<option value="builtin">内蔵(手続き生成)</option>';
+  let html='<option value="builtin">クラシック</option>';
   for(const n of CONTENT.noteskins){ if(hasUnlock('noteskin',n.id))
     html+=`<option value="note:${n.id}">${esc(n.name)}</option>`; }
   sel.innerHTML=html;
@@ -2088,6 +2100,7 @@ window.addEventListener('keydown',e=>{ if(current==='timing'&&CAL.on&&e.code==='
 /* ===== util ===== */
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 applyTheme();
+ensureFirstRunDefaults();   // 初回起動時にデフォルトスキン/パートナーを解禁・装備
 initSongs();   // 保存済みの曲・記録を読み込む
 updateMenuBgm(current);   // 起動時にメニューBGM開始(自動再生が弾かれたら最初のクリックで開始)
 </script>
