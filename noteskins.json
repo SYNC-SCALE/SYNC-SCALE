@@ -17,8 +17,22 @@
       }
     },
     {
+      "id": "skin00_white",
+      "name": "基本ー純白",
+      "image": "skin01.png",
+      "blend": "add",
+      "colors": {
+        "note": "#ffffff",
+        "trace": "#7fd0ff",
+        "gold": "#5cc0e0",
+        "white": "#d8e6ff",
+        "great": "#e0903c",
+        "miss": "#e05a5a"
+      }
+    },
+    {
       "id": "skin01_blue",
-      "name": "薄型ー青",
+      "name": "薄型ー蒼海",
       "image": "skin02.png",
       "blend": "add",
       "colors": {
