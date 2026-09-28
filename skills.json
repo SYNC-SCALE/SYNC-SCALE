@@ -124,10 +124,10 @@
     {
       "id": "skill_tarukan",
       "name": "深海の共鳴",
-      "desc": "HardGage【LV.2】　判定メーターを追加する。",
+      "desc": "HardGage【LV.2】　スコアを減算表示にする。",
       "gauge": 2,
       "unique": true,
-      "mod": "judgeMeter",
+      "scoreMode": "sub",
       "stats": [
         { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.10 },
         { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.50 }
