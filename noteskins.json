@@ -8,8 +8,8 @@
       "image": "skin01.png",
       "blend": "add",
       "colors": {
-        "note": "#a3a3a3",
-        "trace": "#7fd0ff",
+        "note": "#a3a3e3",
+        "trace": "#d0d0af",
         "gold": "#5cc0e0",
         "white": "#d8e6ff",
         "great": "#e0903c",
@@ -23,7 +23,7 @@
       "blend": "add",
       "colors": {
         "note": "#ffffff",
-        "trace": "#7fd0ff",
+        "trace": "#d0d0d0",
         "gold": "#5cc0e0",
         "white": "#d8e6ff",
         "great": "#e0903c",
