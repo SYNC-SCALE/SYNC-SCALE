@@ -768,6 +768,11 @@ const Gfx = {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.atlasCanvas = c;
+    // 既定(クラシック)アトラスと既定スプライトUVを保持しておく。
+    // スキンがアトラスを差し替えても、ヒットエフェクト(グロー/拡散)はこの既定アトラスから描く。
+    this.texDefault = this.tex;
+    this.sprDefault = {};
+    for(const k in SPR) this.sprDefault[k] = Object.assign({}, SPR[k]);
   },
 
   // フィルタリング方式。
@@ -832,6 +837,20 @@ const Gfx = {
     if(this.n+6 > this.cap*6) this.flush();
     this._mode(spr?1:0);
     const s = spr ? (SPR[spr]||SPR.white) : SPR.white;
+    const [r,g,b] = col;
+    const uv = [[s.u0,s.v1],[s.u1,s.v1],[s.u1,s.v0],[s.u0,s.v0]];
+    const idx = [0,1,2, 0,2,3];
+    for(const i of idx)
+      this._v(p[i].x, p[i].y, p[i].w, uv[i][0], uv[i][1], r,g,b, alpha);
+    this.quads++;
+  },
+
+  // 既定(クラシック)アトラスからスプライトを描く。スキンのアトラス差し替えに依存しない。
+  // ヒットエフェクトのように「スキンによらず常に同じ見た目」にしたい図形に使う。
+  quadPtsDef(p, spr, col, alpha){
+    if(this.n+6 > this.cap*6) this.flush();
+    this._mode(1, this.texDefault);
+    const s = (this.sprDefault && this.sprDefault[spr]) || (this.sprDefault && this.sprDefault.white) || (SPR[spr]||SPR.white);
     const [r,g,b] = col;
     const uv = [[s.u0,s.v1],[s.u1,s.v1],[s.u1,s.v0],[s.u0,s.v0]];
     const idx = [0,1,2, 0,2,3];
@@ -2067,9 +2086,9 @@ function drawFx(now){
     const base=Math.abs(xR-xL)*0.69;   // 115%(0.6×1.15)
     const e=1-(1-age)*(1-age);                 // イーズアウト拡大
     const a=(1-age)*(1-age);                    // フェードアウト
-    // 1) グロー
+    // 1) グロー(既定アトラスから描画。スキン非依存)
     const gsize=base*(0.35+e*0.95);
-    Gfx.quadPts([S(cx-gsize,cy+gsize),S(cx+gsize,cy+gsize),S(cx+gsize,cy-gsize),S(cx-gsize,cy-gsize)],'glow',col,a*0.55);
+    Gfx.quadPtsDef([S(cx-gsize,cy+gsize),S(cx+gsize,cy+gsize),S(cx+gsize,cy-gsize),S(cx-gsize,cy-gsize)],'glow',col,a*0.55);
     // 2) 互い違いに回転する四角(輪郭)を2枚
     const sq=base*(0.5+e*0.75);
     const rot=age*Math.PI*0.85;
@@ -2080,7 +2099,7 @@ function drawFx(now){
     for(let k=0;k<N;k++){
       const ang=(k/N)*Math.PI*2 + f.lane*0.6;
       const px=cx+Math.cos(ang)*dist, py=cy+Math.sin(ang)*dist;
-      Gfx.quadPts([S(px-ss,py+ss),S(px+ss,py+ss),S(px+ss,py-ss),S(px-ss,py-ss)],'white',col,a*0.85);
+      Gfx.quadPtsDef([S(px-ss,py+ss),S(px+ss,py+ss),S(px+ss,py-ss),S(px-ss,py-ss)],'white',col,a*0.85);
     }
   }
 }
