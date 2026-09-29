@@ -110,7 +110,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Relative brilliance_e.json" },
         "Hard":   { "level": 6, "chart": "Relative brilliance_h.json" },
-        "Master": { "level": 10, "chart": "Relative brilliance_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "Relative brilliance_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
