@@ -100,6 +100,20 @@
       }
     },
     {
+      "id": "song1003",
+      "title": "Relative brilliance",
+      "artist": "Tak_mfk",
+      "charter": "Nibiryu",
+      "source": "event",
+      "audio": "Relative brilliance.ogg",
+      "jacket": "Relative brilliance.png",
+      "diffs": {
+        "Easy":   { "level": 3, "chart": "Relative brilliance_e.json" },
+        "Hard":   { "level": 6, "chart": "Relative brilliance_h.json" },
+        "Master": { "level": 10, "chart": "Relative brilliance_m.json", "unlock": { "cost": 300 } }
+      }
+    },
+    {
       "id": "song1004",
       "title": "動き出す歯車",
       "artist": "Tak_mfk",
