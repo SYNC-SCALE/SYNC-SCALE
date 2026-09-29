@@ -4,9 +4,9 @@
   "events": [
     {
       "id": "ev01",
-      "title": "SYNC/SCALEへようこそ！",
+      "title": "輝きの果てへ",
       "banner": "ev01_banner.png",
-      "unlockSongs": ["song03"],
+      "unlockSongs": ["song1002","song1003"],
       "multiplier": 0
     }
   ]
