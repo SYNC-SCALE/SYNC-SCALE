@@ -196,6 +196,20 @@
         "Hard":   { "level": 6, "chart": "G e n g a o z o_h.json" },
         "Master": { "level": 9, "chart": "G e n g a o z o_m.json", "unlock": { "cost": 300 } }
       }
+    },
+    {
+      "id": "song2006",
+      "title": "Chronomia",
+      "artist": "Lime",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "Chronomia.ogg",
+      "jacket": "Chronomia.png",
+      "diffs": {
+        "Easy":   { "level": 4, "chart": "Chronomia_e.json" },
+        "Hard":   { "level": 7, "chart": "Chronomia_h.json" },
+        "Master": { "level": 13, "chart": "Chronomia_m.json", "unlock": { "cost": 300 } }
+      }
     }
   ]
 }
