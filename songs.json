@@ -128,6 +128,21 @@
       }
     },
     {
+      "id": "song1005",
+      "title": "The Milky Way",
+      "artist": "魔王魂",
+      "charter": "Nibiryu",
+      "source": "free",
+      "audio": "The Milky Way.ogg",
+      "jacket": "The Milky Way.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "The Milky Way_e.json" },
+        "Hard":   { "level": 5, "chart": "The Milky Way_h.json" },
+        "Master": { "level": 8, "chart": "The Milky Way_m.json", "unlock": { "cost": 500 } },
+        "Arcana": { "level": 10, "chart": "The Milky Way_a.json" }
+      }
+    },
+    {
       "id": "song2001",
       "title": "Switch",
       "artist": "Getty",
