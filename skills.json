@@ -141,7 +141,19 @@
       "mod": "speed80",
       "stats": [
         { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 },
-        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 }
+        { "star": 5, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.50 }
+      ]
+    },
+    {
+      "id": "skill_shiroha",
+      "name": "鋼の翼",
+      "desc": "HardGage【LV.3】コンボ詳細を表示する。",
+      "gauge": 3,
+      "unique": true,
+      "mod": "speed80","comboDetail","statsPanel",
+      "stats": [
+        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 },
+        { "star": 5, "curAdd": 0, "curMul": 0.75, "ticketAdd": 0.75 }
       ]
     }
   ]
