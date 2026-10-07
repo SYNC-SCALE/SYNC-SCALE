@@ -152,7 +152,7 @@
       "unique": true,
       "mod": "speed80","comboDetail","statsPanel",
       "stats": [
-        { "star": 1, "curAdd": 0, "curMul": 0.00, "ticketAdd": 0.00 },
+        { "star": 1, "curAdd": 0, "curMul": 0.15, "ticketAdd": 0.15 },
         { "star": 5, "curAdd": 0, "curMul": 0.75, "ticketAdd": 0.75 }
       ]
     }
