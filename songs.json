@@ -68,7 +68,8 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "シャイニングスター_e.json" },
         "Hard":   { "level": 5, "chart": "シャイニングスター_h.json" },
-        "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 8, "chart": "シャイニングスター_m.json", "unlock": { "cost": 300 } },
+        "Arcana": { "level": 10, "chart": "シャイニングスター_a.json" }
       }
     },
     {
