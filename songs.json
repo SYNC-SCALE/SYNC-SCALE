@@ -2,20 +2,6 @@
   "formatVersion": 1,
   "songs": [
     {
-      "id": "song0001",
-      "title": "チュートリアル",
-      "artist": "Nibiryu",
-      "charter": "Nibiryu",
-      "source": "free",
-      "audio": "チュートリアル.ogg",
-      "jacket": "チュートリアル_jacket.png",
-      "diffs": {
-        "Easy":   { "level": 1, "chart": "チュートリアル_e.json" },
-        "Hard":   { "level": 5, "chart": "チュートリアル_h.json" },
-        "Master": { "level": 7, "chart": "チュートリアル_m.json", "unlock": { "cost": 300 } }
-      }
-    },
-    {
       "id": "song0002",
       "title": "Maelstrom",
       "artist": "Nibiryu",
@@ -25,8 +11,8 @@
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
         "Hard":   { "level": 7,  "chart": "Maelstrom_h.json" },
-        "Master": { "level": 9,  "chart": "Maelstrom_m.json", "unlock": { "cost": 500 } },
-        "Arcana": { "level": 13, "chart": "Maelstrom_a.json" }
+        "Master": { "level": 12,  "chart": "Maelstrom_m.json", "unlock": { "cost": 500 } },
+        "Arcana": { "level": 14, "chart": "Maelstrom_a.json" }
       }
     },
     {
@@ -40,8 +26,8 @@
       "diffs": {
         "Easy":   { "level": 4,  "chart": "Abyssal turbine_e.json" },
         "Hard":   { "level": 6,  "chart": "Abyssal turbine_h.json" },
-        "Master": { "level": 10, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 500 } },
-        "Arcana": { "level": 13, "chart": "Abyssal turbine_a.json" }
+        "Master": { "level": 12, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 500 } },
+        "Arcana": { "level": 14, "chart": "Abyssal turbine_a.json" }
       }
     },
     {
@@ -54,7 +40,7 @@
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
         "Hard":   { "level": 5,  "chart": "幽都第七遊興区_h.json" },
-        "Master": { "level": 7, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 8, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -68,7 +54,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_e.json" },
         "Hard":   { "level": 5,  "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_h.json" },
-        "Master": { "level": 8, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -96,7 +82,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "Crystal brilliance_e.json" },
         "Hard":   { "level": 6, "chart": "Crystal brilliance_h.json" },
-        "Master": { "level": 9, "chart": "Crystal brilliance_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 10, "chart": "Crystal brilliance_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -110,7 +96,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Relative brilliance_e.json" },
         "Hard":   { "level": 6, "chart": "Relative brilliance_h.json" },
-        "Master": { "level": 10, "chart": "Relative brilliance_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 11, "chart": "Relative brilliance_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -124,7 +110,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "動き出す歯車_e.json" },
         "Hard":   { "level": 6, "chart": "動き出す歯車_h.json" },
-        "Master": { "level": 10, "chart": "動き出す歯車_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 11, "chart": "動き出す歯車_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -138,7 +124,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "The Milky Way_e.json" },
         "Hard":   { "level": 5, "chart": "The Milky Way_h.json" },
-        "Master": { "level": 8, "chart": "The Milky Way_m.json", "unlock": { "cost": 500 } },
+        "Master": { "level": 9, "chart": "The Milky Way_m.json", "unlock": { "cost": 500 } },
         "Arcana": { "level": 10, "chart": "The Milky Way_a.json" }
       }
     },
@@ -153,7 +139,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "Switch_e.json" },
         "Hard":   { "level": 6, "chart": "Switch_h.json" },
-        "Master": { "level": 8, "chart": "Switch_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "Switch_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -167,7 +153,7 @@
       "diffs": {
         "Easy":   { "level": 4, "chart": "Zephyrs_e.json" },
         "Hard":   { "level": 7, "chart": "Zephyrs_h.json" },
-        "Master": { "level": 10, "chart": "Zephyrs_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 12, "chart": "Zephyrs_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -181,7 +167,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Magik Motion_e.json" },
         "Hard":   { "level": 5, "chart": "Magik Motion_h.json" },
-        "Master": { "level": 8, "chart": "Magik Motion_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "Magik Motion_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -195,7 +181,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Total Eclipse of the Sun_e.json" },
         "Hard":   { "level": 5, "chart": "Total Eclipse of the Sun_h.json" },
-        "Master": { "level": 9, "chart": "Total Eclipse of the Sun_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 10, "chart": "Total Eclipse of the Sun_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -209,7 +195,7 @@
       "diffs": {
         "Easy":   { "level": 4, "chart": "G e n g a o z o_e.json" },
         "Hard":   { "level": 6, "chart": "G e n g a o z o_h.json" },
-        "Master": { "level": 9, "chart": "G e n g a o z o_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 10, "chart": "G e n g a o z o_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -223,7 +209,7 @@
       "diffs": {
         "Easy":   { "level": 4, "chart": "Chronomia_e.json" },
         "Hard":   { "level": 7, "chart": "Chronomia_h.json" },
-        "Master": { "level": 13, "chart": "Chronomia_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 11, "chart": "Chronomia_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
