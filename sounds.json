@@ -6,6 +6,6 @@
     "clear":      { "src": "sfx/clear.ogg",      "vol": 0.9 },
     "fail":       { "src": "sfx/fail.ogg",       "vol": 0.9 },
     "transition": { "src": "sfx/transition.ogg", "vol": 0.7 },
-    "tap":        { "src": "sfx/tap.ogg" }
+    "tap":        { "src": "sfx/tap0.ogg" }
   }
 }
