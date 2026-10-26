@@ -52,7 +52,7 @@
       "audio": "呼春 -春ヲ呼ブ白鶯ノ伝説-.ogg",
       "jacket": "呼春 -春ヲ呼ブ白鶯ノ伝説-.png",
       "diffs": {
-        "Easy":   { "level": 2, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_e.json" },
+        "Easy":   { "level": 3, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_e.json" },
         "Hard":   { "level": 5,  "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_h.json" },
         "Master": { "level": 9, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_m.json", "unlock": { "cost": 300 } }
       }
