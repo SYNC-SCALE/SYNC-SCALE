@@ -130,6 +130,20 @@
       }
     },
     {
+      "id": "song1005",
+      "title": "ハルジオン",
+      "artist": "魔王魂",
+      "charter": "やくるとちゃん",
+      "source": "free",
+      "audio": "ハルジオン.ogg",
+      "jacket": "ハルジオン.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "ハルジオン_e.json" },
+        "Hard":   { "level": 5, "chart": "ハルジオン_h.json" },
+        "Master": { "level": 9, "chart": "ハルジオン_m.json", "unlock": { "cost": 500 } }
+      }
+    },
+    {
       "id": "song2001",
       "title": "Switch",
       "artist": "Getty",
