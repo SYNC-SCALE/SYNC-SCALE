@@ -138,8 +138,8 @@
       "audio": "ハルジオン.ogg",
       "jacket": "ハルジオン.png",
       "diffs": {
-        "Easy":   { "level": 2, "chart": "ハルジオン_e.json" },
-        "Hard":   { "level": 5, "chart": "ハルジオン_h.json" },
+        "Easy":   { "level": 1, "chart": "ハルジオン_e.json" },
+        "Hard":   { "level": 4, "chart": "ハルジオン_h.json" },
         "Master": { "level": 9, "chart": "ハルジオン_m.json", "unlock": { "cost": 500 } }
       }
     },
