@@ -229,16 +229,16 @@
     },
     {
       "id": "song3001",
-      "title": "The Millkey Way NibiryuRemix",
+      "title": "The Millky Way NibiryuRemix",
       "artist": "Nibiryu(原曲：魔王魂)",
       "charter": "Nibiryu",
       "source": "Code",
-      "audio": "The Millkey Way NibiryuRemix.ogg",
-      "jacket": "The Millkey Way NibiryuRemix.png",
+      "audio": "The Millky Way NibiryuRemix.ogg",
+      "jacket": "The Millky Way NibiryuRemix.png",
       "diffs": {
-        "Easy":   { "level": 2, "chart": "The Millkey Way NibiryuRemix_e.json" },
-        "Hard":   { "level": 6, "chart": "The Millkey Way NibiryuRemix_h.json" },
-        "Master": { "level": 11, "chart": "The Millkey Way NibiryuRemix_m.json", "unlock": { "cost": 500 } }
+        "Easy":   { "level": 2, "chart": "The Millky Way NibiryuRemix_e.json" },
+        "Hard":   { "level": 6, "chart": "The Millky Way NibiryuRemix_h.json" },
+        "Master": { "level": 11, "chart": "The Millky Way NibiryuRemix_m.json", "unlock": { "cost": 500 } }
       }
     }
   ]
