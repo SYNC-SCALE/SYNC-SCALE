@@ -37,9 +37,7 @@
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
         { "level": 5, "type": "song",        "id": "song0003" },
-        { "level": 10, "type": "noteskin",       "id": "skin01_blue" },
-        { "level": 15, "type": "icon",       "id": "タルカン_icon.png" },
-        { "level": 20, "type": "bg",         "id": "タルカン_bg.png" }
+        { "level": 10, "type": "noteskin",       "id": "skin01_blue" }
       ]
     },
     {
@@ -56,9 +54,7 @@
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
         { "level": 5, "type": "song",        "id": "song3002" },
-        { "level": 10, "type": "noteskin",       "id": "skin01_blue" },
-        { "level": 15, "type": "icon",       "id": "シロハ_icon.png" },
-        { "level": 20, "type": "bg",         "id": "シロハ_bg.png" }
+        { "level": 10, "type": "noteskin",       "id": "skin01_White" }
       ]
     }
   ]
