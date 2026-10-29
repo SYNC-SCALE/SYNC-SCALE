@@ -226,6 +226,20 @@
         "Hard":   { "level": 7, "chart": "Chronomia_h.json" },
         "Master": { "level": 11, "chart": "Chronomia_m.json", "unlock": { "cost": 300 } }
       }
+    },
+    {
+      "id": "song3001",
+      "title": "The Millkey Way NibiryuRemix",
+      "artist": "Nibiryu(原曲：魔王魂)",
+      "charter": "Nibiryu",
+      "source": "Code",
+      "audio": "The Millkey Way NibiryuRemix.ogg",
+      "jacket": "The Millkey Way NibiryuRemix.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "The Millkey Way NibiryuRemix_e.json" },
+        "Hard":   { "level": 6, "chart": "The Millkey Way NibiryuRemix_h.json" },
+        "Master": { "level": 11, "chart": "The Millkey Way NibiryuRemix_m.json", "unlock": { "cost": 500 } }
+      }
     }
   ]
 }
