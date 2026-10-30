@@ -8,6 +8,13 @@
       "banner": "ev01_banner.png",
       "unlockSongs": ["song1002","song1003"],
       "multiplier": 0
+    },
+    {
+      "id": "ev02",
+      "title": "僕たちは最後の星祭りを開いた",
+      "banner": "ev02_banner.png",
+      "unlockSongs": ["song1005","song3001"],
+      "multiplier": 0
     }
   ]
 }
