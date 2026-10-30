@@ -102,6 +102,24 @@
   .difftab.arclocked:hover .arctip{display:block}
   /* 汎用選択モーダル */
   .choicebg{position:fixed;inset:0;z-index:4000;background:rgba(4,7,12,.66);display:none;align-items:center;justify-content:center}
+  /* 解禁演出ポップアップ */
+  .unlockbg{position:fixed;inset:0;z-index:4500;background:rgba(4,7,12,.72);display:none;align-items:center;justify-content:center;cursor:pointer}
+  .ulcard{min-width:300px;max-width:min(92vw,420px);background:linear-gradient(160deg,#121a28,#0b1018);border:1px solid var(--line2,#2a3647);border-radius:14px;padding:22px 20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .ulcard.in{animation:ulpop .32s cubic-bezier(.2,.9,.3,1.25)}
+  @keyframes ulpop{0%{transform:scale(.82);opacity:0}100%{transform:scale(1);opacity:1}}
+  .ulhead{font-size:13px;letter-spacing:3px;color:#ffe082;font-weight:800;margin-bottom:12px}
+  .uljk{width:200px;height:200px;max-width:70vw;object-fit:cover;border-radius:10px;border:1px solid var(--line2,#2a3647);background:#0e1219;display:inline-block}
+  .ultitle{font-size:17px;font-weight:700;margin:12px 0 10px;color:var(--ink,#e8eefc);word-break:break-word}
+  .ulbadges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .ulv{min-width:30px;padding:3px 8px;border:2px solid;border-radius:7px;font-weight:800;font-size:16px;line-height:1.3;background:rgba(255,255,255,.04)}
+  .ulskip{margin-top:16px;padding:7px 16px;background:transparent;color:var(--muted,#8aa0bd);border:1px solid var(--line2,#2a3647);border-radius:7px;cursor:pointer;font-size:12px}
+  .ullist{text-align:left;max-height:82vh;overflow:auto}
+  .ullist .ulhead{text-align:center}
+  .ulrows{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px}
+  .ulrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .ulname{font-weight:700;color:var(--ink,#e8eefc)}
+  .ulrb{display:flex;gap:6px}
+  .ulrb .ulv{min-width:24px;font-size:13px;padding:2px 6px}
   .choicebox{background:#111c2e;border:1px solid #3a4d6b;border-radius:10px;padding:20px 22px;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.55)}
   .choicetitle{font-size:14px;font-weight:700;margin-bottom:16px;text-align:center}
   .choicebtns{display:flex;flex-direction:column;gap:8px}
@@ -620,6 +638,7 @@ function maybeUnlockArcana(songId, score, failed, gaugeLevel){
   a.rate=Math.max(0,(+a.rate||0))+arcanaGainFor(score, failed, gaugeLevel);
   if(a.rate>=100){ a.unlocked=true; a.rate=100; }
   p.arcana[songId]=a; saveProfile(p);
+  if(a.unlocked)enqueueDiffUnlock(songId,'Arcana');   // アルカナ解禁も解禁演出へ
 }
 
 /* ===== 曲データ ===== */
@@ -718,7 +737,7 @@ function itemLabel(t){return ITEM_LABEL[t]||t;}
 function songSource(s){return (s&&s.acquire)||'free';}
 function ownedSong(s){ if(!s)return false; if(s.source==='user')return true;
   const a=songSource(s); if(a==='free')return true; return !!loadProfile().unlocks['song:'+s.id]; }
-function setSongOwned(id){const p=loadProfile();p.unlocks['song:'+id]=true;saveProfile(p);}
+function setSongOwned(id){const p=loadProfile();const k='song:'+id;const already=!!p.unlocks[k];p.unlocks[k]=true;saveProfile(p);if(!already)enqueueSongOwned(id);}
 // --- スキル(重複取得で☆最大5、過剰分は通貨1000) ---
 function grantSkill(id){ const p=loadProfile(); const s=p.skills[id]||{star:0,dupes:0};
   let res;
@@ -834,11 +853,87 @@ function unlockKey(id,diff){return id+'::'+diff;}
 function isDiffUnlocked(song,diff){ if(!song)return false; const d=song.diffs&&song.diffs[diff]; if(!d)return false;
   if(!d.unlock)return true;                                   // unlock 指定が無ければ最初から解禁
   return !!loadProfile().unlocks[unlockKey(song.id,diff)]; }
-function setUnlocked(id,diff){const p=loadProfile();p.unlocks[unlockKey(id,diff)]=true;saveProfile(p);}
+function setUnlocked(id,diff){const p=loadProfile();const k=unlockKey(id,diff);const already=!!p.unlocks[k];p.unlocks[k]=true;saveProfile(p);if(!already)enqueueDiffUnlock(id,diff);}
 function unlockCost(song,diff){const d=song&&song.diffs&&song.diffs[diff];return (d&&d.unlock&&+d.unlock.cost)||0;}
 function payUnlock(song,diff){ const cost=unlockCost(song,diff); if(getCurrency()<cost)return false;
   addCurrency(-cost); setUnlocked(song.id,diff); return true; }
 function ticketUnlock(song,diff){ if(getTickets()<=0)return false; addTickets(-1); setUnlocked(song.id,diff); return true; }
+
+/* ===== 解禁演出(ポップアップ) =====
+   どの画面でも、曲/難易度が新規解禁されたらガチャリザルト風のポップアップを出す。
+   楽曲解禁=その曲で初めて再生可能になった時 / 難易度解禁=既に遊べる曲へ難易度追加。
+   同tickの解禁は曲ごとにまとめ、複数曲は1クリックで順送り。スキップ/ESCで残りをリスト表示。 */
+let _unlockReady=false;      // ブート完了後のみ演出(初期化時の解禁では出さない)
+let _unlockBatch=null;       // 同一tickの解禁収集
+let _unlockQueue=[];         // 表示待ち(曲ごと)
+let _unlockShowing=false;
+function _diffPlayable(song,key){ return key==='Arcana'?arcanaUnlocked(song.id):isDiffUnlocked(song,key); }
+function _ensureUnlockBatch(){ if(_unlockBatch)return; _unlockBatch={map:new Map()}; setTimeout(_flushUnlockBatch,0); }
+function _batchEntry(songId){ _ensureUnlockBatch(); let e=_unlockBatch.map.get(songId);
+  if(!e){ e={diffs:new Set(),firstUnlock:false}; _unlockBatch.map.set(songId,e); } return e; }
+function enqueueDiffUnlock(songId,diffKey){
+  if(!_unlockReady)return; const song=songById(songId); if(!song)return;
+  const fresh=!_unlockBatch||!_unlockBatch.map.has(songId);
+  const e=_batchEntry(songId);
+  if(fresh){ const hadBefore=visibleDiffs(song).some(df=>df.key!==diffKey&&_diffPlayable(song,df.key)); e.firstUnlock=!hadBefore; }
+  e.diffs.add(diffKey);
+}
+function enqueueSongOwned(songId){
+  if(!_unlockReady)return; const song=songById(songId); if(!song)return;
+  const e=_batchEntry(songId); e.firstUnlock=true;
+  for(const df of visibleDiffs(song)) if(_diffPlayable(song,df.key)) e.diffs.add(df.key);
+}
+function _flushUnlockBatch(){
+  const b=_unlockBatch; _unlockBatch=null; if(!b)return;
+  for(const [songId,e] of b.map){ const song=songById(songId); if(!song)continue; const diffs=[...e.diffs]; if(!diffs.length)continue;
+    _unlockQueue.push({songId,diffs,firstUnlock:!!e.firstUnlock}); }
+  if(_unlockQueue.length&&!_unlockShowing)_showNextUnlock();
+}
+function _unlockOverlay(){ let bg=document.getElementById('unlockPop');
+  if(!bg){ bg=document.createElement('div'); bg.id='unlockPop'; bg.className='unlockbg'; document.body.appendChild(bg); } return bg; }
+function _diffBadges(song,diffs){
+  const order={Easy:0,Hard:1,Master:2,Arcana:3};
+  return diffs.slice().sort((a,b)=>(order[a]??9)-(order[b]??9)).map(k=>{
+    const d=song&&song.diffs&&song.diffs[k]; const lv=(d&&d.level!=null)?d.level:'?';
+    return `<span class="ulv" style="color:${diffColor(k)};border-color:${diffColor(k)}">${lv}</span>`; }).join('');
+}
+function _showNextUnlock(){
+  if(!_unlockQueue.length){ _closeUnlockOverlay(); _unlockShowing=false; return; }
+  _unlockShowing=true;
+  const item=_unlockQueue[0]; const bg=_unlockOverlay(); const song=songById(item.songId);
+  const jk=song?songAnyJacket(song):null;
+  const title=song?songTitle(song,'Master'):String(item.songId).replace(/^b:/,'');
+  const head=item.firstUnlock?'楽曲解禁':'難易度解禁';
+  bg.innerHTML=`<div class="ulcard in" id="ulCard">`+
+    `<div class="ulhead">${head}</div>`+
+    (jk?`<img class="uljk" src="${jk}" alt="">`:`<div class="uljk nojk"></div>`)+
+    `<div class="ultitle">${esc(title)}</div>`+
+    `<div class="ulbadges">${_diffBadges(song,item.diffs)}</div>`+
+    (_unlockQueue.length>1?`<button class="ulskip" id="ulSkip">以降をスキップ (ESC)</button>`:``)+
+    `</div>`;
+  bg.style.display='flex';
+  playSound('unlock');
+  bg.onclick=ev=>{ if(ev.target&&ev.target.id==='ulSkip')return; _advanceUnlock(); };
+  const sk=document.getElementById('ulSkip'); if(sk)sk.onclick=ev=>{ ev.stopPropagation(); _skipUnlocks(); };
+}
+function _advanceUnlock(){ _unlockQueue.shift(); _showNextUnlock(); }
+function _skipUnlocks(){ const rest=_unlockQueue.slice(); _unlockQueue.length=0; _renderUnlockList(rest); }
+function _renderUnlockList(items){
+  const bg=_unlockOverlay();
+  const rows=items.map(it=>{ const s=songById(it.songId); const t=s?songTitle(s,'Master'):String(it.songId).replace(/^b:/,'');
+    return `<div class="ulrow"><span class="ulname">${esc(t)}</span><span class="ulrb">${_diffBadges(s,it.diffs)}</span></div>`; }).join('');
+  bg.innerHTML=`<div class="ulcard ullist in"><div class="ulhead">解禁一覧</div><div class="ulrows">${rows||'<div class="dim">なし</div>'}</div><button class="ulskip" id="ulClose">閉じる</button></div>`;
+  bg.style.display='flex'; playSound('unlock');
+  bg.onclick=()=>{ _closeUnlockOverlay(); _unlockShowing=false; };
+}
+function _closeUnlockOverlay(){ const bg=document.getElementById('unlockPop'); if(bg)bg.style.display='none'; }
+// ESC: 演出中は以降スキップ→リスト、リスト表示中は閉じる(他のESC処理より先に捕捉)
+window.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const bg=document.getElementById('unlockPop'); if(!bg||bg.style.display==='none')return;
+  e.preventDefault(); e.stopPropagation();
+  if(_unlockQueue.length)_skipUnlocks(); else { _closeUnlockOverlay(); _unlockShowing=false; }
+},true);
 function renderCurrency(){
   const el=document.getElementById('curLine'); if(el)el.textContent=fmtCur(getCurrency());
   const d=document.getElementById('dbgCur'); if(d)d.textContent=fmtCur(getCurrency());
@@ -906,6 +1001,7 @@ async function initSongs(){
   await loadContentDB();
   if(!songById(selId))selId=songs.length?songs[0].id:null;
   if(current==='select')renderAll();
+  _unlockReady=true;   // ブート完了後の解禁から演出を出す
 }
 // コンテンツDB(読み取り専用。id参照でつながる拡張可能なJSON群)
 const CONTENT={shop:[],partners:[],skills:[],noteskins:[],images:[],events:[],sounds:{},credits:{},partnerCfg:{cost:3000,maxLevel:20,slotUnlocks:[1]}};
