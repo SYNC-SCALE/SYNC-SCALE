@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "_note": "楽曲パック。songs=収録曲id(songs.json準拠・連番の解禁順)。購入で1曲目が解禁され(Easy/Hardは既定で再生可)、各曲を unlockScore 以上のスコアでクリア(Fail以外・任意難易度)すると次の曲が解禁される。2曲目以降は未解禁の間、選曲リストに『[前の曲名]クリアで解禁』(前曲も未解禁なら『？？？クリアで解禁』)の選択不可項目として表示される。ショップ購入は shop.json 側で reward.type:'pack' と pay(パックはアルカナム晶石 arcanaShard 想定)で指定。収録曲は songs.json 側で source:'pack' にしておくと購入前はフリープレイ選曲に出ない。unlockScore 省略時は 900000。",
+  "packs": [
+    {
+      "id": "pack01",
+      "title": "ドラゴンパック Vol.1",
+      "songs": ["song04", "song05", "song06"],
+      "unlockScore": 900000
+    }
+  ]
+}
