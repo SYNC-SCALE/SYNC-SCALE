@@ -4,8 +4,8 @@
   "packs": [
     {
       "id": "pack01",
-      "title": "ドラゴンパック Vol.1",
-      "songs": ["song04", "song05", "song06"],
+      "title": "テスト用（楽曲は含まれません）",
+      "songs": ["song5004", "song5005", "song5006"],
       "unlockScore": 900000
     }
   ]
