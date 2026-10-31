@@ -150,7 +150,7 @@
       "desc": "HardGage【LV.3】コンボ詳細を表示する。",
       "gauge": 3,
       "unique": true,
-      "mod": "speed80","comboDetail","statsPanel",
+      "mod": "comboDetail"
       "stats": [
         { "star": 1, "curAdd": 0, "curMul": 0.15, "ticketAdd": 0.15 },
         { "star": 5, "curAdd": 0, "curMul": 0.75, "ticketAdd": 0.75 }
