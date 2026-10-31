@@ -1213,6 +1213,13 @@ function renderEvents(){
   if(!CONTENT.events.length){ const m=document.createElement('div'); m.className='muted'; m.textContent='開催中のイベントはありません'; box.appendChild(m); }
 }
 function imageAsset2(f){ return DATA_BASE+'images/'+f; }   // バナーも images/ 配下
+// イベント画面でその曲を表に出してよいか。所持済み、または現在到達中の解禁チャレンジ曲のみ表示。
+// それ以外(未到達の解禁曲)は ？？？ / NoSignal で完全秘匿する。
+function eventSongRevealed(ev, st, bare){
+  const so=songById('b:'+bare);
+  if(so && ownedSong(so)) return true;
+  return eventChallengeReady(ev,st) && eventChallengeSong(ev,st)===bare;
+}
 function renderEventPage(){
   const ev=eventMetaById(epId);
   if(!ev){ document.getElementById('epTitle').textContent='イベント'; return; }
@@ -1220,17 +1227,27 @@ function renderEventPage(){
   const st=eventState(ev.id);
   const usongs=eventUnlockSongs(ev), n=usongs.length, max=eventMax(ev);
   const chReady=eventChallengeReady(ev,st), chBare=eventChallengeSong(ev,st);
-  // ジャケット(次のチャレンジ曲、無ければ最後の解禁曲)
-  { const jb=chBare||usongs[n-1]; const jso=jb?songById('b:'+jb):null; const jk=document.getElementById('epJacket'); const jsrc=songAnyJacket(jso);
-    if(jk){ if(jsrc){ jk.src=jsrc; jk.style.display=''; } else jk.style.display='none'; } }
+  // ジャケット(次のチャレンジ曲、無ければ最後の解禁曲)。未到達の解禁曲は NoSignal で秘匿。
+  { const jb=chBare||usongs[n-1]; const jk=document.getElementById('epJacket');
+    const ph=jk&&jk.parentElement?jk.parentElement.querySelector('.ph'):null;
+    const revealed=jb?eventSongRevealed(ev,st,jb):false;
+    const jso=(revealed&&jb)?songById('b:'+jb):null; const jsrc=jso?songAnyJacket(jso):null;
+    if(jk){
+      if(revealed&&jsrc){ jk.src=jsrc; jk.style.display=''; if(ph)ph.textContent='ジャケット'; }
+      else { jk.removeAttribute('src'); jk.style.display='none'; if(ph)ph.textContent=revealed?'ジャケット':'NoSignal'; }
+    } }
   // 現在の相棒(立ち絵)を表示
   { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null; const pn=document.getElementById('epPartner');
     if(pn){ if(m&&m.chara){ pn.src=partnerAsset(m.chara); pn.style.display=''; pn.onerror=()=>{pn.style.display='none';}; } else pn.style.display='none'; } }
   // 解禁曲の一覧とポイント状況
   document.getElementById('epRewards').innerHTML=usongs.map((bare,i)=>{
     const done=i<st.unlockedCount, isNext=(i===st.unlockedCount);
-    const so=songById('b:'+bare), nm=so?songTitle(so,'Master'):bare;
-    const mark=done?'✓':(isNext&&chReady?'★':'・'), tag=done?'（解禁済）':(isNext&&chReady?'（チャレンジ可）':'');
+    const revealed=eventSongRevealed(ev,st,bare);
+    const so=songById('b:'+bare);
+    const nm=revealed?(so?songTitle(so,'Master'):bare):'？？？';   // 未到達は秘匿
+    const mark=done?'✓':(isNext&&chReady?'★':'・');
+    // 解禁曲・課題(中ボス)曲とも一律「（楽曲クリア）」。
+    const tag=done?'（楽曲クリア）':(isNext&&chReady?'（チャレンジ可）':'');
     return `<div class="r${done?' done':''}">${mark} ${(i+1)*200}: ${esc(nm)}${tag}</div>`;
   }).join('')||'<span class="muted">解禁曲なし</span>';
   document.getElementById('epMult').textContent = n?(`解禁 ${st.unlockedCount} / ${n}`+(st.stack>0?`　保留中 +${st.stack}`:'')):'';
