@@ -101,6 +101,9 @@
   .difftab .arctip b{color:var(--tc)}
   .difftab.arclocked:hover .arctip{display:block}
   /* 汎用選択モーダル */
+  /* インラインアイテムアイコン(文字サイズの正方形・ベースライン合わせ) */
+  .iic{width:1em;height:1em;object-fit:contain;display:inline-block;vertical-align:-0.15em}
+  .iic.ph{line-height:1;text-align:center;color:var(--acc)}
   .choicebg{position:fixed;inset:0;z-index:4000;background:rgba(4,7,12,.66);display:none;align-items:center;justify-content:center}
   /* 解禁演出ポップアップ */
   .unlockbg{position:fixed;inset:0;z-index:4500;background:rgba(4,7,12,.72);display:none;align-items:center;justify-content:center;cursor:pointer}
@@ -110,7 +113,9 @@
   .ulhead{font-size:13px;letter-spacing:3px;color:#ffe082;font-weight:800;margin-bottom:12px}
   .uljk{width:200px;height:200px;max-width:70vw;object-fit:cover;border-radius:10px;border:1px solid var(--line2,#2a3647);background:#0e1219;display:inline-block}
   .ultitle{font-size:17px;font-weight:700;margin:12px 0 10px;color:var(--ink,#e8eefc);word-break:break-word}
-  .ulbadges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .ulitem{height:96px;display:flex;align-items:center;justify-content:center;margin:4px 0}
+  .ulamt{font-weight:800;font-size:20px;color:var(--ink,#e8eefc)}
+  .ulbadges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center}
   .ulv{min-width:30px;padding:3px 8px;border:2px solid;border-radius:7px;font-weight:800;font-size:16px;line-height:1.3;background:rgba(255,255,255,.04)}
   .ulskip{margin-top:16px;padding:7px 16px;background:transparent;color:var(--muted,#8aa0bd);border:1px solid var(--line2,#2a3647);border-radius:7px;cursor:pointer;font-size:12px}
   .ullist{text-align:left;max-height:82vh;overflow:auto}
@@ -278,7 +283,7 @@
     <div class="userwrap">
       <div class="avatar"></div>
       <div><div style="font-weight:600" id="userName">ゲスト</div>
-        <div class="rating small"><span id="curLine">₡ 0</span>　レーティング(仮) 0.00</div></div>
+        <div class="rating small"><span id="curLine">0</span>　レーティング(仮) 0.00</div></div>
     </div>
   </div>
   <div class="selbody">
@@ -360,7 +365,7 @@
     <div class="field" id="dbgField"><label>デバッグモード</label><button class="cta" id="dbgExit">デバッグモードを終了</button><span class="val muted small" style="text-align:left">有効化はイベント画面のシリアルコード入力から。ここで終了できます。</span></div>
     <div class="field" id="dbgCurField"><label>通貨・アイテム(デバッグ)</label>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span id="dbgCur" style="min-width:110px">₡ 0</span>
+        <span id="dbgCur" style="min-width:110px">0</span>
         <button class="cta" id="curAdd">+1000</button>
         <button class="cta" id="curReset">0にする</button>
         <span id="dbgTicket" style="min-width:90px">チケット 0</span>
@@ -467,7 +472,7 @@
 <!-- ============ パートナー ============ -->
 <section id="partner" class="screen">
   <div class="topbar"><button class="back" data-go="home">←</button><div class="h-title">パートナー</div>
-    <div class="grow"></div><div class="rating small" id="pnCur">₡ 0</div></div>
+    <div class="grow"></div><div class="rating small" id="pnCur">0</div></div>
   <div class="panel" style="overflow-y:auto;flex:1">
     <div class="pndetail" id="pnDetail"></div>
     <div class="shop-sec"><h3>パートナー</h3><div class="shop-grid" id="pnPartnerGrid"></div></div>
@@ -478,7 +483,7 @@
 <!-- ============ イベント一覧 ============ -->
 <section id="events" class="screen">
   <div class="topbar"><button class="back" data-go="home">←</button><div class="h-title">イベント</div>
-    <div class="grow"></div><div class="rating small"><span id="evCur">₡ 0</span></div></div>
+    <div class="grow"></div><div class="rating small"><span id="evCur">0</span></div></div>
   <div class="panel" style="overflow-y:auto">
     <div class="shop-grid" id="evGrid"></div>
   </div>
@@ -487,7 +492,7 @@
 <!-- ============ イベント本体 ============ -->
 <section id="eventpage" class="screen">
   <div class="topbar"><button class="back" data-go="events">←</button><div class="h-title" id="epTitle">イベント</div>
-    <div class="grow"></div><div class="rating small">イベント券 <span id="epTk">0</span></div></div>
+    <div class="grow"></div><div class="rating small"><span id="epTk">0</span></div></div>
   <div class="epbody">
     <div class="eptop">
       <div class="ep-jacket"><img id="epJacket" alt="" style="display:none"><span class="ph">ジャケット</span></div>
@@ -495,7 +500,7 @@
       <div class="ep-partner"><img id="epPartner" alt="" style="display:none"></div>
       <div class="ep-mult" id="epMult"></div>
       <div class="ep-bar"><div class="ep-fill" id="epFill"></div><div id="epMarks"></div></div>
-      <div class="ep-ticket"><button class="cta" id="epUseTicket">イベント券を投入(+進捗)</button><span class="muted small" id="epProg"></span></div>
+      <div class="ep-ticket"><button class="cta" id="epUseTicket">イベントチケットを投入(+進捗)</button><span class="muted small" id="epProg"></span></div>
     </div>
     <div class="epselect">
       <div class="listcol"><div class="listscroll"><div id="epList"></div></div></div>
@@ -507,7 +512,7 @@
 <!-- ============ ショップ ============ -->
 <section id="shop" class="screen">
   <div class="topbar"><button class="back" data-go="home">←</button><div class="h-title">ショップ</div>
-    <div class="grow"></div><div class="rating small" id="shopCur">₡ 0</div></div>
+    <div class="grow"></div><div class="rating small" id="shopCur">0</div></div>
   <div class="panel">
     <div class="note">曲を通貨で解禁できます。購入した曲はフリープレイに追加されます。</div>
     <div id="shopList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
@@ -688,11 +693,11 @@ function hasScoresInMode(mode){ if(mode==='normal')return true; const m=loadScor
    通貨・解禁フラグ・装備を1つの器に集約。将来のショップ/パートナー/イベントはここを読む。
    バージョン付きにして後方互換の移行を可能にする。 */
 const PROFKEY='rhythmProfile';
-const PROFILE_DEFAULT={version:1,currency:0,unlocks:{},items:{diffTicket:0,eventTicket:0},
+const PROFILE_DEFAULT={version:1,currency:0,unlocks:{},items:{diffTicket:0,eventTicket:0,arcanaShard:0},
   skills:{},partners:{},events:{},arcana:{},redeemedCodes:[],equipped:{partner:null,skills:[]}};
 function loadProfile(){
   try{ const p=Object.assign({},PROFILE_DEFAULT,JSON.parse(localStorage.getItem(PROFKEY)||'{}'));
-    p.unlocks=p.unlocks||{}; p.items=Object.assign({diffTicket:0,eventTicket:0},p.items||{});
+    p.unlocks=p.unlocks||{}; p.items=Object.assign({diffTicket:0,eventTicket:0,arcanaShard:0},p.items||{});
     p.skills=p.skills||{}; p.partners=p.partners||{}; p.events=p.events||{}; p.arcana=p.arcana||{}; p.redeemedCodes=p.redeemedCodes||[];
     p.equipped=p.equipped||{partner:null,skills:[]}; return p; }
   catch(e){ return JSON.parse(JSON.stringify(PROFILE_DEFAULT)); }
@@ -723,7 +728,8 @@ function ensureDefaultUnlocks(){
 function getCurrency(){return loadProfile().currency||0;}
 function addCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round((p.currency||0)+n));saveProfile(p);return p.currency;}
 function setCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round(n)||0);saveProfile(p);}
-function fmtCur(n){return '₡ '+(n||0).toLocaleString('en-US');}
+// 文字専用(alert/ツールチップ等。アイコンを出せない箇所)。画面表示は curHTML を使う。
+function fmtCur(n){return (n||0).toLocaleString('en-US')+' '+ITEMS.currency.label;}
 // --- 消費アイテム(汎用) ---
 function itemCount(type){return loadProfile().items[type]||0;}
 function addItem(type,n){const p=loadProfile();p.items[type]=Math.max(0,(p.items[type]||0)+n);saveProfile(p);return p.items[type];}
@@ -731,8 +737,28 @@ function getTickets(){return itemCount('diffTicket');}
 function addTickets(n){return addItem('diffTicket',n);}
 function getEventTickets(){return itemCount('eventTicket');}
 function addEventTickets(n){return addItem('eventTicket',n);}
-const ITEM_LABEL={diffTicket:'解禁券',eventTicket:'イベント券'};
-function itemLabel(t){return ITEM_LABEL[t]||t;}
+// アイテム/通貨の定義。label=名称, note=ツールチップ, img=images.json の id(アイコン画像)。
+// currency は通貨(専用フィールド)だが表示上は同じ仕組みで扱う。
+const ITEMS={
+  currency:   { label:'シャード',         note:'シャード：ショップや難易度解禁に使う基本通貨',  img:'ic_shard' },
+  diffTicket: { label:'レゾナイト晶石',    note:'レゾナイト晶石：難易度の解禁に使用',           img:'ic_resonite' },
+  eventTicket:{ label:'イベントチケット',  note:'イベントチケット：イベントの通常プレイで消費',  img:'ic_eventticket' },
+  arcanaShard:{ label:'アルカナム晶石',    note:'アルカナム晶石：アルカナ関連のアイテム',        img:'ic_arcanum' },
+};
+const ITEM_LABEL={diffTicket:ITEMS.diffTicket.label,eventTicket:ITEMS.eventTicket.label,arcanaShard:ITEMS.arcanaShard.label,currency:ITEMS.currency.label};
+function itemLabel(t){return (ITEMS[t]&&ITEMS[t].label)||ITEM_LABEL[t]||t;}
+function itemNote(t){return (ITEMS[t]&&ITEMS[t].note)||itemLabel(t);}
+// 文字サイズと同じ正方形アイコンをインライン埋め込み(レイアウトを壊さない)。ホバーで注釈(title)。
+// 画像未登録/読込失敗時は ◆ にフォールバック。px 指定で拡大(ポップアップ用)。
+function itemIcon(key, px){
+  const it=ITEMS[key]; const title=esc(it?it.note:key); const alt=esc(it?it.label:key);
+  const im=it?imageById(it.img):null; const src=im?imageAsset(im.file):null;
+  const style=px?` style="width:${px}px;height:${px}px"`:'';
+  if(src)return `<img class="iic" src="${src}" alt="${alt}" title="${title}"${style} onerror="this.replaceWith(document.createTextNode('◆'))">`;
+  return `<span class="iic ph" title="${title}"${style}>◆</span>`;
+}
+function itemAmtHTML(key,n){ return itemIcon(key)+' '+(+n||0).toLocaleString('en-US'); }
+function curHTML(n){ return itemAmtHTML('currency', n); }
 // --- 曲の所持(曲自体の解禁: free/user は常に所持) ---
 function songSource(s){return (s&&s.acquire)||'free';}
 function ownedSong(s){ if(!s)return false; if(s.source==='user')return true;
@@ -765,15 +791,23 @@ function notifySkill(res){
   clearTimeout(_skillToastT); _skillToastT=setTimeout(()=>{ el.style.opacity='0'; },2200);
 }
 // --- 報酬付与(汎用) ---
+// 報酬を付与し、成功したら true を返す。参照id(曲/スキル/スキン/相棒)が存在しない等で
+// 適用できない場合は false(→コード消費を止める等に使う)。
 function grantReward(rw){
-  if(!rw||!rw.type)return;
-  if(rw.type==='song')setSongOwned('b:'+rw.id);
-  else if(rw.type==='diffTicket')addTickets(1);
-  else if(rw.type==='eventTicket')addEventTickets(1);
-  else if(rw.type==='skill')grantSkill(rw.id);
-  else if(rw.type==='currency')addCurrency(+rw.id||0);
-  else if(rw.type==='partner'){ const p=loadProfile(); if(!p.partners[rw.id])p.partners[rw.id]={level:1,exp:0}; p.unlocks['partner:'+rw.id]=true; saveProfile(p); }
-  else { const p=loadProfile(); p.unlocks[rw.type+':'+rw.id]=true; saveProfile(p); }  // skin/icon等
+  if(!rw||!rw.type)return false;
+  switch(rw.type){
+    case 'song':      if(!songById('b:'+rw.id))return false; setSongOwned('b:'+rw.id); return true;
+    case 'diffTicket':  addTickets(1); enqueueItem('diffTicket',1); return true;
+    case 'eventTicket': addEventTickets(1); enqueueItem('eventTicket',1); return true;
+    case 'arcanaShard': addItem('arcanaShard',+rw.id>0?+rw.id:1); enqueueItem('arcanaShard',+rw.id>0?+rw.id:1); return true;
+    case 'currency':    { const amt=+rw.id||0; addCurrency(amt); if(amt>0)enqueueItem('currency',amt); } return true;
+    case 'skill':       if(typeof skillById==='function'&&!skillById(rw.id))return false; grantSkill(rw.id); return true;
+    case 'noteskin':    if(typeof noteskinById==='function'&&!noteskinById(rw.id))return false;
+                        { const p=loadProfile(); p.unlocks['noteskin:'+rw.id]=true; saveProfile(p); } return true;
+    case 'partner':     if(!partnerMetaById(rw.id))return false;
+                        { const p=loadProfile(); if(!p.partners[rw.id])p.partners[rw.id]={level:1,exp:0}; p.unlocks['partner:'+rw.id]=true; saveProfile(p); } return true;
+    default:            { const p=loadProfile(); p.unlocks[rw.type+':'+rw.id]=true; saveProfile(p); } return true;  // icon/bg 等
+  }
 }
 /* ===== イベント ===== */
 function eventMetaById(id){return CONTENT.events.find(e=>e.id===id);}
@@ -828,10 +862,17 @@ function redeemEventCode(code){
   if(DEBUG_BUILD && code.toLowerCase()===DEBUG_CODE.toLowerCase()){ localStorage.setItem('rhythmDebug','1'); return {ok:true,debug:true}; }
   for(const c of (CONTENT.codes||[])){
     if(String(c.code).toLowerCase()===code.toLowerCase()){
+      // デバッグ有効化コード(codes.json で reward.type:"debug")。消費せず再入力可。
+      if(c.reward&&c.reward.type==='debug'){
+        if(!DEBUG_BUILD)return {notfound:true};
+        localStorage.setItem('rhythmDebug','1'); return {ok:true,debug:true};
+      }
       const p=loadProfile(); p.redeemedCodes=p.redeemedCodes||[];
       if(p.redeemedCodes.map(x=>x.toLowerCase()).includes(String(c.code).toLowerCase()))return {used:true};
+      // 報酬が適用できない(曲/スキル等のidが不正・不存在)ならコードを消費しない。
+      if(!grantReward(c.reward))return {error:true, reward:c.reward};
       p.redeemedCodes.push(c.code); saveProfile(p);
-      grantReward(c.reward); return {ok:true,reward:c.reward};
+      return {ok:true,reward:c.reward};
     }
   }
   return {notfound:true};
@@ -839,7 +880,7 @@ function redeemEventCode(code){
 
 // --- ショップ購入(通貨払い または チケット払い=換金) ---
 function canAfford(entry){ if(entry.pay)return itemCount(entry.pay.type)>=(entry.pay.amount||1); return getCurrency()>=(+entry.cost||0); }
-function priceLabel(entry){ if(entry.pay)return itemLabel(entry.pay.type)+' ×'+(entry.pay.amount||1); return fmtCur(entry.cost); }
+function priceLabel(entry){ if(entry.pay)return itemIcon(entry.pay.type)+' ×'+(entry.pay.amount||1); return curHTML(entry.cost); }
 function buyShop(entry){
   if(entry.pay){ const amt=entry.pay.amount||1; if(itemCount(entry.pay.type)<amt)return false;
     addItem(entry.pay.type,-amt); grantReward(entry.reward); return true; }
@@ -897,20 +938,37 @@ function _diffBadges(song,diffs){
     const d=song&&song.diffs&&song.diffs[k]; const lv=(d&&d.level!=null)?d.level:'?';
     return `<span class="ulv" style="color:${diffColor(k)};border-color:${diffColor(k)}">${lv}</span>`; }).join('');
 }
+// アイテム獲得(通貨/各種晶石/チケット)をポップアップキューへ。_unlockReady 後のみ。
+function enqueueItem(itemKey, amount){
+  if(!_unlockReady)return; if(!ITEMS[itemKey])return;
+  _unlockQueue.push({kind:'item', itemKey, amount:+amount||0});
+  if(!_unlockShowing)_showNextUnlock();
+}
 function _showNextUnlock(){
   if(!_unlockQueue.length){ _closeUnlockOverlay(); _unlockShowing=false; return; }
   _unlockShowing=true;
-  const item=_unlockQueue[0]; const bg=_unlockOverlay(); const song=songById(item.songId);
-  const jk=song?songAnyJacket(song):null;
-  const title=song?songTitle(song,'Master'):String(item.songId).replace(/^b:/,'');
-  const head=item.firstUnlock?'楽曲解禁':'難易度解禁';
-  bg.innerHTML=`<div class="ulcard in" id="ulCard">`+
-    `<div class="ulhead">${head}</div>`+
-    (jk?`<img class="uljk" src="${jk}" alt="">`:`<div class="uljk nojk"></div>`)+
-    `<div class="ultitle">${esc(title)}</div>`+
-    `<div class="ulbadges">${_diffBadges(song,item.diffs)}</div>`+
-    (_unlockQueue.length>1?`<button class="ulskip" id="ulSkip">以降をスキップ (ESC)</button>`:``)+
-    `</div>`;
+  const item=_unlockQueue[0]; const bg=_unlockOverlay();
+  const skipBtn=(_unlockQueue.length>1?`<button class="ulskip" id="ulSkip">以降をスキップ (ESC)</button>`:``);
+  if(item.kind==='item'){
+    const it=ITEMS[item.itemKey];
+    bg.innerHTML=`<div class="ulcard in" id="ulCard">`+
+      `<div class="ulhead">アイテム獲得</div>`+
+      `<div class="ulitem">${itemIcon(item.itemKey,96)}</div>`+
+      `<div class="ultitle">${esc(it.label)}</div>`+
+      `<div class="ulbadges"><span class="ulamt">×${(+item.amount||0).toLocaleString('en-US')}</span></div>`+
+      skipBtn+`</div>`;
+  }else{
+    const song=songById(item.songId);
+    const jk=song?songAnyJacket(song):null;
+    const title=song?songTitle(song,'Master'):String(item.songId).replace(/^b:/,'');
+    const head=item.firstUnlock?'楽曲解禁':'難易度解禁';
+    bg.innerHTML=`<div class="ulcard in" id="ulCard">`+
+      `<div class="ulhead">${head}</div>`+
+      (jk?`<img class="uljk" src="${jk}" alt="">`:`<div class="uljk nojk"></div>`)+
+      `<div class="ultitle">${esc(title)}</div>`+
+      `<div class="ulbadges">${_diffBadges(song,item.diffs)}</div>`+
+      skipBtn+`</div>`;
+  }
   bg.style.display='flex';
   playSound('unlock');
   bg.onclick=ev=>{ if(ev.target&&ev.target.id==='ulSkip')return; _advanceUnlock(); };
@@ -920,9 +978,12 @@ function _advanceUnlock(){ _unlockQueue.shift(); _showNextUnlock(); }
 function _skipUnlocks(){ const rest=_unlockQueue.slice(); _unlockQueue.length=0; _renderUnlockList(rest); }
 function _renderUnlockList(items){
   const bg=_unlockOverlay();
-  const rows=items.map(it=>{ const s=songById(it.songId); const t=s?songTitle(s,'Master'):String(it.songId).replace(/^b:/,'');
+  const rows=items.map(it=>{
+    if(it.kind==='item'){ const m=ITEMS[it.itemKey];
+      return `<div class="ulrow"><span class="ulname">${esc(m?m.label:it.itemKey)}</span><span class="ulrb">${itemIcon(it.itemKey)} ×${(+it.amount||0).toLocaleString('en-US')}</span></div>`; }
+    const s=songById(it.songId); const t=s?songTitle(s,'Master'):String(it.songId).replace(/^b:/,'');
     return `<div class="ulrow"><span class="ulname">${esc(t)}</span><span class="ulrb">${_diffBadges(s,it.diffs)}</span></div>`; }).join('');
-  bg.innerHTML=`<div class="ulcard ullist in"><div class="ulhead">解禁一覧</div><div class="ulrows">${rows||'<div class="dim">なし</div>'}</div><button class="ulskip" id="ulClose">閉じる</button></div>`;
+  bg.innerHTML=`<div class="ulcard ullist in"><div class="ulhead">獲得一覧</div><div class="ulrows">${rows||'<div class="dim">なし</div>'}</div><button class="ulskip" id="ulClose">閉じる</button></div>`;
   bg.style.display='flex'; playSound('unlock');
   bg.onclick=()=>{ _closeUnlockOverlay(); _unlockShowing=false; };
 }
@@ -935,9 +996,9 @@ window.addEventListener('keydown',e=>{
   if(_unlockQueue.length)_skipUnlocks(); else { _closeUnlockOverlay(); _unlockShowing=false; }
 },true);
 function renderCurrency(){
-  const el=document.getElementById('curLine'); if(el)el.textContent=fmtCur(getCurrency());
-  const d=document.getElementById('dbgCur'); if(d)d.textContent=fmtCur(getCurrency());
-  const t=document.getElementById('dbgTicket'); if(t)t.textContent='解禁券 '+getTickets()+' / ｲﾍﾞﾝﾄ券 '+getEventTickets();
+  const el=document.getElementById('curLine'); if(el)el.innerHTML=curHTML(getCurrency());
+  const d=document.getElementById('dbgCur'); if(d)d.innerHTML=curHTML(getCurrency());
+  const t=document.getElementById('dbgTicket'); if(t)t.innerHTML=itemAmtHTML('diffTicket',getTickets())+' / '+itemAmtHTML('eventTicket',getEventTickets())+' / '+itemAmtHTML('arcanaShard',itemCount('arcanaShard'));
 }
 
 // --- manifest(songs.json)から同梱曲を構築(譜面/音源は遅延取得) ---
@@ -1180,7 +1241,7 @@ function rewardBase(counts,score){
 let epId=null, epSelId=null, epDiff='Master';
 function rewardName2(rw){ return (typeof rewardName==='function')?rewardName(rw):(rw.type+' '+rw.id); }
 function renderEvents(){
-  const cur=document.getElementById('evCur'); if(cur)cur.textContent=fmtCur(getCurrency());
+  const cur=document.getElementById('evCur'); if(cur)cur.innerHTML=curHTML(getCurrency());
   const box=document.getElementById('evGrid'); if(!box)return; box.innerHTML='';
   // コード入力カード
   const cc=document.createElement('div'); cc.className='ev-codecard';
@@ -1194,6 +1255,7 @@ function renderEvents(){
     if(r.debug){ msg.textContent='デバッグモードを有効化しました'; }
     else if(r.ok){ msg.textContent='受け取りました: '+rewardName2(r.reward); renderCurrency(); renderEvents(); }
     else if(r.used)msg.textContent='使用済みのコードです';
+    else if(r.error)msg.textContent='報酬を適用できませんでした（codes.jsonの報酬id/typeを確認。コードは未消費）';
     else msg.textContent='コードが見つかりません';
   };
   // イベントカード
@@ -1258,7 +1320,7 @@ function renderEventPage(){
     document.getElementById('epProg').textContent='進捗 '+pr+' / '+max+(chReady?'（ポイント到達）':''); }
   // 券投入ボタンは廃止。所持枚数を表示。
   { const tk=document.getElementById('epUseTicket'); if(tk)tk.style.display='none'; }
-  { const tk=document.getElementById('epTk'); if(tk){ tk.textContent=getEventTickets(); if(tk.parentElement)tk.parentElement.style.display=''; } }
+  { const tk=document.getElementById('epTk'); if(tk){ tk.innerHTML=itemAmtHTML('eventTicket',getEventTickets()); if(tk.parentElement)tk.parentElement.style.display=''; } }
   // 2フェーズ制:
   //   グラインド(進捗が解禁ポイント未満) → 解禁済み楽曲のみ選択・イベント券1枚・進行値を獲得
   //   チャレンジ(進捗が解禁ポイント到達=chReady) → 対象曲1曲のみ・券不要・パートナー無効/Lv3ゲージ固定
@@ -1314,7 +1376,7 @@ function renderEventSide(ev, isCh){
   const playable = isCh ? !!(s && d) : eventPlayable(s, epDiff);
   const note = isCh
     ? '<div class="pmeta" style="color:#ffb14e">解禁チャレンジ：パートナー無効・体力ゲージLv3固定・Failせず完走（券不要）</div>'
-    : `<div class="pmeta">通常プレイで進行値を獲得（イベント券1枚）</div>`;
+    : `<div class="pmeta">通常プレイで進行値を獲得（${itemIcon('eventTicket')}1枚）</div>`;
   const btn = isCh ? '解禁▶' : '▶';
   box.innerHTML=
     `<div class="difftabs-h">${tabs}</div>`+
@@ -1324,7 +1386,7 @@ function renderEventSide(ev, isCh){
       `<div class="startrow"><div class="grow"></div><button class="startbtn" id="epStart" title="${isCh?'解禁チャレンジ':'プレイ'}"${playable?'':' disabled style="opacity:.4"'}>${btn}</button></div></div>`;
   box.querySelectorAll('.difftab[data-d]').forEach(b=>b.onclick=()=>{ epDiff=b.dataset.d; renderEventPage(); });
   const stbtn=document.getElementById('epStart'); if(stbtn&&playable)stbtn.onclick=()=>{
-    if(!isCh){ if(getEventTickets()<1){ alert('イベント券が足りません（通常プレイに1枚必要）'); return; } addEventTickets(-1); }   // 通常は1枚消費・チャレンジは無消費
+    if(!isCh){ if(getEventTickets()<1){ alert('イベントチケットが足りません（通常プレイに1枚必要）'); return; } addEventTickets(-1); }   // 通常は1枚消費・チャレンジは無消費
     selId='b:'+epSelId; activeDiff=epDiff; playFromEvent=epId; playFromEventChallenge=isCh; goPlay();
   };
 }
@@ -1383,7 +1445,7 @@ function toggleEquipSkill(sid){ const prof=loadProfile(),pid=prof.equipped.partn
   return false;   // 空き枠なし
 }
 function renderPartner(){
-  const cur=document.getElementById('pnCur'); if(cur)cur.textContent=fmtCur(getCurrency());
+  const cur=document.getElementById('pnCur'); if(cur)cur.innerHTML=curHTML(getCurrency());
   const owned=Object.keys(loadProfile().partners||{});
   if(!owned.includes(pnSelId))pnSelId=owned[0]||null;
   renderPartnerDetail(); renderPartnerGrid(); renderSkillGrid();
@@ -1418,7 +1480,7 @@ function renderSkillGrid(){
     else btn.textContent='装備';
     btn.onclick=()=>{ if(!hasP)return; if(!toggleEquipSkill(sid))alert('スキル枠が空いていません'); renderPartner(); };
     buyDiv.appendChild(btn);
-    if(dupes>0){ const sell=document.createElement('button'); sell.className='cta'; sell.textContent='売却 (+₡1,000)';
+    if(dupes>0){ const sell=document.createElement('button'); sell.className='cta'; sell.innerHTML='売却 (+'+curHTML(1000)+')';
       sell.onclick=()=>{ if(sellSkillDupe(sid))renderPartner(); }; buyDiv.appendChild(sell); }
     box.appendChild(card); }
 }
@@ -1462,7 +1524,7 @@ function renderPartnerDetail(){
       ((eq && effectiveGauge()>=1)?`<div style="color:#ff9a5a;font-size:13px;margin-top:4px">体力ゲージ Lv${effectiveGauge()}（ゲージ0で失敗）</div>`:'')+
       uniqueHtml+
       `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">`+
-        `<button class="cta" id="pnLvUp"${canLv?'':' disabled'} style="${canLv?'':'opacity:.45'}">${maxed?'最大レベル':('レベルアップ '+fmtCur(need))}</button>`+
+        `<button class="cta" id="pnLvUp"${canLv?'':' disabled'} style="${canLv?'':'opacity:.45'}">${maxed?'最大レベル':('レベルアップ '+curHTML(need))}</button>`+
         `<button class="cta" id="pnEquip"${eq?' disabled':''}>${eq?'相棒に設定中':'相棒にする'}</button></div>`+
       `<h3 style="margin:10px 0 4px;font-size:14px">スキルスロット</h3><div class="slotrow">${slotHtml}</div>`+
       `<div class="pnrew"><h3 style="margin:12px 0 4px;font-size:14px">レベル報酬</h3>${rew||'<span class="muted">なし</span>'}</div></div>`;
@@ -1537,7 +1599,7 @@ function shopCard(e){
   const buy=document.createElement('button'); buy.className='cta';
   if(info.owned){ buy.textContent='入手済み'; buy.disabled=true; }
   else{ const enough=canAfford(e);
-    buy.textContent=priceLabel(e); buy.disabled=!enough; buy.style.opacity=enough?'':'0.45';
+    buy.innerHTML=priceLabel(e); buy.disabled=!enough; buy.style.opacity=enough?'':'0.45';
     buy.onclick=()=>{ if(buyShop(e))renderShop(); else alert(e.pay?(itemLabel(e.pay.type)+'が足りません'):'通貨が足りません'); }; }
   card.querySelector('.buy').appendChild(buy);
   return card;
@@ -1563,7 +1625,7 @@ function renderShop(){
   tipPinned=false; hideTip();
   renderCurrency();
   const cur=document.getElementById('shopCur');
-  if(cur)cur.textContent=`${fmtCur(getCurrency())}　解禁券 ${getTickets()}　イベント券 ${getEventTickets()}`;
+  if(cur)cur.innerHTML=`${curHTML(getCurrency())}　${itemAmtHTML('diffTicket',getTickets())}　${itemAmtHTML('eventTicket',getEventTickets())}`;
   const box=document.getElementById('shopList'); if(!box)return; box.innerHTML='';
   const all=CONTENT.shop.filter(e=>e&&e.reward&&e.reward.type);
   if(!all.length){ box.innerHTML='<div class="center-msg">ショップに商品がありません</div>'; return; }
@@ -1664,7 +1726,7 @@ function renderList(){
     row.className='song'+(s.id===selId?' sel':'')+(d?'':' dim');
     const rank=(d&&d.best)?d.best.rank:'-', score=(d&&d.best)?d.best.score:0;
     const scHtml = locked
-      ? `<span class="num" style="color:var(--muted)">🔒 ${fmtCur(unlockCost(s,activeDiff))}</span>`
+      ? `<span class="num" style="color:var(--muted)">🔒 ${curHTML(unlockCost(s,activeDiff))}</span>`
       : `<span class="rk" style="color:${rankColor(rank)}">${rank==='-'?'':rank}</span><span class="num">${score.toLocaleString('en-US')}</span>`;
     row.innerHTML=`<div class="lv">${d?d.level:'-'}</div>`+
       `<div><div class="ti">${esc(songTitle(s,activeDiff))}</div><div class="ar">${esc(songArtist(s,activeDiff))}</div></div>`+
@@ -1713,8 +1775,8 @@ function renderSide(){
       box.style.display='block';
       const cost=unlockCost(s,activeDiff), enough=getCurrency()>=cost, tk=getTickets();
       const pay=document.getElementById('unlockPay'), tb=document.getElementById('unlockTicket');
-      pay.textContent=fmtCur(cost)+' で解禁'; pay.disabled=!enough; pay.style.opacity=enough?'':'0.45';
-      tb.textContent=`チケットで解禁（所持 ${tk}）`; tb.disabled=tk<=0; tb.style.opacity=tk>0?'':'0.45';
+      pay.innerHTML=curHTML(cost)+' で解禁'; pay.disabled=!enough; pay.style.opacity=enough?'':'0.45';
+      tb.innerHTML=`${itemIcon('diffTicket')}で解禁（所持 ${tk}）`; tb.disabled=tk<=0; tb.style.opacity=tk>0?'':'0.45';
       pay.onclick=()=>{ if(payUnlock(s,activeDiff))renderAll(); else alert('通貨が足りません'); };
       tb.onclick=()=>{ if(ticketUnlock(s,activeDiff))renderAll(); else alert('チケットがありません'); };
     }else box.style.display='none';
@@ -1981,9 +2043,10 @@ function showResult(r){
   document.getElementById('rStats').innerHTML=
     `MAX COMBO ${r.maxCombo} / ${r.total}　達成率 ${(+r.acc).toFixed(2)}%<br>平均誤差 ${r.mean>=0?'+':''}${(+r.mean).toFixed(1)}ms　空打ち ${r.empty}`+
     (r.auto?'':
-      `<br><span style="color:#ffe082">通貨 ₡${curBase.toLocaleString('en-US')}`+
+      `<br><span style="color:#ffe082">${itemIcon('currency')} ${curBase.toLocaleString('en-US')}`+
         (curBonus>0?` <span style="color:#7fe38a">+${curBonus.toLocaleString('en-US')}</span>`:'')+
-        `</span>　所持 ${fmtCur(getCurrency())}`+
+        `</span>　所持 ${curHTML(getCurrency())}`+
+      (tkDrop>0?`<br><span style="color:#8fd0ff">${itemIcon('eventTicket')} +${tkDrop}</span>`:'')+
       (evUnlockedName?`<br><span style="color:#ffb14e">★ 「${esc(evUnlockedName)}」を解禁しました！</span>`:'')+
       (evStageCleared?`<br><span style="color:#ffb14e">★ 解禁チャレンジ突破！次のステージへ</span>`:'')+
       (evGain>0?`<br><span style="color:#ffb14e">イベント進捗 +${evGain}</span>`:'')+
@@ -1997,7 +2060,7 @@ function showResult(r){
 }
 document.getElementById('rRetry').onclick=()=>{ if(playing){
   if(playing.eventId && !playing.challenge){   // イベント通常プレイの再挑戦のみ1枚消費(チャレンジは無消費)
-    if(getEventTickets()<1){ alert('イベント券が足りません（1枚必要）'); showScreen('eventpage'); return; }
+    if(getEventTickets()<1){ alert('イベントチケットが足りません（1枚必要）'); showScreen('eventpage'); return; }
     addEventTickets(-1);
   }
   selId=playing.id; activeDiff=playing.diff;
