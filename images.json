@@ -7,6 +7,10 @@
     { "id": "ミュー_chara", "type": "chara", "file": "ミュー_chara.png" },
     { "id": "タルカン_icon",  "type": "icon",  "file": "タルカン_icon.png" },
     { "id": "タルカン_bg",    "type": "bg",    "file": "タルカン_bg.png" },
-    { "id": "タルカン_chara", "type": "chara", "file": "タルカン_chara.png" }
+    { "id": "タルカン_chara", "type": "chara", "file": "タルカン_chara.png" },
+    { "id": "ic_shard",       "type": "item",  "file": "items/shard.png" },
+    { "id": "ic_resonite",    "type": "item",  "file": "items/resonite.png" },
+    { "id": "ic_eventticket", "type": "item",  "file": "items/eventticket.png" },
+    { "id": "ic_arcanum",     "type": "item",  "file": "items/arcanum.png" }
   ]
 }
