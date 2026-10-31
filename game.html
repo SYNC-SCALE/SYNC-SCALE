@@ -764,6 +764,28 @@ function songSource(s){return (s&&s.acquire)||'free';}
 function ownedSong(s){ if(!s)return false; if(s.source==='user')return true;
   const a=songSource(s); if(a==='free')return true; return !!loadProfile().unlocks['song:'+s.id]; }
 function setSongOwned(id){const p=loadProfile();const k='song:'+id;const already=!!p.unlocks[k];p.unlocks[k]=true;saveProfile(p);if(!already)enqueueSongOwned(id);}
+/* ===== 楽曲パック ===== */
+function packById(id){ return (CONTENT.packs||[]).find(p=>p.id===id); }
+function packOwned(id){ return !!loadProfile().unlocks['pack:'+id]; }
+function packUnlockScore(p){ return (p&&+p.unlockScore)||900000; }
+// bare曲id(例 'song05')が属するパックと索引を返す。無ければ null。
+function songPackInfo(bare){
+  for(const p of (CONTENT.packs||[])){ const i=(p.songs||[]).indexOf(bare); if(i>=0)return {pack:p, idx:i}; }
+  return null;
+}
+// 所持パックの未解禁曲(2曲目以降)のプレースホルダ一覧(選曲リストに選択不可で並べる)。
+function packPlaceholders(){
+  const out=[];
+  for(const p of (CONTENT.packs||[])){
+    if(!packOwned(p.id))continue;
+    const list=p.songs||[];
+    for(let i=1;i<list.length;i++){
+      const s=songById('b:'+list[i]); if(s&&ownedSong(s))continue;   // 解禁済みは通常表示に任せる
+      out.push({pack:p, idx:i, bare:list[i], prevBare:list[i-1]});
+    }
+  }
+  return out;
+}
 // --- スキル(重複取得で☆最大5、過剰分は通貨1000) ---
 function grantSkill(id){ const p=loadProfile(); const s=p.skills[id]||{star:0,dupes:0};
   let res;
@@ -797,6 +819,11 @@ function grantReward(rw){
   if(!rw||!rw.type)return false;
   switch(rw.type){
     case 'song':      if(!songById('b:'+rw.id))return false; setSongOwned('b:'+rw.id); return true;
+    case 'pack':{     const pk=packById(rw.id); if(!pk||!(pk.songs&&pk.songs.length))return false;
+                      const first='b:'+pk.songs[0]; if(!songById(first))return false;
+                      const pr=loadProfile(); pr.unlocks['pack:'+rw.id]=true; saveProfile(pr);
+                      setSongOwned(first);   // 1曲目を解禁(Easy/Hardは既定で再生可)。解禁演出も発火
+                      return true; }
     case 'diffTicket':  addTickets(1); enqueueItem('diffTicket',1); return true;
     case 'eventTicket': addEventTickets(1); enqueueItem('eventTicket',1); return true;
     case 'arcanaShard': addItem('arcanaShard',+rw.id>0?+rw.id:1); enqueueItem('arcanaShard',+rw.id>0?+rw.id:1); return true;
@@ -883,9 +910,9 @@ function canAfford(entry){ if(entry.pay)return itemCount(entry.pay.type)>=(entry
 function priceLabel(entry){ if(entry.pay)return itemIcon(entry.pay.type)+' ×'+(entry.pay.amount||1); return curHTML(entry.cost); }
 function buyShop(entry){
   if(entry.pay){ const amt=entry.pay.amount||1; if(itemCount(entry.pay.type)<amt)return false;
-    addItem(entry.pay.type,-amt); grantReward(entry.reward); return true; }
+    if(!grantReward(entry.reward))return false; addItem(entry.pay.type,-amt); return true; }
   const cost=+entry.cost||0; if(getCurrency()<cost)return false;
-  addCurrency(-cost); grantReward(entry.reward); return true;
+  if(!grantReward(entry.reward))return false; addCurrency(-cost); return true;
 }
 // --- イベントチケットのドロップ倍率(基本0.5、将来スキル/パートナーで加算) ---
 function eventRateMult(){ return 0.5 + equippedStats().ticketAdd; }
@@ -1065,7 +1092,7 @@ async function initSongs(){
   _unlockReady=true;   // ブート完了後の解禁から演出を出す
 }
 // コンテンツDB(読み取り専用。id参照でつながる拡張可能なJSON群)
-const CONTENT={shop:[],partners:[],skills:[],noteskins:[],images:[],events:[],sounds:{},credits:{},partnerCfg:{cost:3000,maxLevel:20,slotUnlocks:[1]}};
+const CONTENT={shop:[],partners:[],skills:[],noteskins:[],images:[],events:[],packs:[],sounds:{},credits:{},partnerCfg:{cost:3000,maxLevel:20,slotUnlocks:[1]}};
 async function fetchJsonObj(file){
   try{ const r=await fetch(DATA_BASE+file,{cache:'no-cache'}); if(!r.ok)return {}; return await r.json(); }
   catch(e){ return {}; }
@@ -1082,6 +1109,7 @@ async function loadContentDB(){
   CONTENT.noteskins=await fetchDB('noteskins.json','noteskins');
   CONTENT.images=await fetchDB('images.json','images');
   CONTENT.events=await fetchDB('events.json','events');
+  CONTENT.packs=await fetchDB('packs.json','packs');
   CONTENT.codes=await fetchDB('codes.json','codes');
   { const sj=await fetchJsonObj('sounds.json'); CONTENT.sounds=(sj&&typeof sj.sounds==='object'&&sj.sounds)?sj.sounds:(sj&&typeof sj==='object'?sj:{}); }
   CONTENT.credits=await fetchJsonObj('credits.json');
@@ -1547,6 +1575,9 @@ function resolveReward(rw){
   const info={img:null,imgLabel:'準備中',title:rw.id,sub:'',levels:null,owned:false,repeatable:false};
   if(rw.type==='song'){ const s=songById('b:'+rw.id); info.title=s?s.title:rw.id; info.sub=s?(s.artist||''):'';
     info.img=s?songAnyJacket(s):null; info.imgLabel='ジャケット'; info.owned=s?ownedSong(s):false; info.levels=s?s.diffs:null; }
+  else if(rw.type==='pack'){ const pk=packById(rw.id); info.title=pk?pk.title:rw.id; info.sub=pk?((pk.songs||[]).length+'曲セット'):'';
+    const first=pk&&pk.songs&&pk.songs[0]?songById('b:'+pk.songs[0]):null; info.img=first?songAnyJacket(first):null;
+    info.imgLabel='ジャケット'; info.owned=packOwned(rw.id); }
   else if(rw.type==='partner'){ const p=partnerById(rw.id); info.title=p?p.name:rw.id; info.img=p?partnerAsset(p.icon):null;
     info.imgLabel='キャラアイコン'; info.owned=hasUnlock('partner',rw.id); }
   else if(rw.type==='skill'){ const k=skillById(rw.id); info.title=k?k.name:rw.id; info.sub=k?(k.desc||''):'';
@@ -1558,10 +1589,11 @@ function resolveReward(rw){
   else if(rw.type==='diffTicket'){ info.title='難易度解禁チケット'; info.sub='×1'; info.imgLabel='チケット'; info.repeatable=true; }
   else if(rw.type==='eventTicket'){ info.title='イベントチケット'; info.sub='×1'; info.imgLabel='チケット'; info.repeatable=true; }
   else if(rw.type==='currency'){ info.title=fmtCur(+rw.id||0); info.imgLabel='通貨'; info.repeatable=true; }
-  info.hasImg=['song','partner','noteskin','icon'].includes(rw.type);   // スキル/消費アイテムは画像なし
+  info.hasImg=['song','pack','partner','noteskin','icon'].includes(rw.type);   // スキル/消費アイテムは画像なし
   return info;
 }
 const SHOP_SECTIONS=[
+  {label:'楽曲パック', types:['pack']},
   {label:'楽曲',      types:['song']},
   {label:'パートナー', types:['partner']},
   {label:'スキル',    types:['skill']},
@@ -1625,7 +1657,7 @@ function renderShop(){
   tipPinned=false; hideTip();
   renderCurrency();
   const cur=document.getElementById('shopCur');
-  if(cur)cur.innerHTML=`${curHTML(getCurrency())}　${itemAmtHTML('diffTicket',getTickets())}　${itemAmtHTML('eventTicket',getEventTickets())}`;
+  if(cur)cur.innerHTML=`${curHTML(getCurrency())}　${itemAmtHTML('diffTicket',getTickets())}　${itemAmtHTML('eventTicket',getEventTickets())}　${itemAmtHTML('arcanaShard',itemCount('arcanaShard'))}`;
   const box=document.getElementById('shopList'); if(!box)return; box.innerHTML='';
   const all=CONTENT.shop.filter(e=>e&&e.reward&&e.reward.type);
   if(!all.length){ box.innerHTML='<div class="center-msg">ショップに商品がありません</div>'; return; }
@@ -1734,6 +1766,19 @@ function renderList(){
     row.onclick=()=>{ selId=s.id; startPreview(s); renderSide(); renderList(); };
     box.appendChild(row);
   }
+  // 楽曲パックの未解禁曲プレースホルダ(選択不可)。検索中は非表示。
+  if(!searchQ.trim()){
+    for(const ph of packPlaceholders()){
+      const prev=songById('b:'+ph.prevBare);
+      const prevTitle=(prev&&ownedSong(prev))?songTitle(prev,'Master'):'？？？';
+      const row=document.createElement('button');
+      row.className='song dim'; row.disabled=true; row.style.cursor='default'; row.style.opacity='0.6';
+      row.innerHTML=`<div class="lv">？</div>`+
+        `<div><div class="ti">${esc(prevTitle)}クリアで解禁</div><div class="ar">${esc(ph.pack.title||'楽曲パック')}</div></div>`+
+        `<div class="sc"><span class="num" style="color:var(--muted)">🔒</span></div>`;
+      box.appendChild(row);
+    }
+  }
   document.getElementById('addRow').style.display=debugOn()?'flex':'none';
   document.getElementById('addForm').classList.toggle('on', debugOn() && document.getElementById('addForm').classList.contains('on'));
 }
@@ -1773,12 +1818,11 @@ function renderSide(){
   { const box=document.getElementById('unlockBox');
     if(locked){
       box.style.display='block';
-      const cost=unlockCost(s,activeDiff), enough=getCurrency()>=cost, tk=getTickets();
+      const cost=unlockCost(s,activeDiff), enough=getCurrency()>=cost;
       const pay=document.getElementById('unlockPay'), tb=document.getElementById('unlockTicket');
       pay.innerHTML=curHTML(cost)+' で解禁'; pay.disabled=!enough; pay.style.opacity=enough?'':'0.45';
-      tb.innerHTML=`${itemIcon('diffTicket')}で解禁（所持 ${tk}）`; tb.disabled=tk<=0; tb.style.opacity=tk>0?'':'0.45';
-      pay.onclick=()=>{ if(payUnlock(s,activeDiff))renderAll(); else alert('通貨が足りません'); };
-      tb.onclick=()=>{ if(ticketUnlock(s,activeDiff))renderAll(); else alert('チケットがありません'); };
+      pay.onclick=()=>{ if(payUnlock(s,activeDiff))renderAll(); else alert(ITEMS.currency.label+'が足りません'); };
+      if(tb)tb.style.display='none';   // 晶石での解禁は廃止(シャードのみ)
     }else box.style.display='none';
   }
   document.getElementById('pTitle').textContent=s?songTitle(s,activeDiff):'—';
@@ -1989,6 +2033,15 @@ function showResult(r){
       if(pmode===scoreView){ const s=songById(playing.id); const dd=s&&s.diffs[playing.diff]; if(dd)dd.best=b; } }
     // Arcana解禁率: 通常モードのMasterのみ加算(ベスト更新有無に関係なく毎プレイ)。ここは非Fail・非Slowのみ到達
     if(pmode==='normal' && playing.diff==='Master'){ maybeUnlockArcana(playing.id, +r.score||0, !!r.failed, playing.gaugeLevel||0); } }
+  // 楽曲パック: Fail以外・Slow以外で、規定スコア以上クリアすると次曲を解禁(任意難易度)。
+  if(!r.auto && !r.failed && pmode!=='slow' && playing){
+    const info=songPackInfo(String(playing.id).replace(/^b:/,''));
+    if(info && packOwned(info.pack.id)){
+      const next=info.pack.songs[info.idx+1];
+      if(next && (+r.score||0)>=packUnlockScore(info.pack)){
+        const nb='b:'+next; const ns=songById(nb); if(ns && !ownedSong(ns)) setSongOwned(nb); }
+    }
+  }
   // ジャケット(左)と相棒の立ち絵(右)
   { const s=playing?songById(playing.id):null; const jk=document.getElementById('rJacket');
     const jsrc=s?songJacket(s,playing.diff):null;
