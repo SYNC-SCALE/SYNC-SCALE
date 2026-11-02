@@ -3,6 +3,19 @@
   "_note": "イベント定義(簡素版)。id / title / banner(images/配下) / unlockSongs=解禁対象曲id(1〜3、解禁順)。ゲージ最大=200×曲数、解禁ポイントは200間隔。進捗は所持曲を通常プレイして達成率(acc%)ぶん加算。ポイント到達でゲージが止まり超過分はスタック。その曲の『解禁チャレンジ』(体力ゲージLv3固定・任意難易度をFailせず完走)に成功すると曲が解禁され、スタックがゲージに反映される。イベントページの選曲=所持する全楽曲＋現在のチャレンジ曲。multiplier(任意,既定0)で進捗=acc×(1+multiplier)。解禁対象曲は songs.json 側で source:\"event\" にしておくと解禁までフリープレイ選曲に出ない。",
   "events": [
     {
+      "id": "evLoop",
+      "title": "無限周回コース",
+      "banner": "evLoop_banner.png",
+      "loop": true,
+      "steps": [
+        { "at": 200,  "reward": { "type": "currency",    "id": 100 } },
+        { "at": 400,  "reward": { "type": "currency",    "id": 200 } },
+        { "at": 600,  "reward": { "type": "currency",    "id": 300 } },
+        { "at": 800,  "reward": { "type": "diffTicket",  "id": null} },
+        { "at": 1000, "reward": { "type": "arcanaShard", "id": 1 } }
+      ]
+    },
+    {
       "id": "ev01",
       "title": "輝きの果てへ",
       "banner": "ev01_banner.png",
