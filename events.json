@@ -4,7 +4,7 @@
   "events": [
     {
       "id": "evLoop",
-      "title": "無限周回コース",
+      "title": "共鳴する晶片",
       "banner": "evLoop_banner.png",
       "loop": true,
       "steps": [
