@@ -6,6 +6,7 @@
       "id": "evLoop",
       "title": "共鳴する晶片",
       "banner": "evLoop_banner.png",
+      "jacket": "evLoop_jacket.png",
       "loop": true,
       "steps": [
         { "at": 200,  "reward": { "type": "currency",    "id": 100 } },
