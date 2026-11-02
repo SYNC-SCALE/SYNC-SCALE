@@ -218,7 +218,7 @@
   .eptop .ep-jacket img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .eptop .ep-jacket .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
   .eptop .ep-rewards{font-size:13px;line-height:1.7;overflow:auto;max-height:200px}
-  .eptop .ep-rewards .r{display:flex;gap:8px}
+  .eptop .ep-rewards .r{display:block}
   .eptop .ep-rewards .r.done{color:var(--acc)}
   .eptop .ep-partner{justify-self:end}
   .eptop .ep-partner img{max-height:200px;max-width:200px;object-fit:contain;display:block}
@@ -1344,8 +1344,9 @@ function renderEventPage(){
   // ジャケット: 周回コースは曲指定なし→プレースホルダ。通常は次のチャレンジ曲(未到達はNoSignal)。
   { const jk=document.getElementById('epJacket');
     const ph=jk&&jk.parentElement?jk.parentElement.querySelector('.ph'):null;
-    if(loop){ if(jk){ jk.removeAttribute('src'); jk.style.display='none'; if(ph)ph.textContent='∞ 周回'; } }
+    if(loop){ if(jk){ jk.removeAttribute('src'); jk.style.display='none'; if(ph){ ph.style.fontSize='96px'; ph.innerHTML=itemIcon('arcanaShard',120); } } }
     else {
+      if(ph)ph.style.fontSize='';
       const jb=chBare||usongs[usongs.length-1];
       const revealed=jb?eventSongRevealed(ev,st,jb):false;
       const jso=(revealed&&jb)?songById('b:'+jb):null; const jsrc=jso?songAnyJacket(jso):null;
