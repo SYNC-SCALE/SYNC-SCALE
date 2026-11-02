@@ -3532,6 +3532,7 @@ function finishStart(){
     if(sp)sp.style.display='none';
     bindInput(); setupDrop(); syncSettingsUI();
     resize(); restart(); started=true;
+    if(EMBEDDED){ try{ window.parent.postMessage({type:'playStarted'},'*'); }catch(_){} }   // 指置きチェック通過→開始を親へ通知(券消費タイミング)
     cancelAnimationFrame(rafId); frame();
     Promise.resolve().then(async()=>{ if(pendingSkin)await applyPendingSkin(); if(pendingPlayBg)await applyPlayBackground(); });
   };

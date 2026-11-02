@@ -594,7 +594,11 @@ window.addEventListener('message',e=>{
     if(awaitingPlayReady){ awaitingPlayReady=false; coverHide(); wipeBusy=false; }
     try{ document.getElementById('playFrame').focus(); }catch(_){}   // キー入力をplayerへ
   }
-  else if(d.type==='toSelect'){ wipeBusy=false; showScreen('select'); }
+  else if(d.type==='toSelect'){ wipeBusy=false; showScreen((playing&&playing.eventId)?'eventpage':'select'); }
+  else if(d.type==='playStarted'){
+    // イベント通常プレイの券消費は、指置きチェック通過(プレイ開始)後に行う。チャレンジ・非イベントは無消費。
+    if(playing && playing.eventId && !playing.challenge && getEventTickets()>0) addEventTickets(-1);
+  }
   else if(d.type==='result'){
     (async()=>{ playSound('transition'); await wipeClose(); showResult(d); if(!d.auto)playSound(d.failed?'fail':'clear'); await wipeOpen(); })();
   }
@@ -1469,7 +1473,7 @@ function renderEventSide(ev, isCh){
       `<div class="startrow"><div class="grow"></div><button class="startbtn" id="epStart" title="${isCh?chName:'プレイ'}"${playable?'':' disabled style="opacity:.4"'}>${btn}</button></div></div>`;
   box.querySelectorAll('.difftab[data-d]').forEach(b=>b.onclick=()=>{ epDiff=b.dataset.d; renderEventPage(); });
   const stbtn=document.getElementById('epStart'); if(stbtn&&playable)stbtn.onclick=()=>{
-    if(!isCh){ if(getEventTickets()<1){ alert('イベントチケットが足りません（通常プレイに1枚必要）'); return; } addEventTickets(-1); }   // 通常は1枚消費・チャレンジは無消費
+    if(!isCh){ if(getEventTickets()<1){ alert('イベントチケットが足りません（通常プレイに1枚必要）'); return; } }   // 通常は1枚必要(消費は指置きチェック通過後)・チャレンジは無消費
     selId='b:'+epSelId; activeDiff=epDiff; playFromEvent=epId; playFromEventChallenge=isCh; goPlay();
   };
 }
@@ -2179,9 +2183,8 @@ function showResult(r){
   showScreen('results');
 }
 document.getElementById('rRetry').onclick=()=>{ if(playing){
-  if(playing.eventId && !playing.challenge){   // イベント通常プレイの再挑戦のみ1枚消費(チャレンジは無消費)
+  if(playing.eventId && !playing.challenge){   // イベント通常プレイの再挑戦のみ1枚必要(消費は指置きチェック通過後)
     if(getEventTickets()<1){ alert('イベントチケットが足りません（1枚必要）'); showScreen('eventpage'); return; }
-    addEventTickets(-1);
   }
   selId=playing.id; activeDiff=playing.diff;
   if(playing.eventId){ playFromEvent=playing.eventId; playFromEventChallenge=!!playing.challenge; }
