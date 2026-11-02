@@ -1311,12 +1311,13 @@ function renderEvents(){
     const loop=eventIsLoop(ev);
     const st=eventState(ev.id); const usongs=eventUnlockSongs(ev); const max=eventMax(ev)||1; const pr=st.progress;
     const jb=loop?null:(eventChallengeSong(ev,st)||usongs[usongs.length-1]); const s=jb?songById('b:'+jb):null;
+    const jkSrc=ev.jacket?imageAsset2(ev.jacket):(s?songAnyJacket(s):null);   // 専用ジャケット優先
     const pct=Math.min(100,Math.round(pr/max*100));
     const info=loop?`周回 ${st.loops||0}周　ステップ ${st.unlockedCount}/${eventStepCount(ev)}`:`解禁 ${st.unlockedCount} / ${usongs.length}`;
     const card=document.createElement('div'); card.className='ev-card';
     card.innerHTML=
       `<div class="ev-banner">${ev.banner?`<img src="${imageAsset2(ev.banner)}" onerror="this.style.display='none'">`:''}`+
-        `${s&&songAnyJacket(s)?`<img class="ev-jk" src="${songAnyJacket(s)}" onerror="this.style.display='none'">`:`<div class="ev-jk ph">${loop?'∞':'ジャケット'}</div>`}`+
+        `${jkSrc?`<img class="ev-jk" src="${jkSrc}" onerror="this.style.display='none'">`:`<div class="ev-jk ph">${loop?'∞':'ジャケット'}</div>`}`+
         `<div class="ev-t">${esc(ev.title||ev.id)}</div></div>`+
       `<div class="ev-p"><div class="muted small">進捗 ${pct}%（${info}）</div><div class="ev-pbar"><div class="ev-pfill" style="width:${pct}%"></div></div></div>`;
     card.onclick=()=>{ epId=ev.id; showScreen('eventpage'); };
@@ -1344,14 +1345,16 @@ function renderEventPage(){
   // ジャケット: 周回コースは曲指定なし→プレースホルダ。通常は次のチャレンジ曲(未到達はNoSignal)。
   { const jk=document.getElementById('epJacket');
     const ph=jk&&jk.parentElement?jk.parentElement.querySelector('.ph'):null;
-    if(loop){ if(jk){ jk.removeAttribute('src'); jk.style.display='none'; if(ph){ ph.style.fontSize='96px'; ph.innerHTML=itemIcon('arcanaShard',120); } } }
+    const setImg=src=>{ if(!jk)return; jk.style.display=''; jk.onerror=function(){ this.style.display='none'; if(ph){ ph.style.fontSize=''; ph.textContent=loop?'∞':'ジャケット'; } }; jk.src=src; if(ph){ ph.style.fontSize=''; ph.textContent=''; } };
+    const setPh=(content,px)=>{ if(jk){ jk.removeAttribute('src'); jk.style.display='none'; } if(ph){ ph.style.fontSize=px||''; if(px)ph.innerHTML=content; else ph.textContent=content; } };
+    const evJacket=ev.jacket?imageAsset2(ev.jacket):null;
+    if(evJacket){ setImg(evJacket); }                                   // イベント専用ジャケット画像を優先
+    else if(loop){ setPh(itemIcon('arcanaShard',120),'96px'); }         // 未指定の周回コースは晶石アイコン
     else {
-      if(ph)ph.style.fontSize='';
       const jb=chBare||usongs[usongs.length-1];
       const revealed=jb?eventSongRevealed(ev,st,jb):false;
       const jso=(revealed&&jb)?songById('b:'+jb):null; const jsrc=jso?songAnyJacket(jso):null;
-      if(jk){ if(revealed&&jsrc){ jk.src=jsrc; jk.style.display=''; if(ph)ph.textContent='ジャケット'; }
-        else { jk.removeAttribute('src'); jk.style.display='none'; if(ph)ph.textContent=revealed?'ジャケット':'NoSignal'; } }
+      if(revealed&&jsrc) setImg(jsrc); else setPh(revealed?'ジャケット':'NoSignal');
     } }
   // 現在の相棒(立ち絵)を表示
   { const eqp=loadProfile().equipped||{}; const m=eqp.partner?partnerMetaById(eqp.partner):null; const pn=document.getElementById('epPartner');
