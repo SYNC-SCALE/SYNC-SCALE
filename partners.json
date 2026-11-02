@@ -18,7 +18,8 @@
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
         { "level": 5, "type": "song",        "id": "song4000" },
-        { "level": 10, "type": "noteskin",       "id": "skin00_white" }
+        { "level": 10, "type": "noteskin",       "id": "skin00_white" },
+        { "level": 15, "type": "arcanaShard", "id": 1}
       ]
     },
     {
@@ -35,7 +36,8 @@
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
         { "level": 5, "type": "song",        "id": "song0003" },
-        { "level": 10, "type": "noteskin",       "id": "skin01_blue" }
+        { "level": 10, "type": "noteskin",       "id": "skin01_blue" },
+        { "level": 15, "type": "arcanaShard", "id": 1}
       ]
     },
     {
@@ -52,7 +54,8 @@
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
         { "level": 5, "type": "song",        "id": "song4002" },
-        { "level": 10, "type": "noteskin",       "id": "skin01_White" }
+        { "level": 10, "type": "noteskin",       "id": "skin01_White" },
+        { "level": 15, "type": "arcanaShard", "id": 1}
       ]
     }
   ]
