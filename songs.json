@@ -39,6 +39,7 @@
       "audio": "幽都第七遊興区.ogg",
       "jacket": "幽都第七遊興区_jacket.png",
       "diffs": {
+        "Easy":   { "level": 2,  "chart": "幽都第七遊興区_e.json" },
         "Hard":   { "level": 5,  "chart": "幽都第七遊興区_h.json" },
         "Master": { "level": 8, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 300 } }
       }
