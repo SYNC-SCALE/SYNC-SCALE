@@ -241,6 +241,48 @@
         "Hard":   { "level": 6, "chart": "The Millky Way NibiryuRemix_h.json" },
         "Master": { "level": 12, "chart": "The Millky Way NibiryuRemix_m.json", "unlock": { "cost": 500 } }
       }
+    },
+    {
+      "id": "song4001",
+      "title": "Ever Predation",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "pack",
+      "audio": "Ever Predation.ogg",
+      "jacket": "Ever Predation.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "Ever Predation_e.json" },
+        "Hard":   { "level": 6, "chart": "Ever Predation_h.json" },
+        "Master": { "level": 12, "chart": "Ever Predation_m.json", "unlock": { "cost": 500 } }
+      }
+    },
+    {
+      "id": "song4002",
+      "title": "True 2 You",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "pack",
+      "audio": "True 2 You.ogg",
+      "jacket": "True 2 You.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "True 2 You_e.json" },
+        "Hard":   { "level": 6, "chart": "True 2 You_h.json" },
+        "Master": { "level": 12, "chart": "True 2 You_m.json", "unlock": { "cost": 500 } }
+      }
+    },
+    {
+      "id": "song4003",
+      "title": "Object:MALIGNYX",
+      "artist": "Nibiryu",
+      "charter": "Nibiryu",
+      "source": "pack",
+      "audio": "Object;MALIGNYX.ogg",
+      "jacket": "Object;MALIGNYX.png",
+      "diffs": {
+        "Easy":   { "level": 2, "chart": "Object;MALIGNYX_e.json" },
+        "Hard":   { "level": 6, "chart": "Object;MALIGNYX_h.json" },
+        "Master": { "level": 12, "chart": "Object;MALIGNYX_m.json", "unlock": { "cost": 500 } }
+      }
     }
   ]
 }
