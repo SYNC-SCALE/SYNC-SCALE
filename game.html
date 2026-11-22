@@ -37,12 +37,11 @@
   #home .hw{position:absolute;inset:0;z-index:1}
   #home .hero{position:absolute;left:7%;top:36%}
   /* 菱形メニュー(右下に固定) */
-  #home .dmenu{position:absolute;right:40px;bottom:30px;width:710px;height:630px}
-  #home .dbtn{position:absolute;border:1.5px solid var(--line2);background:#111826;
+  #home .dmenu{position:absolute;right:40px;bottom:30px;width:670px;height:560px}
+  #home .dbtn{position:absolute;border:1.5px solid var(--line2);background:rgba(17,24,38,.8);
     transform:rotate(45deg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;transition:.12s}
-  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:#1a2336;box-shadow:0 0 18px var(--acc-dim)}
+  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:rgba(26,35,54,.8);box-shadow:0 0 18px var(--acc-dim)}
   #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:600;font-size:16px}
-  #home .dbtn.big .dl{font-size:19px}
   #home .dbtn.deco{background:transparent;cursor:default;pointer-events:none;opacity:.7}
   #home .hero h1{font-size:76px;margin:0;letter-spacing:3px;
     background:linear-gradient(90deg,#fff,#9fc0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -269,16 +268,16 @@
   <div class="home-bg"></div>
   <div class="hw">
     <div class="dmenu">
-      <button class="dbtn big" data-go="events"   style="left:511px;top:209px;width:150px;height:150px"><span class="dl">イベント</span></button>
-      <button class="dbtn big" data-go="select"   style="left:395px;top:325px;width:150px;height:150px"><span class="dl">フリープレイ</span></button>
-      <button class="dbtn"     data-go="partner"  style="left:298px;top:228px;width:128px;height:128px"><span class="dl">パートナー</span></button>
-      <button class="dbtn"     data-go="shop"     style="left:198px;top:328px;width:128px;height:128px"><span class="dl">ショップ</span></button>
-      <button class="dbtn"     data-go="settings" style="left:98px;top:428px;width:128px;height:128px"><span class="dl">設定</span></button>
-      <button class="dbtn"     data-go="timing"   style="left:298px;top:444px;width:128px;height:128px"><span class="dl">判定調整</span></button>
-      <button class="dbtn"     data-go="credits"  style="left:514px;top:444px;width:128px;height:128px"><span class="dl">クレジット</span></button>
-      <div class="dbtn deco" style="left:446px;top:176px;width:58px;height:58px"></div>
-      <div class="dbtn deco" style="left:633px;top:371px;width:58px;height:58px"></div>
-      <div class="dbtn deco" style="left:441px;top:555px;width:58px;height:58px"></div>
+      <button class="dbtn" data-go="partner"  style="left:236px;top:116px;width:128px;height:128px"><span class="dl">パートナー</span></button>
+      <button class="dbtn" data-go="events"   style="left:436px;top:116px;width:128px;height:128px"><span class="dl">イベント</span></button>
+      <button class="dbtn" data-go="shop"     style="left:136px;top:216px;width:128px;height:128px"><span class="dl">ショップ</span></button>
+      <button class="dbtn" data-go="select"   style="left:336px;top:216px;width:128px;height:128px"><span class="dl">フリープレイ</span></button>
+      <button class="dbtn" data-go="settings" style="left:36px;top:316px;width:128px;height:128px"><span class="dl">設定</span></button>
+      <button class="dbtn" data-go="timing"   style="left:236px;top:316px;width:128px;height:128px"><span class="dl">判定調整</span></button>
+      <button class="dbtn" data-go="credits"  style="left:436px;top:316px;width:128px;height:128px"><span class="dl">クレジット</span></button>
+      <div class="dbtn deco" style="left:372px;top:52px;width:56px;height:56px"></div>
+      <div class="dbtn deco" style="left:572px;top:252px;width:56px;height:56px"></div>
+      <div class="dbtn deco" style="left:372px;top:452px;width:56px;height:56px"></div>
     </div>
   </div>
 </section>
