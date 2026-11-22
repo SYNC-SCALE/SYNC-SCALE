@@ -33,15 +33,15 @@
   /* ===== ホーム ===== */
   /* #home は .screen の position:fixed;inset:0 を継承(全画面)。ここで position を上書きしないこと(潰れて真っ黒になる) */
   #home{background:radial-gradient(1200px 600px at 75% 30%,#16213a 0%,#0b0e14 60%);overflow:hidden}
-  #home .home-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.5;z-index:0}
+  #home .home-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:1;z-index:0}
   #home .hw{position:absolute;inset:0;z-index:1}
   #home .hero{position:absolute;left:7%;top:36%}
   /* 菱形メニュー(右下に固定) */
   #home .dmenu{position:absolute;right:40px;bottom:30px;width:710px;height:630px}
-  #home .dbtn{position:absolute;border:1.5px solid var(--line2);background:rgba(16,22,34,.55);
+  #home .dbtn{position:absolute;border:1.5px solid rgba(255,255,255,.45);background:rgba(10,14,22,.18);
     transform:rotate(45deg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;transition:.12s}
-  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:rgba(40,56,86,.78);box-shadow:0 0 18px var(--acc-dim)}
-  #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:600;font-size:16px}
+  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:rgba(40,56,86,.45);box-shadow:0 0 18px var(--acc-dim)}
+  #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:700;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.85)}
   #home .dbtn.big .dl{font-size:19px}
   #home .dbtn.deco{background:transparent;cursor:default;pointer-events:none;opacity:.7}
   #home .hero h1{font-size:76px;margin:0;letter-spacing:3px;
@@ -268,7 +268,6 @@
 <section id="home" class="screen on">
   <div class="home-bg"></div>
   <div class="hw">
-    <div class="hero"><h1>SYNC/SCALE</h1><div class="sub">DRAGON RHYTHM</div></div>
     <div class="dmenu">
       <button class="dbtn big" data-go="events"   style="left:511px;top:209px;width:150px;height:150px"><span class="dl">イベント</span></button>
       <button class="dbtn big" data-go="select"   style="left:395px;top:325px;width:150px;height:150px"><span class="dl">フリープレイ</span></button>
