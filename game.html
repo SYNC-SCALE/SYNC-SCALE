@@ -31,13 +31,18 @@
   .h-title{font-size:20px;font-weight:700}
 
   /* ===== ホーム ===== */
-  #home{background:radial-gradient(1200px 600px at 75% 30%,#16213a 0%,#0b0e14 60%)}
-  #home .hw{flex:1;display:grid;grid-template-columns:360px 1fr;align-items:center;gap:40px;padding:0 60px}
-  #home .menu{display:flex;flex-direction:column;gap:12px}
-  #home .menu button{display:flex;align-items:center;justify-content:center;height:60px;border-radius:12px;
-    border:1px solid var(--line2);background:linear-gradient(180deg,#161d2b,#111725);font-size:18px}
-  #home .menu button:hover:not(:disabled){border-color:var(--acc);background:#1a2336;transform:translateX(4px);transition:.12s}
-  #home .menu button:disabled{color:#4d586b;cursor:default;background:#0e131c}
+  #home{position:relative;background:radial-gradient(1200px 600px at 75% 30%,#16213a 0%,#0b0e14 60%);overflow:hidden}
+  #home .home-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.5;z-index:0}
+  #home .hw{position:absolute;inset:0;z-index:1}
+  #home .hero{position:absolute;left:7%;top:36%}
+  /* 菱形メニュー(右下に固定) */
+  #home .dmenu{position:absolute;right:40px;bottom:30px;width:710px;height:630px}
+  #home .dbtn{position:absolute;border:1.5px solid var(--line2);background:rgba(16,22,34,.55);
+    transform:rotate(45deg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;transition:.12s}
+  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:rgba(40,56,86,.78);box-shadow:0 0 18px var(--acc-dim)}
+  #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:600;font-size:16px}
+  #home .dbtn.big .dl{font-size:19px}
+  #home .dbtn.deco{background:transparent;cursor:default;pointer-events:none;opacity:.7}
   #home .hero h1{font-size:76px;margin:0;letter-spacing:3px;
     background:linear-gradient(90deg,#fff,#9fc0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
   #home .hero .sub{color:var(--muted);letter-spacing:6px;margin-top:6px}
@@ -260,17 +265,21 @@
 
 <!-- ============ ホーム ============ -->
 <section id="home" class="screen on">
+  <div class="home-bg"></div>
   <div class="hw">
-    <div class="menu">
-      <button data-go="select">フリープレイ</button>
-      <button data-go="partner">パートナー</button>
-      <button data-go="shop">ショップ</button>
-      <button data-go="events">イベント</button>
-      <button data-go="settings">設定</button>
-      <button data-go="timing">判定調整</button>
-      <button data-go="credits">クレジット</button>
-    </div>
     <div class="hero"><h1>SYNC/SCALE</h1><div class="sub">DRAGON RHYTHM</div></div>
+    <div class="dmenu">
+      <button class="dbtn big" data-go="events"   style="left:511px;top:209px;width:150px;height:150px"><span class="dl">イベント</span></button>
+      <button class="dbtn big" data-go="select"   style="left:395px;top:325px;width:150px;height:150px"><span class="dl">フリープレイ</span></button>
+      <button class="dbtn"     data-go="partner"  style="left:298px;top:228px;width:128px;height:128px"><span class="dl">パートナー</span></button>
+      <button class="dbtn"     data-go="shop"     style="left:198px;top:328px;width:128px;height:128px"><span class="dl">ショップ</span></button>
+      <button class="dbtn"     data-go="settings" style="left:98px;top:428px;width:128px;height:128px"><span class="dl">設定</span></button>
+      <button class="dbtn"     data-go="timing"   style="left:298px;top:444px;width:128px;height:128px"><span class="dl">判定調整</span></button>
+      <button class="dbtn"     data-go="credits"  style="left:514px;top:444px;width:128px;height:128px"><span class="dl">クレジット</span></button>
+      <div class="dbtn deco" style="left:446px;top:176px;width:58px;height:58px"></div>
+      <div class="dbtn deco" style="left:633px;top:371px;width:58px;height:58px"></div>
+      <div class="dbtn deco" style="left:441px;top:555px;width:58px;height:58px"></div>
+    </div>
   </div>
 </section>
 
@@ -679,6 +688,8 @@ const DB={
    参照先は DATA_BASE のみ変えれば ローカルHTTP → GitHub Pages → CDN に切替可能。
    ※fetch は http(s) 前提。file:// で開くと同梱曲は読めない(ユーザー曲のみ動作)。 */
 const DATA_BASE=(localStorage.getItem('rhythmDataBase')||'./');
+// タイトル画面背景(images/title_bg.png)。未配置なら表示されない(グラデーション基調のまま)。
+{ const hb=document.querySelector('#home .home-bg'); if(hb)hb.style.backgroundImage="url('"+DATA_BASE+"images/title_bg.png')"; }
 
 // --- スコアは曲の系統を問わず localStorage に一元管理 ---
 const SCKEY='rhythmScores';
@@ -1633,7 +1644,7 @@ function resolveReward(rw){
   const info={img:null,imgLabel:'準備中',title:rw.id,sub:'',levels:null,owned:false,repeatable:false};
   if(rw.type==='song'){ const s=songById('b:'+rw.id); info.title=s?s.title:rw.id; info.sub=s?(s.artist||''):'';
     info.img=s?songAnyJacket(s):null; info.imgLabel='ジャケット'; info.owned=s?ownedSong(s):false; info.levels=s?s.diffs:null; }
-  else if(rw.type==='pack'){ const pk=packById(rw.id); info.title=pk?pk.title:rw.id; info.sub=pk?((pk.songs||[]).length+'曲セット'):'';
+  else if(rw.type==='pack'){ const pk=packById(rw.id); info.title=pk?pk.title:rw.id; info.sub='';
     const first=pk&&pk.songs&&pk.songs[0]?songById('b:'+pk.songs[0]):null; info.img=first?songAnyJacket(first):null;
     info.imgLabel='ジャケット'; info.owned=packOwned(rw.id); }
   else if(rw.type==='partner'){ const p=partnerById(rw.id); info.title=p?p.name:rw.id; info.img=p?partnerAsset(p.icon):null;
@@ -1678,13 +1689,18 @@ function shopCard(e){
     `<div class="cs">${esc(info.sub||'')}</div>`+
     levelsHtml+
     `<div class="buy"></div>`;
-  // スキルは説明文をポップアップ(ホバー / クリックで固定)
-  if(e.reward.type==='skill' && info.sub){
+  // スキルは説明文、楽曲パックは収録曲(曲名／作曲者)をポップアップ(ホバー / クリックで固定)
+  let tipText='';
+  if(e.reward.type==='skill' && info.sub) tipText=info.sub;
+  else if(e.reward.type==='pack'){ const pk=packById(e.reward.id);
+    if(pk && pk.songs) tipText='【収録曲】\n'+pk.songs.map(sid=>{ const so=songById('b:'+sid);
+      return so?(songTitle(so,'Master')+'／'+(songArtist(so,'Master')||'')):('？？？（'+sid+'）'); }).join('\n'); }
+  if(tipText){
     card.classList.add('has-tip');
-    card.addEventListener('mouseenter',()=>showTip(info.sub,card));
+    card.addEventListener('mouseenter',()=>showTip(tipText,card));
     card.addEventListener('mouseleave',()=>{ if(!tipPinned)hideTip(); });
     card.addEventListener('click',ev=>{ if(ev.target.closest('.buy'))return;
-      tipPinned=!tipPinned; if(tipPinned)showTip(info.sub,card); else hideTip(); });
+      tipPinned=!tipPinned; if(tipPinned)showTip(tipText,card); else hideTip(); });
   }
   const buy=document.createElement('button'); buy.className='cta';
   if(info.owned){ buy.textContent='入手済み'; buy.disabled=true; }
@@ -2059,15 +2075,8 @@ function startPlay(){
           ? {mode:'partner', jacket:jk, partnerBg:imageAsset(phaseOv.bg)}
           : {mode:'black', jacket:null, partnerBg:null};
       } else {
-        const bgSel=st.bgMode||'jacket';
-        let playBg;
-        if(bgSel==='black')playBg={mode:'black',jacket:null,partnerBg:null};
-        else if(bgSel.indexOf('partner:')===0){ const p=partnerById(bgSel.slice(8));
-          playBg={mode:'partner',jacket:jk,partnerBg:p?partnerAsset(p.bg):null}; }
-        else if(bgSel.indexOf('img:')===0){ const im=imageById(bgSel.slice(4));
-          playBg={mode:'partner',jacket:jk,partnerBg:im?imageAsset(im.file):null}; }
-        else playBg={mode:'jacket',jacket:jk,partnerBg:null};
-        payload.playBg=playBg;
+        // 背景はデフォルト(ジャケット)と黒一色の2択のみ。旧設定(partner:/img:)はデフォルト扱い。
+        payload.playBg=(st.bgMode==='black')?{mode:'black',jacket:null,partnerBg:null}:{mode:'jacket',jacket:jk,partnerBg:null};
       } }
     try{ fr.contentWindow.postMessage(payload,'*'); }catch(e){}
     // iframeにキーボードフォーカスを移す(準備クリック廃止のため、s/d/f/j/k/l が playerに届くように)
@@ -2340,15 +2349,9 @@ bindMods();
 function renderBgPicker(){
   const sel=document.getElementById('s_bg'); if(!sel)return;
   const cur=loadSettings().bgMode||'jacket';
-  let html='<option value="jacket">デフォルト（ジャケット＋黒帯）</option><option value="black">黒一色</option>';
-  // 解禁済みパートナーの背景
-  for(const p of CONTENT.partners){ if(p.bg && hasUnlock('partner',p.id))
-    html+=`<option value="partner:${p.id}">${esc(p.name)}の背景</option>`; }
-  // 解禁済みの背景画像(images.json type:bg)
-  for(const im of CONTENT.images){ if(im.type==='bg' && (hasUnlock('bg',im.id)||hasUnlock('bg',im.file)))
-    html+=`<option value="img:${im.id}">${esc(im.id)}</option>`; }
-  sel.innerHTML=html;
-  sel.value=cur; if(sel.value!==cur)sel.value='jacket';
+  // 選べるのはデフォルト（ジャケット＋黒帯）と黒一色の2択のみ。
+  sel.innerHTML='<option value="jacket">デフォルト（ジャケット＋黒帯）</option><option value="black">黒一色</option>';
+  sel.value=(cur==='black')?'black':'jacket';
 }
 
 /* ===== スキン ===== */
