@@ -31,7 +31,8 @@
   .h-title{font-size:20px;font-weight:700}
 
   /* ===== ホーム ===== */
-  #home{position:relative;background:radial-gradient(1200px 600px at 75% 30%,#16213a 0%,#0b0e14 60%);overflow:hidden}
+  /* #home は .screen の position:fixed;inset:0 を継承(全画面)。ここで position を上書きしないこと(潰れて真っ黒になる) */
+  #home{background:radial-gradient(1200px 600px at 75% 30%,#16213a 0%,#0b0e14 60%);overflow:hidden}
   #home .home-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.5;z-index:0}
   #home .hw{position:absolute;inset:0;z-index:1}
   #home .hero{position:absolute;left:7%;top:36%}
