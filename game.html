@@ -38,10 +38,10 @@
   #home .hero{position:absolute;left:7%;top:36%}
   /* 菱形メニュー(右下に固定) */
   #home .dmenu{position:absolute;right:40px;bottom:30px;width:710px;height:630px}
-  #home .dbtn{position:absolute;border:1.5px solid rgba(255,255,255,.45);background:rgba(10,14,22,.18);
+  #home .dbtn{position:absolute;border:1.5px solid var(--line2);background:#111826;
     transform:rotate(45deg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);padding:0;transition:.12s}
-  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:rgba(40,56,86,.45);box-shadow:0 0 18px var(--acc-dim)}
-  #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:700;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.85)}
+  #home .dbtn:hover:not(.deco){border-color:var(--acc);background:#1a2336;box-shadow:0 0 18px var(--acc-dim)}
+  #home .dbtn .dl{transform:rotate(-45deg);white-space:nowrap;font-weight:600;font-size:16px}
   #home .dbtn.big .dl{font-size:19px}
   #home .dbtn.deco{background:transparent;cursor:default;pointer-events:none;opacity:.7}
   #home .hero h1{font-size:76px;margin:0;letter-spacing:3px;
@@ -1796,7 +1796,7 @@ function bgmVolume(){ const c=soundCfg('menuBgm'); const rel=(c&&c.vol!=null)?+c
 function ensureBgm(){ const path=menuBgmPath();
   if(!menuBgm || menuBgmSrc!==path){ if(menuBgm){ try{menuBgm.pause();}catch(_){} } menuBgm=new Audio(path); menuBgm.loop=true; menuBgmSrc=path; }
   menuBgm.volume=bgmVolume(); return menuBgm; }
-function isMenuScreen(name){ return name!=='select' && name!=='play' && name!=='eventpage'; }   // 選曲・イベント選曲(試聴)とプレイ以外でBGM
+function isMenuScreen(name){ return name!=='select' && name!=='play' && name!=='eventpage' && name!=='timing'; }   // 選曲・イベント選曲(試聴)・プレイ・判定調整 以外でBGM
 function updateMenuBgm(name){
   const el=ensureBgm();
   if(isMenuScreen(name) && bgmVolume()>0){ const p=el.play(); if(p&&p.catch)p.catch(()=>armBgm()); }
