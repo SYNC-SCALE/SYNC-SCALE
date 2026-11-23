@@ -252,8 +252,8 @@
       "jacket": "Ever Predation.png",
       "diffs": {
         "Easy":   { "level": 2, "chart": "Ever Predation_e.json" },
-        "Hard":   { "level": 6, "chart": "Ever Predation_h.json" },
-        "Master": { "level": 12, "chart": "Ever Predation_m.json", "unlock": { "cost": 500 } }
+        "Hard":   { "level": 5, "chart": "Ever Predation_h.json" },
+        "Master": { "level": 10, "chart": "Ever Predation_m.json", "unlock": { "cost": 500 } }
       }
     },
     {
@@ -266,8 +266,8 @@
       "jacket": "True 2 You.png",
       "diffs": {
         "Easy":   { "level": 2, "chart": "True 2 You_e.json" },
-        "Hard":   { "level": 6, "chart": "True 2 You_h.json" },
-        "Master": { "level": 12, "chart": "True 2 You_m.json", "unlock": { "cost": 500 } }
+        "Hard":   { "level": 5, "chart": "True 2 You_h.json" },
+        "Master": { "level": 11, "chart": "True 2 You_m.json", "unlock": { "cost": 500 } }
       }
     },
     {
@@ -281,7 +281,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "Object;MALIGNYX_e.json" },
         "Hard":   { "level": 6, "chart": "Object;MALIGNYX_h.json" },
-        "Master": { "level": 12, "chart": "Object;MALIGNYX_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 13, "chart": "Object;MALIGNYX_m.json", "unlock": { "cost": 500 } }
       }
     }
   ]
