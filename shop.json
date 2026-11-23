@@ -7,6 +7,7 @@
     { "id": "shop_partner_test","reward": { "type": "partner",     "id": "partner01" },      "cost": 1000 },
     { "id": "shop_eventticket", "reward": { "type": "eventTicket", "id": null },           "cost": 500 },
     { "id": "cash_diffticket",  "reward": { "type": "currency", "id": 300 }, "pay": { "type": "diffTicket",   "amount": 1 } },
+    { "id": "cash_diffticket",  "reward": { "type": "diffTicket",   "amount": 1 }, "pay": { "type": "arcanaShard",   "amount": 1 } },
     { "id": "cash_eventticket", "reward": { "type": "currency", "id": 200 },  "pay": { "type": "eventTicket", "amount": 1 } }
   ]
 }
