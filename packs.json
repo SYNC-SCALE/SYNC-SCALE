@@ -4,7 +4,7 @@
   "packs": [
     {
       "id": "pack01",
-      "title": "Nibiryu Pack vol.1",
+      "title": "Nibiryu_Pack_vol.1",
       "songs": ["song4001", "song4002", "song4003"]
     }
   ]
