@@ -407,6 +407,8 @@
       <div class="note">※HPゲージ Lv1以上で「ゲージ0失敗」は自動有効。ゲージLvはスキル/固有スキルからも加算されます。</div>
     </div>
 
+    <div class="field"><label>解禁履歴を復元</label><button class="cta" id="restoreUnlocks">復元</button><span class="val muted small" style="text-align:left">パートナーのレベル報酬・イベント進捗・楽曲パック購入から、曲/スキン/パートナー等の解禁状態を正しく復元します（アップデートで途中に追加された解禁の取りこぼし対策／消費アイテムは増えません）</span></div>
+
     <div style="margin-top:24px;display:flex;gap:12px;align-items:center">
       <button class="cta primary" id="saveSettings">保存</button>
       <button class="cta" id="resetSettings">既定に戻す</button>
@@ -739,6 +741,52 @@ function ensureDefaultUnlocks(){
   if(!p.partners[DEFAULT_PARTNER_ID]){ p.partners[DEFAULT_PARTNER_ID]={level:1,exp:0}; changed=true; }
   if(changed)saveProfile(p);
 }
+// 解禁履歴の復元: パートナーのレベル報酬(現在Lv以下)・イベント解禁済み曲・所持パックの1曲目 から、
+// 非消費の解禁(曲/ノーツスキン/パートナー/アイコン/背景)を正しい状態に戻す。
+// 消費アイテム(通貨/各種チケット・晶石)は増殖防止のため復元しない。スキルは未所持のもののみ付与(星/重複は増やさない)。
+// 解禁フラグを直接立てる(解禁演出ポップアップは出さない)。付与件数を返す。
+function restoreUnlocks(){
+  let n=0;
+  const NONCONS=new Set(['song','noteskin','icon','bg','partner']);
+  { const p=loadProfile();
+    const own=(key)=>{ if(!p.unlocks[key]){ p.unlocks[key]=true; n++; } };
+    // パートナーのレベル報酬(現在レベル以下)
+    for(const pid in (p.partners||{})){
+      const meta=partnerMetaById(pid); if(!meta)continue;
+      const lv=(p.partners[pid].level)||1;
+      for(const rw of (meta.levelRewards||[])){
+        if(!rw||!rw.type||(+rw.level||0)>lv)continue;
+        if(rw.type==='song') own('song:b:'+rw.id);
+        else if(rw.type==='partner'){ if(!p.partners[rw.id])p.partners[rw.id]={level:1,exp:0}; own('partner:'+rw.id); }
+        else if(NONCONS.has(rw.type)) own(rw.type+':'+rw.id);
+        // 消費アイテム(diffTicket/eventTicket/arcanaShard/currency)は復元しない
+      }
+    }
+    // イベントで解禁済みの曲(unlockedCount ぶん・source:event の曲のみ)
+    for(const ev of (CONTENT.events||[])){
+      if(eventIsLoop(ev))continue;   // 周回コースは曲解禁なし
+      const st=p.events&&p.events[ev.id]; if(!st)continue;
+      const songs=eventUnlockSongs(ev); const uc=Math.min(+st.unlockedCount||0, songs.length);
+      for(let i=0;i<uc;i++){ const so=songById('b:'+songs[i]); if(so&&songSource(so)==='event') own('song:b:'+songs[i]); }
+    }
+    // 所持している楽曲パックの1曲目(以降の曲はクリアで解禁済みのため既にunlocksにある)
+    for(const pk of (CONTENT.packs||[])){
+      if(p.unlocks['pack:'+pk.id] && pk.songs&&pk.songs[0]) own('song:b:'+pk.songs[0]);
+    }
+    saveProfile(p);
+  }
+  // スキル報酬: 未所持のものだけ付与(既所持は星/重複を増やさない=増殖防止)
+  for(const pid in (loadProfile().partners||{})){
+    const meta=partnerMetaById(pid); if(!meta)continue;
+    const lv=(loadProfile().partners[pid].level)||1;
+    for(const rw of (meta.levelRewards||[])){
+      if(rw&&rw.type==='skill'&&(+rw.level||0)<=lv){
+        const prof=loadProfile(); if(!(prof.skills&&prof.skills[rw.id])){ grantSkill(rw.id); n++; }
+      }
+    }
+  }
+  return n;
+}
 function getCurrency(){return loadProfile().currency||0;}
 function addCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round((p.currency||0)+n));saveProfile(p);return p.currency;}
 function setCurrency(n){const p=loadProfile();p.currency=Math.max(0,Math.round(n)||0);saveProfile(p);}
@@ -755,9 +803,9 @@ function addEventTickets(n){return addItem('eventTicket',n);}
 // currency は通貨(専用フィールド)だが表示上は同じ仕組みで扱う。
 const ITEMS={
   currency:   { label:'シャード',         note:'シャード：ショップや難易度解禁に使う基本通貨',  img:'ic_shard' },
-  diffTicket: { label:'レゾナイト晶石',    note:'レゾナイト晶石：難易度の解禁に使用',           img:'ic_resonite' },
+  diffTicket: { label:'レゾナイト晶石',    note:'レゾナイト晶石：楽曲購入などに使用',           img:'ic_resonite' },
   eventTicket:{ label:'イベントチケット',  note:'イベントチケット：イベントの通常プレイで消費',  img:'ic_eventticket' },
-  arcanaShard:{ label:'アルカナム晶石',    note:'アルカナム晶石：アルカナ関連のアイテム',        img:'ic_arcanum' },
+  arcanaShard:{ label:'アルカナム晶石',    note:'アルカナム晶石：楽曲パック購入などに使用',       img:'ic_arcanum' },
 };
 const ITEM_LABEL={diffTicket:ITEMS.diffTicket.label,eventTicket:ITEMS.eventTicket.label,arcanaShard:ITEMS.arcanaShard.label,currency:ITEMS.currency.label};
 function itemLabel(t){return (ITEMS[t]&&ITEMS[t].label)||ITEM_LABEL[t]||t;}
@@ -1514,8 +1562,9 @@ function rewardName(rw){
   if(rw.type==='skill'){const k=skillById(rw.id);return 'スキル '+(k?k.name:rw.id);}
   if(rw.type==='noteskin'){const n=noteskinById(rw.id);return 'ノーツスキン '+(n?n.name:rw.id);}
   if(rw.type==='icon')return 'アイコン '+rw.id;
-  if(rw.type==='diffTicket')return '難易度解禁チケット ×1';
-  if(rw.type==='eventTicket')return 'イベントチケット ×1';
+  if(rw.type==='diffTicket')return itemLabel('diffTicket')+' ×1';
+  if(rw.type==='eventTicket')return itemLabel('eventTicket')+' ×1';
+  if(rw.type==='arcanaShard')return itemLabel('arcanaShard')+' ×'+(+rw.id>0?+rw.id:1);
   if(rw.type==='currency')return fmtCur(+rw.id||0);
   return rw.type+' '+rw.id;
 }
@@ -1654,8 +1703,9 @@ function resolveReward(rw){
     info.imgLabel='ノーツスキン'; info.owned=hasUnlock('noteskin',rw.id); }
   else if(rw.type==='icon'){ const im=imageById(rw.id); info.title=im?im.id:rw.id; info.img=im?imageAsset(im.file):null;
     info.imgLabel='アイコン'; info.owned=hasUnlock('icon',rw.id); }
-  else if(rw.type==='diffTicket'){ info.title='難易度解禁チケット'; info.sub='×1'; info.imgLabel='チケット'; info.repeatable=true; }
-  else if(rw.type==='eventTicket'){ info.title='イベントチケット'; info.sub='×1'; info.imgLabel='チケット'; info.repeatable=true; }
+  else if(rw.type==='diffTicket'){ info.title=itemLabel('diffTicket'); info.sub='×1'; info.imgLabel='晶石'; info.repeatable=true; }
+  else if(rw.type==='eventTicket'){ info.title=itemLabel('eventTicket'); info.sub='×1'; info.imgLabel='チケット'; info.repeatable=true; }
+  else if(rw.type==='arcanaShard'){ info.title=itemLabel('arcanaShard'); info.sub='×'+(+rw.id>0?+rw.id:1); info.imgLabel='晶石'; info.repeatable=true; }
   else if(rw.type==='currency'){ info.title=fmtCur(+rw.id||0); info.imgLabel='通貨'; info.repeatable=true; }
   info.hasImg=['song','pack','partner','noteskin','icon'].includes(rw.type);   // スキル/消費アイテムは画像なし
   return info;
@@ -2286,6 +2336,12 @@ function applySettingsSave(){ settings=collectSettingsFromUI(); saveSettings(set
 document.getElementById('saveSettings').onclick=()=>{ applySettingsSave();
   document.getElementById('saveMsg').textContent='保存しました';setTimeout(()=>document.getElementById('saveMsg').textContent='',1500);};
 document.getElementById('resetSettings').onclick=()=>{settings=JSON.parse(JSON.stringify(DEFAULTS));saveSettings(settings);loadSettingsUI();};
+{ const rb=document.getElementById('restoreUnlocks'); if(rb)rb.onclick=()=>{
+    const n=restoreUnlocks();
+    const msg=document.getElementById('saveMsg');
+    if(msg){ msg.textContent=n>0?('解禁を復元しました（'+n+'件）'):'復元する項目はありませんでした'; setTimeout(()=>{ if(msg)msg.textContent=''; },2800); }
+    renderCurrency(); if(current==='select')renderAll();
+  }; }
 // 汎用の選択モーダル(タイトル＋ボタン群)
 function showChoiceModal(title, opts){
   let bg=document.getElementById('choiceModal');
