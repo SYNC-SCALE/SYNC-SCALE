@@ -17,8 +17,8 @@
       ],
       "levelRewards": [
         { "level": 3, "type": "diffTicket",  "id": null },
-        { "level": 5, "type": "noteskin",        "id": "skin00_bluered" },
-        { "level": 10, "type": "noteskin",       "id": "skin00_white" },
+        { "level": 5, "type": "noteskin",        "id": "skin00_white" },
+        { "level": 10, "type": "noteskin",       "id": "skin00_bluered" },
         { "level": 15, "type": "arcanaShard", "id": 1}
       ]
     },
