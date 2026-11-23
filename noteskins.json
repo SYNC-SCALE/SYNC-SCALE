@@ -31,12 +31,40 @@
       }
     },
     {
+      "id": "skin00_white",
+      "name": "基本ー2色",
+      "image": "skin01.png",
+      "blend": "add",
+      "colors": {
+        "note": ["#4fa3ff","#4fa3ff","#4fa3ff","#ff4f52","#ff4f52","#ff4f52"],
+        "trace": "#d0d0d0",
+        "gold": "#5cc0e0",
+        "white": "#d8e6ff",
+        "great": "#e0903c",
+        "miss": "#e05a5a"
+      }
+    },
+    {
       "id": "skin01_blue",
       "name": "薄型ー蒼海",
       "image": "skin02.png",
       "blend": "add",
       "colors": {
         "note": "#4fa3ff",
+        "trace": "#7fd0ff",
+        "gold": "#5cc0e0",
+        "white": "#d8e6ff",
+        "great": "#e0903c",
+        "miss": "#e05a5a"
+      }
+    },
+    {
+      "id": "skin01_bluewhite",
+      "name": "薄型ー氷海",
+      "image": "skin02.png",
+      "blend": "add",
+      "colors": {
+        "note": ["#4fa3ff","#f0f0f0","#4fa3ff","#4fa3ff","#f0f0f0","#4fa3ff"],
         "trace": "#7fd0ff",
         "gold": "#5cc0e0",
         "white": "#d8e6ff",
