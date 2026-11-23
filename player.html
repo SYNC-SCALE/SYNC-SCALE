@@ -1919,7 +1919,22 @@ const DEFAULT_COLORS={
   gold:'#7fd8ff', white:'#ffffff', great:'#ffb14e', miss:'#ff6b6b',
 };
 let COLORS=Object.assign({},DEFAULT_COLORS);
-function noteColor(){return COLORS.note;}
+// ノーツの乗算色はレーンごとに保持(6レーン)。colors.note が単色なら全レーン同色、配列なら各レーン別色。
+let NOTE_COLORS=['#ffffff','#ffffff','#ffffff','#ffffff','#ffffff','#ffffff'];
+function noteColor(lane){ const l=(lane>=0&&lane<6)?lane:0; return NOTE_COLORS[l]||COLORS.note||'#ffffff'; }
+// colors.note(単色hex / 6要素の配列 / 未指定)から NOTE_COLORS[6] を構築。配列が6未満なら最後の色で補完。
+function setNoteColors(spec){
+  const hex=/^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+  if(Array.isArray(spec)){
+    let last='#ffffff';
+    for(let l=0;l<6;l++){ const v=spec[l]; if(typeof v==='string'&&hex.test(v))last=v; NOTE_COLORS[l]=last; }
+  }else if(typeof spec==='string'&&hex.test(spec)){
+    for(let l=0;l<6;l++)NOTE_COLORS[l]=spec;
+  }else{
+    for(let l=0;l<6;l++)NOTE_COLORS[l]='#ffffff';
+  }
+  COLORS.note=NOTE_COLORS[0];
+}
 function traceColor(){return COLORS.trace;}
 const NOTE_THICK=0.014;   // レーン空間でのノーツ厚み
 const TRACE_ALPHA=0.5;    // トレースの透明度(固定50%)
@@ -2050,7 +2065,7 @@ function drawHold(n,tb,now,mul,dim,off){
     const lo=Math.min(a,b),hi=Math.max(a,b);
     if(!Proj.visible(lo)||!Proj.visible(hi))continue;
     const al=Math.min(fadeAlpha(Math.max(0,lo)),fadeAlpha(Math.max(0,hi)))*(dim?0.3:0.75);
-    quad(lo,hi,u0+pad,u1-pad,noteColor(),al,'hold');
+    quad(lo,hi,u0+pad,u1-pad,noteColor(n.lane),al,'hold');
   }
 }
 
@@ -2464,20 +2479,25 @@ const Assets={
     BLEND_ADD=(m.blend==='add');
     if(m.colors===undefined){
       COLORS=Object.assign({},DEFAULT_COLORS,{note:'#ffffff',trace:'#ffffff'});
+      setNoteColors(undefined);
       this.colorNote='テクスチャの色をそのまま使用(判定色は固定)';
     }else if(m.colors==='default'){
       COLORS=Object.assign({},DEFAULT_COLORS);
+      setNoteColors(DEFAULT_COLORS.note);
       this.colorNote='既定色で着色';
     }else if(typeof m.colors==='object'){
       COLORS=Object.assign({},DEFAULT_COLORS,{note:'#ffffff',trace:'#ffffff'});
       let bad=[];
       for(const k in DEFAULT_COLORS){
+        if(k==='note')continue;   // note はレーン別対応のため個別処理
         const v=m.colors[k];
         if(v===undefined)continue;
         if(hex.test(v))COLORS[k]=v; else bad.push(k);
       }
+      // note: 単色hex も 6要素の配列(レーン別) も可。未指定ならテクスチャそのまま(白)。
+      setNoteColors(m.colors.note);
       if(bad.length)this.warnings.push('色の指定が不正: '+bad.join(', ')+'(既定を使用)');
-      this.colorNote='スキン指定色';
+      this.colorNote='スキン指定色'+(Array.isArray(m.colors.note)?'(レーン別)':'');
     }
     // --- アトラス ---
     if(m.atlas){
@@ -2931,7 +2951,7 @@ function frame(){
     const isW=n.type==='wipe';
     const pad=(u1-u0)*(isW?0.24:0.06);
     quad(z,Math.min(1.02,z+(isW?NOTE_THICK*0.6:NOTE_THICK)),u0+pad,u1-pad,
-         noteColor(),fadeAlpha(z),isW?'wipe':'click');
+         noteColor(n.lane),fadeAlpha(z),isW?'wipe':'click');
     if(n.layer!==0&&Proj.visible(z))
       strokeScreen([S(Proj.x(z,u0+pad),Proj.y(z)),S(Proj.x(z,u1-pad),Proj.y(z))],
                    1.5, C('#ffffff'), fadeAlpha(z)*0.9);
