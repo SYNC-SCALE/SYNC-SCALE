@@ -11,7 +11,7 @@
       "jacket": "Maelstrom_jacket.png",
       "diffs": {
         "Hard":   { "level": 7,  "chart": "Maelstrom_h.json" },
-        "Master": { "level": 12,  "chart": "Maelstrom_m.json", "unlock": { "cost": 500 } },
+        "Master": { "level": 12,  "chart": "Maelstrom_m.json", "unlock": { "cost": 400 } },
         "Arcana": { "level": 15, "chart": "Maelstrom_a.json" }
       }
     },
@@ -26,7 +26,7 @@
       "diffs": {
         "Easy":   { "level": 4,  "chart": "Abyssal turbine_e.json" },
         "Hard":   { "level": 6,  "chart": "Abyssal turbine_h.json" },
-        "Master": { "level": 12, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 500 } },
+        "Master": { "level": 12, "chart": "Abyssal turbine_m.json", "unlock": { "cost": 400 } },
         "Arcana": { "level": 15, "chart": "Abyssal turbine_a.json" }
       }
     },
@@ -41,7 +41,7 @@
       "diffs": {
         "Easy":   { "level": 2,  "chart": "幽都第七遊興区_e.json" },
         "Hard":   { "level": 5,  "chart": "幽都第七遊興区_h.json" },
-        "Master": { "level": 8, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 8, "chart": "幽都第七遊興区_m.json", "unlock": { "cost": 200 } }
       }
     },
     {
@@ -55,7 +55,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_e.json" },
         "Hard":   { "level": 5,  "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_h.json" },
-        "Master": { "level": 9, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "呼春 -春ヲ呼ブ白鶯ノ伝説-_m.json", "unlock": { "cost": 200 } }
       }
     },
     {
@@ -126,7 +126,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "The Milky Way_e.json" },
         "Hard":   { "level": 5, "chart": "The Milky Way_h.json" },
-        "Master": { "level": 9, "chart": "The Milky Way_m.json", "unlock": { "cost": 500 } },
+        "Master": { "level": 9, "chart": "The Milky Way_m.json", "unlock": { "cost": 300 } },
         "Arcana": { "level": 10, "chart": "The Milky Way_a.json" }
       }
     },
@@ -141,7 +141,7 @@
       "diffs": {
         "Easy":   { "level": 1, "chart": "ハルジオン_e.json" },
         "Hard":   { "level": 4, "chart": "ハルジオン_h.json" },
-        "Master": { "level": 9, "chart": "ハルジオン_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 9, "chart": "ハルジオン_m.json", "unlock": { "cost": 200 } }
       }
     },
     {
@@ -155,7 +155,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "Switch_e.json" },
         "Hard":   { "level": 6, "chart": "Switch_h.json" },
-        "Master": { "level": 9, "chart": "Switch_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 9, "chart": "Switch_m.json", "unlock": { "cost": 200 } }
       }
     },
     {
@@ -183,7 +183,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Magik Motion_e.json" },
         "Hard":   { "level": 5, "chart": "Magik Motion_h.json" },
-        "Master": { "level": 8, "chart": "Magik Motion_m.json", "unlock": { "cost": 300 } }
+        "Master": { "level": 8, "chart": "Magik Motion_m.json", "unlock": { "cost": 200 } }
       }
     },
     {
@@ -239,7 +239,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "The Millky Way NibiryuRemix_e.json" },
         "Hard":   { "level": 6, "chart": "The Millky Way NibiryuRemix_h.json" },
-        "Master": { "level": 12, "chart": "The Millky Way NibiryuRemix_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 12, "chart": "The Millky Way NibiryuRemix_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -253,7 +253,7 @@
       "diffs": {
         "Easy":   { "level": 3, "chart": "Ever Predation_e.json" },
         "Hard":   { "level": 6, "chart": "Ever Predation_h.json" },
-        "Master": { "level": 11, "chart": "Ever Predation_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 11, "chart": "Ever Predation_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -267,7 +267,7 @@
       "diffs": {
         "Easy":   { "level": 2, "chart": "True 2 You_e.json" },
         "Hard":   { "level": 5, "chart": "True 2 You_h.json" },
-        "Master": { "level": 10, "chart": "True 2 You_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 10, "chart": "True 2 You_m.json", "unlock": { "cost": 300 } }
       }
     },
     {
@@ -281,7 +281,7 @@
       "diffs": {
         "Easy":   { "level": 5, "chart": "Object;MALIGNYX_e.json" },
         "Hard":   { "level": 8, "chart": "Object;MALIGNYX_h.json" },
-        "Master": { "level": 13, "chart": "Object;MALIGNYX_m.json", "unlock": { "cost": 500 } }
+        "Master": { "level": 13, "chart": "Object;MALIGNYX_m.json", "unlock": { "cost": 300 } }
       }
     }
   ]
