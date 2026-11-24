@@ -976,11 +976,13 @@ function redeemEventCode(code){
         if(!DEBUG_BUILD)return {notfound:true};
         localStorage.setItem('rhythmDebug','1'); return {ok:true,debug:true};
       }
-      const p=loadProfile(); p.redeemedCodes=p.redeemedCodes||[];
-      if(p.redeemedCodes.map(x=>x.toLowerCase()).includes(String(c.code).toLowerCase()))return {used:true};
+      { const p=loadProfile(); const red=p.redeemedCodes||[];
+        if(red.map(x=>String(x).toLowerCase()).includes(String(c.code).toLowerCase()))return {used:true}; }
       // 報酬が適用できない(曲/スキル等のidが不正・不存在)ならコードを消費しない。
       if(!grantReward(c.reward))return {error:true, reward:c.reward};
-      p.redeemedCodes.push(c.code); saveProfile(p);
+      // grantReward がプロファイル(通貨/アイテム/解禁)を更新済み。読み直してコードだけ追記・保存する
+      // (古いスナップショットを保存すると付与結果を上書きしてしまうため)。
+      { const p2=loadProfile(); p2.redeemedCodes=p2.redeemedCodes||[]; p2.redeemedCodes.push(c.code); saveProfile(p2); }
       return {ok:true,reward:c.reward};
     }
   }
